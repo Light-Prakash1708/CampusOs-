@@ -17,6 +17,14 @@ export function formatTime(value: string | null | undefined): string {
   return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
+/**
+ * Timezone used to DISPLAY instants. Explicit so a server running in UTC
+ * (Render, most hosts) and the browser render the same wall-clock time —
+ * otherwise every server-rendered time is off by 5:30 for Indian colleges and
+ * hydration can disagree. Pages that know the college's own timezone pass it.
+ */
+export const DISPLAY_TIME_ZONE = process.env.NEXT_PUBLIC_DEFAULT_TIMEZONE || 'Asia/Kolkata';
+
 export function formatDate(value: Date | string | null | undefined, withYear = true): string {
   if (!value) return '—';
   const date = typeof value === 'string' ? new Date(value) : value;
@@ -24,6 +32,7 @@ export function formatDate(value: Date | string | null | undefined, withYear = t
   return date.toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
+    timeZone: DISPLAY_TIME_ZONE,
     ...(withYear ? { year: 'numeric' } : {}),
   });
 }
@@ -35,6 +44,7 @@ export function formatDateTime(value: Date | string | null | undefined): string 
   return `${formatDate(date)}, ${date.toLocaleTimeString('en-IN', {
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: DISPLAY_TIME_ZONE,
   })}`;
 }
 

@@ -21,7 +21,7 @@ import {
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import { isEnabled } from '@/lib/features';
-import { formatDate, pluralize, relativeTime } from '@/lib/utils';
+import { cn, formatDate, relativeTime } from '@/lib/utils';
 import {
   CampusCard,
   CampusEmptyState,
@@ -32,6 +32,7 @@ import {
   CampusQuickAction,
   CampusSectionHeader,
   CampusSpeech,
+  CampusIconTile,
   CampusTimeline,
   PixelAvatar,
   avatarToneFor,
@@ -53,6 +54,8 @@ import {
 import { getStudentAssignments } from './_lib/coursework';
 import { getHolidays, getStudentAnnouncements, getStudentChanges } from './_lib/campus';
 import { EVENT_CATEGORIES, listEvents } from '@/services/events';
+import { getAttendanceOverview } from '@/services/attendance';
+import { buildToday, type TodayItem } from '@/lib/today';
 import { categoryTone, EventCoverArt, formatEventDates } from '@/components/campus/events';
 import { findNextClass, occurrencesForDate, type ClassOccurrence } from './_lib/schedule';
 import { addIsoDays, DAY_LABEL, isoToDate, timeToMinutes, zonedNow } from './_lib/time';
@@ -92,6 +95,12 @@ export default async function StudentHome() {
       ? listEvents(user, { when: 'upcoming', sort: 'date', limit: 3 })
       : Promise.resolve([]),
   ]);
+  const eventsOnForDay = isEnabled(user.featureFlags, 'events_enabled');
+  const [myEvents, savedEvents, attendanceOverview] = await Promise.all([
+    eventsOnForDay ? listEvents(user, { mine: 'registered', when: 'upcoming', sort: 'date', limit: 10 }) : Promise.resolve([]),
+    eventsOnForDay ? listEvents(user, { mine: 'saved', when: 'upcoming', sort: 'date', limit: 20 }) : Promise.resolve([]),
+    user.permissions.has('attendance:view_own') ? getAttendanceOverview(user) : Promise.resolve(null),
+  ]);
 
   const holidayToday = holidays.find((h) => h.date === now.today) ?? null;
   const todays = holidayToday ? [] : occurrencesForDate(now.today, classes, exceptions);
@@ -104,18 +113,6 @@ export default async function StudentHome() {
   const submitted = assignments.filter((a) => a.bucket === 'SUBMITTED' || a.bucket === 'EVALUATED');
   const assignmentPct = dueOrDone.length > 0 ? (submitted.length / dueOrDone.length) * 100 : null;
   const activityPct = activity.pastRegistrations > 0 ? (activity.attended / activity.pastRegistrations) * 100 : null;
-
-  /* ------------------------ things needing attention ----------------------- */
-  const overdue = assignments.filter((a) => a.bucket === 'OVERDUE');
-  const needsAck = announcements.filter((a) => a.requiresAcknowledgement && !a.acknowledgedAt);
-  const attention: { href: string; text: string }[] = [
-    ...attendance.atRisk.slice(0, 2).map((r) => ({
-      href: '/student/attendance',
-      text: `${r.name} attendance is ${(r.percentageBp / 100).toFixed(0)}% — attend the next ${pluralize(r.sessionsToRecover, 'class', 'classes')} to reach ${r.requiredPercentage}%`,
-    })),
-    ...(overdue.length ? [{ href: '/student/assignments', text: `${pluralize(overdue.length, 'assignment')} past due` }] : []),
-    ...(needsAck.length ? [{ href: '/student/announcements', text: `${pluralize(needsAck.length, 'notice')} to acknowledge` }] : []),
-  ];
 
   const f = user.featureFlags;
   const trackerOn = isEnabled(f, 'personal_tracker_enabled');
@@ -164,6 +161,29 @@ export default async function StudentHome() {
     .sort((a, b) => b.at - a.at)
     .slice(0, 4);
 
+  /* ------------------------------ your day -------------------------------- */
+  const dayItems = buildToday({
+    today: now.today,
+    nowMinutes: now.minutes,
+    timeZone,
+    classes: todays.map((c) => ({ key: c.key, subject: c.subjectName, room: c.roomCode, start: c.startTime, end: c.endTime, status: c.status })),
+    nextClass: next && !next.isToday ? { subject: next.occurrence.subjectName, room: next.occurrence.roomCode, start: next.occurrence.startTime, dayLabel: DAY_LABEL[next.occurrence.day] } : null,
+    assignments: assignments.map((a) => ({ id: a.id, title: a.title, subject: a.subjectName, dueAt: a.dueAt, submitted: a.bucket === 'SUBMITTED' || a.bucket === 'EVALUATED' })),
+    attentionSubjects: (attendanceOverview?.advice ?? [])
+      .filter((a) => a.offeringId && (a.severity === 'critical' || a.severity === 'warning'))
+      .map((a) => ({ offeringId: a.offeringId!, title: a.title, body: a.body, critical: a.severity === 'critical' })),
+    events: [...new Map([...myEvents, ...savedEvents].map((e) => [e.id, e])).values()].map((e) => ({
+      id: e.id,
+      title: e.title,
+      startsAt: e.startsAt,
+      venue: e.mode === 'ONLINE' ? 'Online' : e.venue ?? e.area ?? e.city ?? 'Venue to be announced',
+      registered: e.myStatus === 'REGISTERED',
+      registrationDeadline: e.registrationDeadline,
+      saved: e.saved,
+    })),
+    notices: announcements.map((a) => ({ id: a.id, title: a.title, critical: a.priority === 'CRITICAL' && !a.readAt, needsAck: a.requiresAcknowledgement && !a.acknowledgedAt })),
+  });
+
   // Events 2.0: includes other colleges' public events when discovery is on,
   // and the student's own registration state.
   const upcomingEvents = events;
@@ -187,20 +207,7 @@ export default async function StudentHome() {
         </div>
       </header>
 
-      {attention.length > 0 ? (
-        <CampusCard tone="sun" className="px-4 py-3" role="status" aria-label="Needs your attention">
-          <ul className="space-y-1">
-            {attention.map((a, i) => (
-              <li key={i}>
-                <Link href={a.href} className="flex items-start gap-2 text-[13px] font-semibold text-default hover:underline">
-                  <AlertTriangle size={15} className="mt-0.5 shrink-0 text-sun-ink" aria-hidden />
-                  {a.text}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </CampusCard>
-      ) : null}
+      <YourDay items={dayItems} />
 
       {/* -------------------- schedule · campus · progress -------------------- */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,0.95fr)]">
@@ -280,11 +287,11 @@ export default async function StudentHome() {
             {upcomingEvents.length === 0 ? (
               <CampusEmptyState sprite="student" title="No events coming up yet" description="When your college schedules events, they appear here." />
             ) : (
-              <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+              <ul className="-mx-1 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 scrollbar-none sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
                 {upcomingEvents.map((e) => {
                   const where = e.mode === 'ONLINE' ? 'Online' : e.venue ?? e.area ?? e.city ?? 'Venue to be announced';
                   return (
-                    <li key={e.id}>
+                    <li key={e.id} className="w-[72%] shrink-0 snap-start sm:w-auto">
                       <Link href={`/student/events/${e.id}`} className="group block overflow-hidden rounded-xl border-[1.5px] border-ink bg-surface-raised shadow-pop campus-press">
                         <EventCoverArt title={e.title} tone={categoryTone(e.category)} className="h-20 border-b-[1.5px] border-ink" />
                         <div className="p-3">
@@ -435,4 +442,75 @@ const LINES = [
 function dailyLine(iso: string): string {
   const d = Number(iso.replace(/-/g, '')) % LINES.length;
   return LINES[d]!;
+}
+
+const DAY_KIND: Record<TodayItem['kind'], { icon: LucideIcon; tone: Tone; label: string }> = {
+  class: { icon: CalendarDays, tone: 'sky', label: 'Class' },
+  deadline: { icon: ClipboardList, tone: 'lavender', label: 'Deadline' },
+  attendance: { icon: CalendarCheck2, tone: 'coral', label: 'Attendance' },
+  event: { icon: Ticket, tone: 'sun', label: 'Event' },
+  registration: { icon: Ticket, tone: 'peach', label: 'Registration' },
+  notice: { icon: Megaphone, tone: 'rose', label: 'Notice' },
+  task: { icon: ClipboardList, tone: 'mint', label: 'Task' },
+  goal: { icon: Target, tone: 'mint', label: 'Goal' },
+};
+
+/** "What matters today" — one ranked list from real records (src/lib/today.ts). */
+function YourDay({ items }: { items: TodayItem[] }) {
+  return (
+    <CampusCard as="section" className="p-4 sm:p-5" aria-labelledby="day-h">
+      <CampusSectionHeader id="day-h" title="Your Day" />
+      {items.length === 0 ? (
+        <p className="mt-2 flex items-center gap-2 text-[13px] text-muted">
+          <CalendarCheck2 size={16} className="text-mint-ink" aria-hidden /> Nothing pressing today — no deadlines, warnings or events waiting on you.
+        </p>
+      ) : (
+        <>
+          <ul className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {items.map((it, i) => (
+              // Phones: the four most important; the rest behind "Show more".
+              <li key={it.key} className={i >= 4 ? 'hidden md:block' : undefined}>
+                <DayItem it={it} />
+              </li>
+            ))}
+          </ul>
+          {items.length > 4 ? (
+            <details className="mt-2 md:hidden">
+              <summary className="flex min-h-[44px] cursor-pointer items-center text-[13px] font-bold text-brand">Show {items.length - 4} more</summary>
+              <ul className="space-y-2">
+                {items.slice(4).map((it) => (
+                  <li key={it.key}>
+                    <DayItem it={it} />
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </>
+      )}
+    </CampusCard>
+  );
+}
+
+function DayItem({ it }: { it: TodayItem }) {
+  const k = DAY_KIND[it.kind];
+  return (
+    <Link
+                  href={it.href}
+                  className={cn(
+                    'flex h-full items-start gap-2.5 rounded-xl border-[1.5px] p-2.5 transition-colors hover:bg-surface-sunken/60',
+                    it.urgent ? 'border-coral-ink bg-coral/60' : 'border-[hsl(var(--border-strong))] bg-surface',
+                  )}
+                >
+                  <CampusIconTile icon={k.icon} tone={k.tone} size="sm" />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-[13px] font-extrabold text-default">{it.title}</span>
+                      <span className={cn('tabular shrink-0 text-[11.5px] font-bold', it.urgent ? 'text-coral-ink' : 'text-subtle')}>{it.when}</span>
+                    </span>
+                    <span className="line-clamp-2 block text-[12px] leading-snug text-muted">{it.detail}</span>
+                    <span className="sr-only">{k.label}</span>
+                  </span>
+                </Link>
+  );
 }

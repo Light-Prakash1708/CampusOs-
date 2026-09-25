@@ -5,7 +5,7 @@ import {
   Alert, Badge, Button, Card, CardBody, CardHeader, EmptyState,
   PageHeader, Progress, Section, Stat, EstimateChip,
 } from '@/components/ui';
-import { formatTime, humanize, minutesToHuman, relativeTime, pluralize } from '@/lib/utils';
+import { DISPLAY_TIME_ZONE, formatTime, humanize, minutesToHuman, relativeTime, pluralize } from '@/lib/utils';
 import { scanVersionConflicts } from '@/services/timetable/conflicts';
 import {
   computeAttendanceHealth, computeCommunicationHealth, computeGrievanceHealth,
@@ -490,5 +490,5 @@ function InsightRow({
 }
 
 function dayLabel(date: Date): string {
-  return date.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' });
+  return date.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', timeZone: DISPLAY_TIME_ZONE });
 }

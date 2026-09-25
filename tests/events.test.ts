@@ -293,3 +293,25 @@ describe('organiser updates', () => {
     expect(registeredOnly.recipients).toBe(1);
   });
 });
+
+describe('"my events" filters (regression)', () => {
+  it('finds my registration beyond the page limit and excludes rejected ones', async () => {
+    const early = await Promise.all([1, 2, 3].map(() => newEvent(A, { capacity: 50 })));
+    const later = await newEvent(A, {
+      capacity: 50,
+      startsAt: new Date(Date.now() + 40 * 86_400_000),
+      endsAt: new Date(Date.now() + 40 * 86_400_000 + 3600_000),
+    });
+    const me = await ctxFor((await createUser(A)).id);
+    await registerForEvent(me, later.id);
+    await setSaved(me, early[0]!.id, true);
+    const mine = await listEvents(me, { mine: 'registered', when: 'upcoming', sort: 'date', limit: 2 });
+    expect(mine.map((e) => e.id)).toContain(later.id);
+    expect((await listEvents(me, { mine: 'saved', when: 'upcoming', sort: 'date', limit: 1 })).map((e) => e.id)).toContain(early[0]!.id);
+
+    const approval = await newEvent(A, { registrationMode: 'APPROVAL', capacity: 10 });
+    await registerForEvent(me, approval.id);
+    await db.update(t.eventRegistrations).set({ status: 'REJECTED' }).where(and(eq(t.eventRegistrations.eventId, approval.id), eq(t.eventRegistrations.userId, me.userId)));
+    expect((await listEvents(me, { mine: 'registered', when: 'upcoming' })).map((e) => e.id)).not.toContain(approval.id);
+  });
+});

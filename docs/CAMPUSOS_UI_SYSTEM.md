@@ -149,3 +149,20 @@ see: Classes, Notices, Resources, Rooms, People, Cases, **Tools** (students;
 available tools only — planned ones never appear as results) and **Events**
 (Events 2.0 visibility rules, including cross-college discovery; staff with
 `event:approve` land on the organiser view).
+
+## 6. Student home
+
+Greeting → **Your Day** → today's schedule · campus scene · My Progress →
+quick actions → upcoming events · notices. Everything is the student's own data.
+
+**Your Day** (`src/lib/today.ts`, pure and tested) merges into one ranked list:
+remaining classes today (live one marked "Now"; cancelled/finished skipped; the
+next class when today is done), overdue and due-today/tomorrow assignments,
+the attendance advisor's urgent subjects, my events today/tomorrow, saved
+events whose registration closes today/tomorrow, and critical or
+must-acknowledge notices (plus tracker tasks and goals once that module is
+on). Urgent first, then by time. Phones show the top four with "Show more";
+upcoming events become a horizontal swipe row.
+
+**Times** are displayed in `DISPLAY_TIME_ZONE` (default `Asia/Kolkata`,
+`NEXT_PUBLIC_DEFAULT_TIMEZONE`) so a UTC server and the browser agree.

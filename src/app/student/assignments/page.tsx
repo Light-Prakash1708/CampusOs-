@@ -18,7 +18,7 @@ import {
   Section,
   type BadgeTone,
 } from '@/components/ui';
-import { formatDate, humanize, num, pluralize, relativeTime } from '@/lib/utils';
+import { formatDate, formatDateTime, humanize, num, pluralize, relativeTime } from '@/lib/utils';
 
 import { requireStudentContext } from '../_lib/auth';
 import { getStudentAssignments, type StudentAssignment } from '../_lib/coursework';
@@ -192,8 +192,8 @@ function AssignmentCard({ assignment }: { assignment: StudentAssignment }) {
           <span>
             {assignment.dueAt ? (
               <>
-                Due <span className="text-default">{formatDate(assignment.dueAt)}</span> ·{' '}
-                {relativeTime(assignment.dueAt)}
+                Due <span className="text-default">{formatDateTime(assignment.dueAt)}</span>
+                {Math.abs(assignment.dueAt.getTime() - Date.now()) < 7 * 86_400_000 ? <> · {relativeTime(assignment.dueAt)}</> : null}
               </>
             ) : (
               'No due date set'

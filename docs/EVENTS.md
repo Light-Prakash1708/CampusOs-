@@ -9,7 +9,7 @@ public events also needs `event_discovery_enabled` on the **viewer's** college.
 | Table | Purpose |
 |---|---|
 | `events` | The event. Its `institution_id` is always the organising college. |
-| `event_registrations` | One row per person per event. `status` ∈ `REGISTERED`, `WAITLISTED`, `PENDING_APPROVAL`, `DECLINED`, `CANCELLED`. `attendee_institution_id` records the attendee's own college for cross-college events. `code` is the 6-character pass code. |
+| `event_registrations` | One row per person per event. `status` ∈ `REGISTERED`, `WAITLISTED`, `PENDING_APPROVAL`, `REJECTED`, `CANCELLED`. `attendee_institution_id` records the attendee's own college for cross-college events. `code` is the 6-character pass code. |
 | `event_saves` | Bookmarks. A saved event counts as "followed", so its updates reach you. |
 | `event_checkins` | At most one per registration (unique index), so check-in is idempotent. |
 | `event_certificates` | Issued only to checked-in attendees. Each has a public `verification_code` (`XXXXX-XXXXX`); unique per registration and kind. |

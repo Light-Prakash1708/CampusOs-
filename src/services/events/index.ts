@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, ne, notInArray, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import { AppError, ConflictError, NotFoundError, pgErrorOf } from '@/lib/api';
@@ -123,6 +123,12 @@ export async function listEvents(ctx: Ctx, filters: EventFilters = {}, now = new
   if (filters.free) conds.push(eq(t.events.priceInr, 0));
   if (filters.certificate) conds.push(eq(t.events.certificateOffered, true));
   if (filters.mine === 'college') conds.push(eq(t.events.institutionId, ctx.institutionId));
+  // "Mine" filters run in SQL, before the LIMIT — filtering afterwards dropped
+  // registrations once there were more upcoming events than the limit.
+  if (filters.mine === 'registered') {
+    conds.push(and(isNotNull(t.eventRegistrations.id), notInArray(t.eventRegistrations.status, ['CANCELLED', 'REJECTED']))!);
+  }
+  if (filters.mine === 'saved') conds.push(isNotNull(t.eventSaves.id));
 
   if (filters.when === 'past') {
     conds.push(lt(t.events.endsAt, now));
@@ -215,8 +221,6 @@ export async function listEvents(ctx: Ctx, filters: EventFilters = {}, now = new
     };
   });
 
-  if (filters.mine === 'registered') cards = cards.filter((c) => c.myStatus && c.myStatus !== 'CANCELLED' && c.myStatus !== 'REJECTED');
-  if (filters.mine === 'saved') cards = cards.filter((c) => c.saved);
   if (filters.radiusKm) cards = cards.filter((c) => c.mode === 'ONLINE' || (c.distanceKm !== null && c.distanceKm <= filters.radiusKm!));
   if ((filters.sort ?? 'relevance') === 'relevance' && filters.when !== 'past') {
     cards.sort((a, b) => relevanceScore(b, now) - relevanceScore(a, now));
