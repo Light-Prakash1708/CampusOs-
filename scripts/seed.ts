@@ -23,6 +23,7 @@ import * as s from '../src/lib/db/schema';
 import { hashPassword } from '../src/lib/auth/password';
 import { defaultFlags } from '../src/lib/features';
 import { purgeTenant } from './lib/purge';
+import { seedEventsNetwork } from './seed-events';
 import { ensureRetentionPolicies } from '../src/services/privacy/retention';
 import { defaultSolver } from '../src/services/timetable/solver';
 import type { SolverSession, SolverInput } from '../src/services/timetable/types';
@@ -964,6 +965,17 @@ async function main() {
   await seedGrievances();
   await seedSkills();
   await seedWorkload();
+
+  // A student who runs the E-Cell: CLUB_ADMIN as a secondary role.
+  const clubLead = studentProfiles[1]!.userId;
+  await db.update(s.users).set({ secondaryRoles: ['CLUB_ADMIN'] }).where(eq(s.users.id, clubLead));
+  await seedEventsNetwork(db, {
+    mainInstitutionId: inst,
+    passwordHash,
+    demoStudentUserId: studentProfiles[0]!.userId,
+    otherStudentUserIds: studentProfiles.slice(2, 60).map((p) => p.userId),
+    eventOrganizerUserId: clubLead,
+  });
 
   // CampusOS 2.0 foundation: institution-issued accounts are verified, the
   // demo college accepts self-registration with admin approval, and the

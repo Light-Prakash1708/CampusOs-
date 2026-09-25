@@ -55,6 +55,8 @@ export const STUDENT_NAV: NavGroup[] = [
       { label: 'Notices', href: '/student/announcements', icon: 'megaphone' },
       { label: 'Exams & Results', href: '/student/assessments', icon: 'graduation' },
       { label: 'Calendar', href: '/student/calendar', icon: 'calendarClock' },
+      { label: 'Certificates', href: '/student/certificates', icon: 'shield', feature: 'events_enabled' },
+      { label: 'Host an event', href: '/organize', icon: 'plus', feature: 'events_enabled', permissions: ['event:create'] },
       {
         label: 'Readdressal',
         href: '/student/readdressal',
@@ -119,6 +121,7 @@ export const FACULTY_NAV: NavGroup[] = [
     items: [
       { label: 'Announcements', href: '/faculty/announcements', icon: 'megaphone' },
       { label: 'Calendar', href: '/faculty/calendar', icon: 'calendarClock' },
+      { label: 'Organise events', href: '/organize', icon: 'ticket', feature: 'events_enabled', permissions: ['event:create'] },
       {
         label: 'Readdressal',
         href: '/faculty/readdressal',
@@ -189,7 +192,7 @@ export const ADMIN_NAV: NavGroup[] = [
         icon: 'megaphone',
         permissions: ['announcement:create_official', 'announcement:create_informational'],
       },
-      { label: 'Events', href: '/admin/events', icon: 'calendar', feature: 'events_enabled' },
+      { label: 'Events', href: '/admin/events', icon: 'ticket', feature: 'events_enabled', permissions: ['event:approve', 'event:create'] },
       {
         label: 'Workload',
         href: '/admin/workload',

@@ -9,6 +9,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
+  numeric,
 } from 'drizzle-orm/pg-core';
 import { institutions, campuses, departments, programs } from './tenancy';
 import { users } from './people';
@@ -333,6 +334,50 @@ export const events = pgTable(
     /** Does this event displace scheduled classes? Drives conflict severity. */
     blocksClasses: boolean('blocks_classes').notNull().default(false),
     attachments: jsonb('attachments').$type<{ name: string; url: string }[]>().default([]),
+
+    /* ---- CampusOS 2.0: discovery, registration, verification ---- */
+    /** HACKATHON | FEST | COMPETITION | CASE_COMPETITION | DEBATE | MUN | WORKSHOP | SEMINAR | SPORTS | CULTURAL | ENTREPRENEURSHIP | CLUB | CAREER | NETWORKING | OPEN_MIC | OTHER */
+    category: text('category').notNull().default('OTHER'),
+    /** INSTITUTION: this college only. PUBLIC: discoverable by students of other colleges. */
+    visibility: text('visibility').notNull().default('INSTITUTION'),
+    /** COLLEGE | CLUB | STUDENT | EXTERNAL */
+    organizerType: text('organizer_type').notNull().default('COLLEGE'),
+    /** Display name of the organising body, e.g. "E-Cell, KBI". */
+    organizerName: text('organizer_name'),
+    /** VERIFIED_COLLEGE | VERIFIED_CLUB | VERIFIED_ORGANIZER | COMMUNITY | PENDING */
+    verification: text('verification').notNull().default('VERIFIED_COLLEGE'),
+    /** OFFLINE | ONLINE | HYBRID */
+    mode: text('mode').notNull().default('OFFLINE'),
+    city: text('city'),
+    /** Neighbourhood for discovery, e.g. "Salt Lake", "New Town". */
+    area: text('area'),
+    latitude: numeric('latitude', { precision: 9, scale: 6 }),
+    longitude: numeric('longitude', { precision: 9, scale: 6 }),
+    onlineUrl: text('online_url'),
+    /** Registration fee in whole rupees; 0 = free. */
+    priceInr: integer('price_inr').notNull().default(0),
+    certificateOffered: boolean('certificate_offered').notNull().default(false),
+    teamSizeMin: integer('team_size_min').notNull().default(1),
+    teamSizeMax: integer('team_size_max').notNull().default(1),
+    eligibility: text('eligibility'),
+    rules: text('rules'),
+    prizes: text('prizes'),
+    agenda: jsonb('agenda').$type<{ time: string; title: string }[]>().notNull().default([]),
+    faqs: jsonb('faqs').$type<{ q: string; a: string }[]>().notNull().default([]),
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    contactEmail: text('contact_email'),
+    socialLinks: jsonb('social_links').$type<{ label: string; url: string }[]>().notNull().default([]),
+    coverUrl: text('cover_url'),
+    /** INSTANT | APPROVAL | INVITE_ONLY — a full event with waitlistEnabled queues new registrants. */
+    registrationMode: text('registration_mode').notNull().default('INSTANT'),
+    waitlistEnabled: boolean('waitlist_enabled').notNull().default(true),
+    /** External ingestion provenance (never invented): where it came from and when it was last checked. */
+    sourceName: text('source_name'),
+    sourceUrl: text('source_url'),
+    lastVerifiedAt: timestamp('last_verified_at', { withTimezone: true }),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    moderationNote: text('moderation_note'),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -340,6 +385,8 @@ export const events = pgTable(
   (t) => [
     index('events_institution_idx').on(t.institutionId, t.startsAt),
     index('events_room_idx').on(t.roomId, t.startsAt),
+    index('events_discovery_idx').on(t.visibility, t.status, t.startsAt),
+    index('events_city_idx').on(t.city, t.startsAt),
   ],
 );
 
@@ -359,6 +406,22 @@ export const eventRegistrations = pgTable(
     registeredAt: timestamp('registered_at', { withTimezone: true }).notNull().defaultNow(),
     attendedAt: timestamp('attended_at', { withTimezone: true }),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    /* ---- CampusOS 2.0 ---- */
+    /** REGISTERED | WAITLISTED | PENDING_APPROVAL | REJECTED | CANCELLED */
+    status: text('status').notNull().default('REGISTERED'),
+    /** Short human code on the pass, e.g. "KBI-7K3Q9P". Unique per event. */
+    code: text('code'),
+    /** The attendee's own college, which may differ for PUBLIC events. */
+    attendeeInstitutionId: uuid('attendee_institution_id').references(() => institutions.id, { onDelete: 'set null' }),
+    teamName: text('team_name'),
+    /** Organiser-visible note from the registrant (e.g. dietary needs). */
+    note: text('note'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('event_registrations_uq').on(t.eventId, t.userId)],
+  (t) => [
+    uniqueIndex('event_registrations_uq').on(t.eventId, t.userId),
+    uniqueIndex('event_registrations_code_uq').on(t.eventId, t.code),
+    index('event_registrations_user_idx').on(t.userId, t.status),
+    index('event_registrations_event_status_idx').on(t.eventId, t.status, t.registeredAt),
+  ],
 );

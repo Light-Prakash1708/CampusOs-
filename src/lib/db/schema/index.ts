@@ -18,3 +18,4 @@ export * from './operations';
 export * from './system';
 export * from './platform';
 export * from './privacy';
+export * from './events';

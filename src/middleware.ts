@@ -30,9 +30,10 @@ const PUBLIC_PATHS = [
   // Authenticates itself (CRON_SECRET or admin session); the scheduler has no cookie.
   '/api/jobs/run',
   '/manifest.webmanifest',
+  '/icon.svg',
 ];
 
-const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/illustrations', '/api/auth/', '/api/public/'];
+const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/illustrations', '/verify/', '/api/auth/', '/api/public/'];
 
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;
@@ -120,5 +121,5 @@ function redirectToLogin(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|images|illustrations).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|icons|images|illustrations).*)'],
 };

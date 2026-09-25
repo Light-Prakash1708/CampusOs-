@@ -82,7 +82,13 @@ export type AuditAction =
   | 'FILE_UPLOADED'
   | 'FILE_DELETED'
   | 'FEATURE_FLAGS_UPDATED'
-  | 'REGISTRATION_POLICY_UPDATED';
+  | 'REGISTRATION_POLICY_UPDATED'
+  // --- CampusOS 2.0: events ---
+  | 'EVENT_APPROVED'
+  | 'EVENT_REJECTED'
+  | 'EVENT_SUSPENDED'
+  | 'EVENT_UPDATE_POSTED'
+  | 'CERTIFICATES_ISSUED';
 
 export interface AuditInput {
   action: AuditAction;

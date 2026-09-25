@@ -9,6 +9,7 @@ import {
   index,
   uniqueIndex,
   date,
+  numeric,
 } from 'drizzle-orm/pg-core';
 import { subscriptionTierEnum } from './enums';
 
@@ -42,6 +43,9 @@ export const institutions = pgTable(
     city: text('city'),
     state: text('state'),
     country: text('country').default('India'),
+    /** Campus coordinates for "events near your college" (CampusOS 2.0). */
+    latitude: numeric('latitude', { precision: 9, scale: 6 }),
+    longitude: numeric('longitude', { precision: 9, scale: 6 }),
 
     subscriptionTier: subscriptionTierEnum('subscription_tier').notNull().default('STARTER'),
     /** Per-tenant feature toggles; see src/lib/features.ts for the canonical list. */
