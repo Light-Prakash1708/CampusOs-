@@ -152,16 +152,17 @@ afterAll(async () => {
 });
 
 describe('feature flags cannot switch on unbuilt modules', () => {
-  it('refuses to enable Tracker, Communities or Opportunities, but allows built modules', async () => {
+  it('refuses to enable Communities or Opportunities, but allows built modules', async () => {
     const superAdmin = await ctxFor((await createUser(A, { role: 'SUPER_ADMIN' })).id);
-    for (const flag of ['personal_tracker_enabled', 'clubs_enabled', 'opportunity_hub_enabled'] as const) {
+    for (const flag of ['clubs_enabled', 'opportunity_hub_enabled'] as const) {
       await expect(updateFeatureFlags(superAdmin, { [flag]: true }, meta())).rejects.toMatchObject({ status: 422, code: 'MODULE_NOT_BUILT' });
     }
     // Switching an unbuilt module OFF is always allowed (e.g. clearing old data).
-    await expect(updateFeatureFlags(superAdmin, { personal_tracker_enabled: false }, meta())).resolves.toBeTruthy();
-    const after = await updateFeatureFlags(superAdmin, { grievance_enabled: true }, meta());
+    await expect(updateFeatureFlags(superAdmin, { clubs_enabled: false }, meta())).resolves.toBeTruthy();
+    const after = await updateFeatureFlags(superAdmin, { grievance_enabled: true, personal_tracker_enabled: true }, meta());
     expect(after.grievance_enabled).toBe(true);
-    expect(after.personal_tracker_enabled).toBe(false);
+    expect(after.personal_tracker_enabled).toBe(true); // built in Phase 8
+    expect(after.clubs_enabled).toBe(false);
   });
 });
 

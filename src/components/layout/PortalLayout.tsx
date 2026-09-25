@@ -11,6 +11,7 @@ import {
 } from '@/lib/db/schema';
 import { requireAuth, type AuthContext } from '@/lib/auth/context';
 import { isEnabled, plannedLabel, type FeatureFlag } from '@/lib/features';
+import { levelOf } from '@/services/gamification';
 import { humanize } from '@/lib/utils';
 import { AppShell, type ShellBadges } from './AppShell';
 import {
@@ -49,7 +50,8 @@ export async function PortalLayout({
   if (user.mustChangePassword) redirect('/account/security?required=1');
 
   const nav = filterNav(navForPortal(portal), user);
-  const [badges, identity] = await Promise.all([loadBadges(user), loadIdentity(user)]);
+  const gamified = portal === 'student' && isEnabled(user.featureFlags, 'gamification_enabled');
+  const [badges, identity, level] = await Promise.all([loadBadges(user), loadIdentity(user), gamified ? levelOf(user.userId) : Promise.resolve(null)]);
 
   return (
     <AppShell
@@ -66,9 +68,9 @@ export async function PortalLayout({
         institutionLogoUrl: user.institutionLogoUrl,
         portal,
         subtitle: identity.subtitle ?? humanize(user.role),
-        // Level/XP chip: students only. Real values arrive with the gamification
-        // engine; until then the chip shows its planned phase, never a fake level.
-        progress: portal === 'student' ? { level: null, planned: plannedLabel('gamification_enabled') } : null,
+        // Level/XP chip: students at colleges with gamification on — computed
+        // from the student's own XP ledger. Hidden otherwise; never a fake level.
+        progress: level ? { level: level.level, xpIntoLevel: level.xpIntoLevel, xpForLevel: level.xpForNext, planned: null } : null,
       }}
       nav={nav}
       badges={badges}

@@ -23,7 +23,7 @@ import { isBuilt, isEnabled, plannedLabel, type FeatureFlag } from '@/lib/featur
 export type ToolIconKey =
   | 'attendance' | 'timetable' | 'jobs' | 'events' | 'calculator' | 'documents'
   | 'subjects' | 'reminders' | 'notes' | 'planner' | 'cgpa' | 'rooms'
-  | 'assistant' | 'certificates' | 'host';
+  | 'assistant' | 'certificates' | 'host' | 'goals';
 
 export type ToolTone = 'mint' | 'sky' | 'lavender' | 'sun' | 'coral' | 'peach' | 'rose';
 
@@ -142,6 +142,16 @@ export const TOOLS: readonly ToolDefinition[] = [
     icon: 'reminders',
     tone: 'lavender',
     plannedPhase: 3,
+  },
+  {
+    key: 'tracker',
+    title: 'Goals & Habits',
+    description: 'Private goals, daily or weekly habits with streaks, milestone steps and a to-do list. Only you can see it.',
+    icon: 'goals',
+    tone: 'peach',
+    href: '/student/tracker',
+    cta: 'Open Tracker',
+    feature: 'personal_tracker_enabled',
   },
   {
     key: 'rooms',

@@ -24,7 +24,7 @@ does **today**. Optionally it also has:
 | `DISABLED` | Built, but the college turned the module off | "Off at your college", with no link |
 | hidden | The user lacks every listed permission | not rendered |
 
-## Current tools (Phase 1)
+## Current tools
 
 | Tool | Status | Goes to / arrives in |
 |---|---|---|
@@ -37,6 +37,7 @@ does **today**. Optionally it also has:
 | Certificates | available (`events_enabled`) | `/student/certificates` |
 | Host an Event | available (`event:create`) | `/organize/new` |
 | Attendance Planner (Bunk Calculator) | available (`attendance_planner_enabled`) | `/tools/attendance-planner` |
+| Goals & Habits | available (`personal_tracker_enabled`) | `/student/tracker` (see `GAMIFICATION.md`) |
 | Smart Reminders, Room Finder | planned | Phase 3 |
 | Internships & Jobs | planned (`opportunity_hub_enabled`) | Phase 5 |
 | PYQs, Document Storage | planned | Phase 6 |

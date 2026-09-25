@@ -41,6 +41,7 @@ export const STUDENT_NAV: NavGroup[] = [
       { label: 'Tools & Utilities', href: '/tools', icon: 'tools' },
       { label: 'Career', href: '/student/skills', icon: 'career', feature: 'skill_engine_enabled' },
       { label: 'Tracker', href: '/student/tracker', icon: 'tracker', feature: 'personal_tracker_enabled' },
+      { label: 'Progress', href: '/student/progress', icon: 'trophy', feature: 'gamification_enabled' },
       {
         label: 'AI Assistant',
         href: '/student/assistant',

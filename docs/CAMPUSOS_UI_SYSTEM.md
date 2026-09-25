@@ -90,7 +90,7 @@ slider (whose hit area is 44px), bottom-nav tabs (56px), and quick-create rows (
 | **`CampusSearch`** | GET form: works without JavaScript, keeps state in the URL, preserves other filters via `hidden` |
 | **`CampusFilter`** | Link-based filter chips; scrolls horizontally on phones; the active chip has `aria-current` |
 | **`CampusComingSoon`** | "Coming in Phase N" pill. The only permitted stand-in for an unbuilt feature. |
-| **`CampusLevelChip`** | "Lv 4" with an XP bar; with `level: null` it shows the planned phase and never a fake level |
+| **`CampusLevelChip`** | "Lv 4" with an XP bar, from the student's own XP ledger (`services/gamification#levelOf`). Hidden when gamification is off; never a fake level. |
 | `CampusXPBar`, `CampusStreak` | For the gamification phase (render only with real data) |
 | `CampusTimeline`, `CampusNotice`, `CampusQuickAction`, `CampusLinkRow`, `CampusTabs` | Schedule, notices, shortcuts, lists, tabs |
 | `CampusIllustration`, `CampusEmptyState`, `CampusSpeech` | Scene art, empty states with a sprite, pixel speech bubble |
@@ -111,6 +111,10 @@ These components share one dialog core, `useDialog`:
 | **`CampusDrawer`** | Side panel (`side="left"`/`"right"`). `bare` lets the caller render its own chrome; the app nav drawer uses this. |
 | **`CampusBottomSheet`** | Mobile sheet with a grab handle. `desktop="modal"` turns it into a centred dialog from `lg` up; the quick-create menu uses this. |
 | **`CampusSlider`** | Native `<input type="range">`, so arrows, Page Up/Down, Home/End and screen readers work. It adds a live value readout, tick labels, a filled track and an `aria-valuetext` override. Styles are in `.campus-slider`. |
+
+### Tracker: `src/components/campus/tracker.tsx`
+
+- **`ActivityHeatmap`**: one square per day, one hue light→dark, tooltip per square, a spoken summary and an sr-only list of active days.
 
 ### Tools: `src/components/campus/tools.tsx` and `ToolOpenLink.tsx`
 
@@ -160,8 +164,8 @@ remaining classes today (live one marked "Now"; cancelled/finished skipped; the
 next class when today is done), overdue and due-today/tomorrow assignments,
 the attendance advisor's urgent subjects, my events today/tomorrow, saved
 events whose registration closes today/tomorrow, and critical or
-must-acknowledge notices (plus tracker tasks and goals once that module is
-on). Urgent first, then by time. Phones show the top four with "Show more";
+must-acknowledge notices, open tracker tasks due today (or overdue), and
+daily habits not yet checked in (when the tracker is on). Urgent first, then by time. Phones show the top four with "Show more";
 upcoming events become a horizontal swipe row.
 
 **Times** are displayed in `DISPLAY_TIME_ZONE` (default `Asia/Kolkata`,

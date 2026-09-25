@@ -5,7 +5,9 @@ import * as t from '@/lib/db/schema';
 import { AppError, ConflictError, ForbiddenError, NotFoundError } from '@/lib/api';
 import type { AuthContext } from '@/lib/auth/context';
 import { DISPLAY_TIME_ZONE } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { recordAudit } from '@/services/audit';
+import { onCertificateIssued, onEventAttended } from '@/services/gamification';
 import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { canManageEvent } from './index';
 import { certificateCode, updatePriority, verifyPassToken } from './rules';
@@ -363,12 +365,12 @@ export async function checkIn(ctx: AuthContext, eventId: string, input: { token?
   return { status: inserted.length ? 'CHECKED_IN' : 'ALREADY_CHECKED_IN', name: `${r.first} ${r.last}`, code: r.code, registrationId: r.id };
 }
 
-/** Hook for modules that react to verified attendance (gamification registers here). */
-export const attendanceHooks: ((userId: string, eventId: string) => Promise<void>)[] = [];
+/**
+ * Verified attendance feeds gamification (XP, badges, weekly challenges). A
+ * failure there must never fail a check-in at the door, so it is logged, not thrown.
+ */
 async function onVerifiedAttendance(userId: string, eventId: string) {
-  for (const hook of attendanceHooks) {
-    await hook(userId, eventId).catch(() => undefined);
-  }
+  await onEventAttended(userId, eventId).catch((error) => logger.warn('gamification.event_attended_failed', { eventId, error: String(error) }));
 }
 
 export async function issueCertificates(
@@ -407,6 +409,9 @@ export async function issueCertificates(
         sourceType: 'event_certificate',
         sourceId: rows[0]!.id,
       });
+      await onCertificateIssued(r.userId, rows[0]!.id, e.title).catch((error) =>
+        logger.warn('gamification.certificate_failed', { eventId: e.id, error: String(error) }),
+      );
     }
   }
   await recordAudit(ctx, { action: 'CERTIFICATES_ISSUED', entityType: 'event', entityId: e.id, after: { kind, issued }, ...meta });

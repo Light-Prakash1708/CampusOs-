@@ -55,6 +55,8 @@ import { getStudentAssignments } from './_lib/coursework';
 import { getHolidays, getStudentAnnouncements, getStudentChanges } from './_lib/campus';
 import { EVENT_CATEGORIES, listEvents } from '@/services/events';
 import { getAttendanceOverview } from '@/services/attendance';
+import { trackerForToday } from '@/services/tracker';
+import { levelOf } from '@/services/gamification';
 import { buildToday, type TodayItem } from '@/lib/today';
 import { categoryTone, EventCoverArt, formatEventDates } from '@/components/campus/events';
 import { findNextClass, occurrencesForDate, type ClassOccurrence } from './_lib/schedule';
@@ -96,10 +98,12 @@ export default async function StudentHome() {
       : Promise.resolve([]),
   ]);
   const eventsOnForDay = isEnabled(user.featureFlags, 'events_enabled');
-  const [myEvents, savedEvents, attendanceOverview] = await Promise.all([
+  const [myEvents, savedEvents, attendanceOverview, trackerToday, level] = await Promise.all([
     eventsOnForDay ? listEvents(user, { mine: 'registered', when: 'upcoming', sort: 'date', limit: 10 }) : Promise.resolve([]),
     eventsOnForDay ? listEvents(user, { mine: 'saved', when: 'upcoming', sort: 'date', limit: 20 }) : Promise.resolve([]),
     user.permissions.has('attendance:view_own') ? getAttendanceOverview(user) : Promise.resolve(null),
+    trackerForToday(user),
+    isEnabled(user.featureFlags, 'gamification_enabled') ? levelOf(user.userId) : Promise.resolve(null),
   ]);
 
   const holidayToday = holidays.find((h) => h.date === now.today) ?? null;
@@ -113,6 +117,9 @@ export default async function StudentHome() {
   const submitted = assignments.filter((a) => a.bucket === 'SUBMITTED' || a.bucket === 'EVALUATED');
   const assignmentPct = dueOrDone.length > 0 ? (submitted.length / dueOrDone.length) * 100 : null;
   const activityPct = activity.pastRegistrations > 0 ? (activity.attended / activity.pastRegistrations) * 100 : null;
+  const habitsDue = trackerToday.goals.length;
+  const habitsDone = trackerToday.goals.filter((g) => g.doneToday).length;
+  const goalsPct = habitsDue > 0 ? (habitsDone / habitsDue) * 100 : null;
 
   const f = user.featureFlags;
   const trackerOn = isEnabled(f, 'personal_tracker_enabled');
@@ -182,6 +189,8 @@ export default async function StudentHome() {
       saved: e.saved,
     })),
     notices: announcements.map((a) => ({ id: a.id, title: a.title, critical: a.priority === 'CRITICAL' && !a.readAt, needsAck: a.requiresAcknowledgement && !a.acknowledgedAt })),
+    tasks: trackerToday.tasks,
+    goals: trackerToday.goals,
   });
 
   // Events 2.0: includes other colleges' public events when discovery is on,
@@ -257,16 +266,26 @@ export default async function StudentHome() {
             <CampusProgressRow icon={CalendarDays} label="Attendance" value={attendancePct} tone="mint" href="/student/attendance" emptyText="No classes marked yet" />
             <CampusProgressRow icon={ClipboardList} label="Assignments" value={assignmentPct} tone="lavender" href="/student/assignments" emptyText="No assignments due yet" detail={`${submitted.length} of ${dueOrDone.length} submitted`} />
             {trackerOn ? (
-              <CampusProgressRow icon={Target} label="Goals" value={null} tone="peach" href="/student/tracker" emptyText="No goals yet — start with one small thing" />
+              <CampusProgressRow
+                icon={Target}
+                label="Today’s habits"
+                value={goalsPct}
+                tone="peach"
+                href="/student/tracker"
+                emptyText="No daily habits yet — start with one small thing"
+                detail={habitsDue ? `${habitsDone} of ${habitsDue} checked in today` : undefined}
+              />
             ) : null}
             {eventsOn ? (
               <CampusProgressRow icon={Users} label="Campus Activity" value={activityPct} tone="coral" href="/student/events" emptyText="Attend an event to see this" detail={`${activity.attended} of ${activity.pastRegistrations} events attended`} />
             ) : null}
           </div>
-          {isEnabled(f, 'gamification_enabled') ? (
-            <Link href="/student/tracker" className="mt-auto flex items-center gap-2 rounded-xl border-[1.5px] border-ink bg-surface px-3 py-2.5 pt-2.5 shadow-pop">
+          {level ? (
+            <Link href="/student/progress" className="mt-auto flex min-h-[44px] items-center gap-2 rounded-xl border-[1.5px] border-ink bg-surface px-3 py-2.5 shadow-pop campus-press">
               <Flame size={18} className="text-peach-ink" aria-hidden />
-              <span className="text-[13px] font-bold text-default">Earn XP from verified activity</span>
+              <span className="text-[13px] font-bold text-default">
+                {level.totalXp > 0 ? `Level ${level.level} · ${level.xpForNext - level.xpIntoLevel} XP to level ${level.level + 1}` : 'Earn XP: check in to a habit or attend an event'}
+              </span>
             </Link>
           ) : null}
         </CampusCard>

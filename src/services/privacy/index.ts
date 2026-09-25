@@ -12,6 +12,7 @@ import {
   type AiCoachScope,
 } from './catalogue';
 import { consentChanges, PRIVACY_DEFAULTS, type PrivacyPrefs } from './rules';
+import { eraseTrackerData, exportTrackerData } from '@/services/tracker';
 
 export * from './rules';
 
@@ -229,6 +230,7 @@ export async function buildPersonalDataExport(ctx: AuthContext) {
     events: { registrations: eventRegs, saved: eventSaves, certificates: eventCertificates, reportsFiled: eventReports },
     devices: pushSubs,
     tools: { usage: toolUsage },
+    tracker: await exportTrackerData(uid),
     files,
   };
 }
@@ -253,10 +255,10 @@ export async function exportPersonalData(ctx: AuthContext, meta: Meta) {
 export type DeletionScope = 'ACCOUNT' | 'PERSONAL_TRACKER' | 'AI_MEMORY';
 
 /**
- * Tables holding student-owned personal-tracker data. Phase 2 registers goals,
- * habits and logs here; erasure then covers them automatically.
+ * Erasers for student-owned personal-tracker data: goals, steps, check-ins,
+ * tasks, and the self-reported XP and badges derived from them.
  */
-export const PERSONAL_TRACKER_ERASERS: ((tx: typeof db, ctx: AuthContext) => Promise<number>)[] = [];
+export const PERSONAL_TRACKER_ERASERS: ((tx: typeof db, ctx: AuthContext) => Promise<number>)[] = [(tx, ctx) => eraseTrackerData(tx, ctx)];
 
 export async function requestDeletion(ctx: AuthContext, input: { scope: DeletionScope; reason?: string | null }, meta: Meta) {
   if (input.scope === 'ACCOUNT') {
@@ -365,9 +367,8 @@ export async function decideDeletionRequest(
     await tx.delete(t.notificationSettings).where(eq(t.notificationSettings.userId, uid));
     await tx.delete(t.authTokens).where(eq(t.authTokens.userId, uid));
     await tx.update(t.sessions).set({ revokedAt: new Date() }).where(and(eq(t.sessions.userId, uid), isNull(t.sessions.revokedAt)));
-    for (const erase of PERSONAL_TRACKER_ERASERS) {
-      await erase(tx as unknown as typeof db, { ...ctx, userId: uid } as AuthContext);
-    }
+    // Account deletion removes the whole XP ledger too, verified rows included.
+    await eraseTrackerData(tx as unknown as typeof db, { userId: uid }, { includeVerified: true });
     await tx
       .update(t.users)
       .set({

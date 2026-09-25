@@ -1,8 +1,7 @@
 import * as React from 'react';
 import {
   ArrowRight, Award, BookOpenText, Bot, Briefcase, Calculator, CalendarDays, CalendarPlus, CheckCircle2,
-  FolderLock, GraduationCap, ListChecks, MapPinned, NotebookPen, Ticket, BellRing, type LucideIcon,
-} from 'lucide-react';
+  FolderLock, GraduationCap, ListChecks, MapPinned, NotebookPen, Ticket, BellRing, type LucideIcon, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ResolvedTool, ToolIconKey } from '@/lib/tools';
 import { CampusComingSoon, TONE_BG, TONE_INK, type Tone } from './index';
@@ -24,6 +23,7 @@ export const TOOL_ICONS: Record<ToolIconKey, LucideIcon> = {
   assistant: Bot,
   certificates: Award,
   host: CalendarPlus,
+  goals: Target,
 };
 
 function ToolIcon({ tool, size = 'md' }: { tool: ResolvedTool; size?: 'sm' | 'md' }) {

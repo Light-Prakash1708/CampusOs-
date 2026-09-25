@@ -286,8 +286,8 @@ export function CancelEventAction({ eventId, live }: { eventId: string; live: bo
   }
   return (
     <CampusCard className="w-full space-y-3 p-4 sm:max-w-md">
-      <Field label="Why is it cancelled?" hint={live ? 'Everyone registered or following gets this message.' : 'Kept with the event record.'}>
-        <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={500} />
+      <Field label="Why is it cancelled?" htmlFor="cancel-reason" hint={live ? 'Everyone registered or following gets this message.' : 'Kept with the event record.'}>
+        <Textarea id="cancel-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={500} />
       </Field>
       <ErrorBox error={api.error} />
       <div className="flex flex-wrap gap-2">

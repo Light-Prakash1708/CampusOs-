@@ -121,7 +121,7 @@ async function main() {
       city: 'Kolkata',
       state: 'West Bengal',
       subscriptionTier: 'PROFESSIONAL',
-      featureFlags: { ...defaultFlags(), anonymous_grievance_enabled: true },
+      featureFlags: { ...defaultFlags(), anonymous_grievance_enabled: true, personal_tracker_enabled: true, gamification_enabled: true, leaderboards_enabled: true },
       registrationPolicy: { mode: 'ADMIN_APPROVAL' },
       isListed: true,
       setupCompletedAt: new Date(),

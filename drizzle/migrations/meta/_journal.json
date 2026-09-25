@@ -43,6 +43,13 @@
       "when": 1790359021512,
       "tag": "0005_attendance_planner",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790364308813,
+      "tag": "0006_tracker_gamification",
+      "breakpoints": true
     }
   ]
 }

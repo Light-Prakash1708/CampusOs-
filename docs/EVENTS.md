@@ -178,4 +178,4 @@ None of these events is real.
 
 - Paid events show a price, but there is no checkout yet; billing arrives in a later phase.
 - Team registration records a team name only. Team member invites come with the Clubs phase.
-- `attendanceHooks()` is the integration point for XP and streaks. It is a no-op until gamification ships.
+- Check-ins and certificates award verified XP (`services/gamification#onEventAttended`, `#onCertificateIssued`) when the attendee's college has gamification on. A failure there is logged and never blocks a check-in.
