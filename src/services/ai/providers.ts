@@ -147,6 +147,12 @@ class LocalProvider implements AiProvider {
       { match: /(tomorrow|today|next class|schedule|timetable|\bclasses\b|\blecture)/, tool: 'get_schedule' },
     ];
 
+    // Requests to CHANGE something become proposals the person confirms. Checked
+    // first: "add a task about my assignment" is a task, not an assignment lookup.
+    const raw = (last?.content ?? '').replace(/<\/?untrusted[^>]*>/gi, '').replace(/\s+/g, ' ').trim();
+    const proposal = offlineProposal(raw, available);
+    if (proposal) return this.respond('', [{ id: `local_${Date.now()}`, name: proposal.tool, input: proposal.input }]);
+
     for (const intent of intents) {
       if (intent.match.test(query) && available.has(intent.tool)) {
         return this.respond('', [
@@ -178,6 +184,49 @@ class LocalProvider implements AiProvider {
   }
 }
 
+/**
+ * Offline parsing of "do something" requests into proposal tool calls. Only
+ * extracts text; the server resolves it against the person's own records and
+ * nothing changes until they confirm.
+ */
+export function offlineProposal(raw: string, available: Set<string>): { tool: string; input: Record<string, unknown> } | null {
+  const text = raw.trim();
+  const lower = text.toLowerCase();
+  if (available.has('propose_task')) {
+    const m =
+      /^(?:please\s+)?(?:add|create|make|put)\s+(?:a\s+|an\s+)?(?:new\s+)?(?:task|to-?do)(?:\s+(?:to|for|called|:))?\s+(.+)$/i.exec(text) ??
+      /^(?:please\s+)?remind me to\s+(.+)$/i.exec(text);
+    if (m) {
+      let title = m[1]!.replace(/[.!?]+$/, '').trim();
+      let dueDate: string | null = null;
+      const today = new Date();
+      const iso = (d: Date) => d.toISOString().slice(0, 10);
+      if (/\btomorrow$/i.test(title)) {
+        dueDate = iso(new Date(today.getTime() + 86_400_000));
+        title = title.replace(/\s*\btomorrow$/i, '');
+      } else if (/\btoday$/i.test(title)) {
+        dueDate = iso(today);
+        title = title.replace(/\s*\btoday$/i, '');
+      }
+      title = title.replace(/\s+(?:by|on|for)$/i, '').trim();
+      if (title) return { tool: 'propose_task', input: { title: title.charAt(0).toUpperCase() + title.slice(1), dueDate } };
+    }
+  }
+  if (available.has('propose_library_renewal') && /\brenew\b/.test(lower)) {
+    const m = /\brenew\s+(?:my\s+)?(?:library\s+)?(?:book\s+)?(.*)$/i.exec(text);
+    const book = (m?.[1] ?? '').replace(/[.!?]+$/, '').replace(/^["“]|["”]$/g, '').replace(/^(?:book|library book)$/i, '').trim();
+    return { tool: 'propose_library_renewal', input: { book } };
+  }
+  if (available.has('propose_goal_checkin')) {
+    const m = /\b(?:check(?:ed)?[- ]?in|log|mark)\s+(?:my\s+|for\s+|on\s+|to\s+)?(.+?)\s*(?:habit|goal)?(?:\s+(?:for\s+)?today)?[.!?]*$/i.exec(text);
+    if (m && /\b(habit|goal|check(?:ed)?[- ]?in)\b/i.test(lower) && !/\bevent\b/i.test(lower)) {
+      const goal = m[1]!.replace(/\b(my|habit|goal|today)\b/gi, '').trim();
+      return { tool: 'propose_goal_checkin', input: { goal } };
+    }
+  }
+  return null;
+}
+
 function describeTool(name: string): string {
   const map: Record<string, string> = {
     get_schedule: 'Show your timetable for a day or the week',
@@ -192,6 +241,9 @@ function describeTool(name: string): string {
     search_resources: 'Search the institution’s academic resources',
     get_announcements: 'Show notices addressed to you',
     get_room_availability: 'Find free rooms in a period',
+    propose_task: 'Prepare a to-do for you to confirm ("add a task to …")',
+    propose_goal_checkin: 'Prepare a habit check-in for you to confirm ("check in my reading habit")',
+    propose_library_renewal: 'Prepare a library renewal for you to confirm ("renew my book")',
   };
   return map[name] ?? name;
 }
@@ -229,6 +281,11 @@ function slaLabel(c: any): string {
 
 function format(tool: string, r: any): string {
   const n = (v: unknown) => (typeof v === 'number' ? v : Number(v ?? 0));
+
+  if (tool.startsWith('propose_')) {
+    if (r.proposal) return `I’ve prepared this for you: ${r.proposal.summary}.\nNothing has changed yet — confirm it below, or dismiss it.`;
+    if (r.proposalRefused) return `I couldn’t prepare that. ${r.proposalRefused.reason ?? ''}`.trim();
+  }
 
   switch (tool) {
     case 'get_room_utilization': {

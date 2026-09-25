@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import type { AuthContext } from '@/lib/auth/context';
@@ -49,9 +49,11 @@ You are speaking with ${user.fullName}, whose role is ${role}.
    what the person could do instead.
 4. Keep answers short and direct. Lead with the answer. Use a compact list when
    showing several items.
-5. Never claim to have performed an action. You cannot change any record. If the
-   person wants something changed, tell them which part of CampusOS does it, or
-   that it needs an administrator's approval.
+5. Never claim to have performed an action. You cannot change any record. For
+   the few things a propose_* tool covers (a to-do, a habit check-in, a library
+   renewal) you may prepare the change: say you've prepared it and that they
+   can confirm it below. For anything else, tell them which part of CampusOS
+   does it, or that it needs an administrator's approval.
 6. Do not reveal information about other people beyond what a tool returned. If
    someone asks for another person's private record, decline and explain that
    CampusOS scopes data to what their role permits.
@@ -78,12 +80,15 @@ export interface AssistantAnswer {
   model: string;
   isLanguageModel: boolean;
   usage: { inputTokens: number; outputTokens: number; estimatedCostUsd: number };
+  /** Proposals recorded during this answer, awaiting the person's confirmation. */
+  actionIds: string[];
+  generationId: string | null;
 }
 
 export async function askAssistant(
   user: AuthContext,
   question: string,
-  options: { feature?: AiFeature; history?: AiMessage[] } = {},
+  options: { feature?: AiFeature; history?: AiMessage[]; conversationId?: string | null } = {},
 ): Promise<AssistantAnswer> {
   const feature = options.feature ?? 'CAMPUS_ASSISTANT';
   const provider = getAiProvider();
@@ -100,6 +105,8 @@ export async function askAssistant(
       model: provider.model,
       isLanguageModel: provider.isLanguageModel,
       usage: { inputTokens: 0, outputTokens: 0, estimatedCostUsd: 0 },
+      actionIds: [],
+      generationId: null,
     };
   }
 
@@ -113,6 +120,7 @@ export async function askAssistant(
 
   const citations: Citation[] = [];
   const toolsUsed: string[] = [];
+  const actionIds: string[] = [];
   let totalInput = 0;
   let totalOutput = 0;
   let finalText = '';
@@ -141,8 +149,10 @@ export async function askAssistant(
       const results: ToolResult[] = [];
       for (const call of response.toolCalls) {
         toolsUsed.push(call.name);
-        const result = await executeTool(call.name, call.input, { user }, call.id);
+        const result = await executeTool(call.name, call.input, { user, conversationId: options.conversationId ?? null }, call.id);
         results.push(result);
+        const proposalId = (result.content as { proposal?: { id?: string } } | null)?.proposal?.id;
+        if (proposalId) actionIds.push(proposalId);
         if (result.citations) citations.push(...result.citations);
         if (!result.isError) grounded = true;
       }
@@ -186,7 +196,7 @@ export async function askAssistant(
     (totalInput / 1_000_000) * PRICE_PER_MTOK.input +
     (totalOutput / 1_000_000) * PRICE_PER_MTOK.output;
 
-  await db.insert(t.aiGenerations).values({
+  const [generation] = await db.insert(t.aiGenerations).values({
     institutionId: user.institutionId,
     userId: user.userId,
     feature,
@@ -202,7 +212,10 @@ export async function askAssistant(
     wasGrounded: grounded,
     succeeded,
     errorMessage,
-  });
+  }).returning({ id: t.aiGenerations.id });
+  if (actionIds.length && generation) {
+    await db.update(t.aiActions).set({ generationId: generation.id }).where(inArray(t.aiActions.id, actionIds));
+  }
 
   // De-duplicate citations by label.
   const seen = new Set<string>();
@@ -221,6 +234,8 @@ export async function askAssistant(
     model: provider.model,
     isLanguageModel: provider.isLanguageModel,
     usage: { inputTokens: totalInput, outputTokens: totalOutput, estimatedCostUsd },
+    actionIds,
+    generationId: generation?.id ?? null,
   };
 }
 

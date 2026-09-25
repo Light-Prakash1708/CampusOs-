@@ -35,6 +35,8 @@ export function AssistantChat({
   const [turns, setTurns] = React.useState<Turn[]>([]);
   const [input, setInput] = React.useState(initialQuestion);
   const [loading, setLoading] = React.useState(false);
+  // The server keeps the history; we only carry which conversation this is.
+  const [conversationId, setConversationId] = React.useState<string | null>(null);
   const endRef = React.useRef<HTMLDivElement>(null);
   const sentInitial = React.useRef(false);
 
@@ -52,14 +54,10 @@ export function AssistantChat({
       setLoading(true);
 
       try {
-        const history = turns.slice(-6).map((turn) => ({
-          role: turn.role,
-          content: turn.content,
-        }));
         const res = await fetch('/api/ai/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: trimmed, history }),
+          body: JSON.stringify({ question: trimmed, conversationId }),
         });
         const json = await res.json();
 
@@ -75,6 +73,7 @@ export function AssistantChat({
           return;
         }
 
+        setConversationId(json.data.conversationId ?? null);
         setTurns((prev) => [
           ...prev,
           {
@@ -98,7 +97,7 @@ export function AssistantChat({
         setLoading(false);
       }
     },
-    [loading, turns],
+    [loading, conversationId],
   );
 
   React.useEffect(() => {

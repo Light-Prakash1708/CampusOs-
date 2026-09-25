@@ -4,8 +4,9 @@
 
 1. **Grounded or silent.** The assistant answers from tool results, never from
    model memory. If a lookup returns nothing, it says so.
-2. **It cannot write.** There are no mutating tools. Anything that changes state
-   becomes a proposal a human approves.
+2. **It cannot write.** No tool changes a record. The three `propose_*` tools
+   only record a proposal, and the person confirms or dismisses it (see "Human
+   approval for changes").
 3. **Permissions are re-checked at execution.** The tool list the model saw is
    not treated as authorisation.
 4. **Untrusted content is fenced.** Documents, complaints and submissions are
@@ -18,9 +19,11 @@
 
 ```
 route (/api/ai/ask)
-   └── assistant.ts        orchestration, grounding, logging, budget
-         ├── providers.ts  anthropic | local
-         └── tools.ts      permission-gated, tenant-scoped lookups
+   └── conversations.ts    stored history, ownership
+         └── assistant.ts  orchestration, grounding, logging, budget
+               ├── providers.ts  anthropic | local
+               └── tools.ts      permission-gated, tenant-scoped lookups
+                     └── actions.ts  proposals → confirm → the normal service
 ```
 
 No component or route ever calls a model API directly.
@@ -90,11 +93,58 @@ could not already see, and cannot change anything.
 
 ## Human approval for changes
 
-`ai_actions` records any proposed state change with its payload, predicted
-impact, and a `validation_passed` flag. An action cannot execute until the
-backend re-verifies it and a human approves. A recommendation to move a class to
-Room 204 is re-checked against the live timetable at execution — an approval
-granted yesterday cannot apply a change that has since become invalid.
+The assistant never changes a record by itself. A handful of everyday requests
+can be **prepared** for the person to confirm: they are recorded in
+`ai_actions` as PROPOSED (`src/services/ai/actions.ts`).
+
+| Operation | Tool | Asks the person to confirm | On confirm, runs |
+|---|---|---|---|
+| `create_task` | `propose_task` | "Add 'Email the placement cell' to your to-do list" | `services/tracker#createTask` |
+| `goal_checkin` | `propose_goal_checkin` | "Check in today for 'Morning reading'" | `services/tracker#checkInGoal` |
+| `renew_library_loan` | `propose_library_renewal` | "Renew 'Corporate Finance Essentials' for another 14 days" | `services/library#renewLoan` |
+
+**How a proposal is made and confirmed:**
+
+- **Resolved on the server against the caller's own records.** The model passes
+  loose text ("reading", "corporate finance"). The server matches it against
+  *this person's* habits or loans only. A name that matches nothing, or matches
+  several things, is refused with a reason, and nothing is recorded.
+- **Offered only when usable.** Each proposal tool is available only when its
+  module is on and the person can use it (students; library borrowers). This is
+  re-checked when the tool runs and again at confirmation.
+- **Confirmed by the owner only.** Confirm and Dismiss (`POST /api/ai/actions/:id`)
+  work only for the person who asked. The proposal is claimed atomically, so a
+  double click can't run it twice.
+- **Runs the same service a button would.** Every rule, limit and audit entry
+  applies. If the change is no longer allowed (for example, someone reserved the
+  book in the meantime), the action is marked FAILED with the reason. It is
+  never forced.
+- **Expires after 24 hours.** Audit: `AI_ACTION_CONFIRMED`, `AI_ACTION_REJECTED`.
+- **The chat shows a card** with exactly what will happen and Confirm / Dismiss.
+  Reopening the conversation shows each card's current state.
+
+The offline assistant recognises "add a task to …", "remind me to …", "renew
+my book …" and "check in my … habit" (`providers#offlineProposal`). The
+language-model provider chooses the same tools itself.
+
+## Conversations
+
+Chats are stored per person (`ai_conversations`, `ai_messages`) so they can
+come back to them (`/student/assistant?c=<id>`).
+
+- **History comes from the database.** Earlier turns (the last six) are loaded
+  server-side. The client sends only `{ question, conversationId }`, so it can't
+  inject a fake "the assistant said…" history.
+- **Only the owner can list, open, continue or delete a conversation.** "Delete
+  all history" removes everything. Conversations are in the data export and are
+  deleted with the account.
+- **API:**
+
+  | Method and path | Purpose |
+  |---|---|
+  | `POST /api/ai/ask` | Ask, optionally with `conversationId` |
+  | `GET`, `DELETE /api/ai/conversations` | List all, or delete all |
+  | `GET`, `DELETE /api/ai/conversations/:id` | Open one, or delete it |
 
 ## Cost control
 

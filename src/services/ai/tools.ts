@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import type { AuthContext } from '@/lib/auth/context';
 import type { AiTool, Citation, ToolResult } from './types';
+import { actionAvailable, proposeAction, type ActionOperation } from './actions';
 
 /**
  * AI TOOL REGISTRY
@@ -16,12 +17,15 @@ import type { AiTool, Citation, ToolResult } from './types';
  *      -supplied ids (a model cannot ask for "student X's attendance")
  *   3. returns citations so the answer can point at real records
  *
- * Mutating tools do not exist here. State changes go through the proposal
- * pathway in `actions.ts`, which requires a human approval.
+ * Nothing here changes a record. The three `propose_*` tools (mutating: true)
+ * only RECORD a proposal through `actions.ts`; the person then confirms or
+ * dismisses it in the app, and only the confirmation runs the change.
  */
 
 export interface ToolContext {
   user: AuthContext;
+  /** The conversation the proposal belongs to (so the UI can show it there). */
+  conversationId?: string | null;
 }
 
 type ToolHandler = (
@@ -31,6 +35,8 @@ type ToolHandler = (
 
 interface RegisteredTool extends AiTool {
   handler: ToolHandler;
+  /** Extra availability check beyond the permission (feature flags, portal). */
+  available?: (user: AuthContext) => boolean;
 }
 
 const DAY_NAMES = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'] as const;
@@ -745,6 +751,48 @@ const getAtRiskStudents: RegisteredTool = {
   },
 };
 
+/* ------------------------- proposals (confirm first) ---------------------- */
+
+function proposalTool(op: ActionOperation, name: string, description: string, properties: Record<string, unknown>, required: string[]): RegisteredTool {
+  return {
+    name,
+    description: `${description} This does NOT change anything by itself: it shows the person a confirmation card, and nothing happens unless they press Confirm. Never say it is done.`,
+    mutating: true,
+    inputSchema: { type: 'object', properties, required },
+    available: (user) => actionAvailable(user, op),
+    handler: async (input, { user, conversationId }) => {
+      const p = await proposeAction(user, op, input, conversationId ?? null);
+      return {
+        content: p.ok
+          ? { proposal: { id: p.id, summary: p.summary }, note: 'Waiting for the person to confirm. Nothing has changed yet.' }
+          : { proposalRefused: { summary: p.summary, reason: p.notes } },
+      };
+    },
+  };
+}
+
+const proposeTask = proposalTool(
+  'create_task',
+  'propose_task',
+  'Suggest adding a to-do to the person’s own tracker.',
+  { title: { type: 'string', description: 'The task, e.g. "Email the placement cell"' }, dueDate: { type: 'string', description: 'Optional YYYY-MM-DD' } },
+  ['title'],
+);
+const proposeGoalCheckin = proposalTool(
+  'goal_checkin',
+  'propose_goal_checkin',
+  'Suggest logging today’s check-in for one of the person’s own habits, matched by name.',
+  { goal: { type: 'string', description: 'Part of the habit’s name, e.g. "reading"' } },
+  ['goal'],
+);
+const proposeLibraryRenewal = proposalTool(
+  'renew_library_loan',
+  'propose_library_renewal',
+  'Suggest renewing one of the person’s own borrowed library books, matched by title.',
+  { book: { type: 'string', description: 'Part of the book title' } },
+  ['book'],
+);
+
 /* ------------------------------- registry --------------------------------- */
 
 const ALL_TOOLS: RegisteredTool[] = [
@@ -761,13 +809,16 @@ const ALL_TOOLS: RegisteredTool[] = [
   getAnnouncements,
   getRoomAvailability,
   getAtRiskStudents,
+  proposeTask,
+  proposeGoalCheckin,
+  proposeLibraryRenewal,
 ];
 
 /** Tools this specific caller is allowed to use. */
 export function toolsForUser(user: AuthContext): AiTool[] {
   return ALL_TOOLS.filter(
-    (tool) => !tool.requiredPermission || user.permissions.has(tool.requiredPermission as never),
-  ).map(({ handler: _handler, ...rest }) => rest);
+    (tool) => (!tool.requiredPermission || user.permissions.has(tool.requiredPermission as never)) && (!tool.available || tool.available(user)),
+  ).map(({ handler: _handler, available: _available, ...rest }) => rest);
 }
 
 /**
@@ -791,7 +842,7 @@ export async function executeTool(
     };
   }
 
-  if (tool.requiredPermission && !ctx.user.permissions.has(tool.requiredPermission as never)) {
+  if ((tool.requiredPermission && !ctx.user.permissions.has(tool.requiredPermission as never)) || (tool.available && !tool.available(ctx.user))) {
     return {
       toolCallId,
       name,
