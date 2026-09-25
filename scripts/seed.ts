@@ -22,6 +22,8 @@ import { db, pool } from '../src/lib/db';
 import * as s from '../src/lib/db/schema';
 import { hashPassword } from '../src/lib/auth/password';
 import { defaultFlags } from '../src/lib/features';
+import { purgeTenant } from './lib/purge';
+import { ensureRetentionPolicies } from '../src/services/privacy/retention';
 import { defaultSolver } from '../src/services/timetable/solver';
 import type { SolverSession, SolverInput } from '../src/services/timetable/types';
 
@@ -101,28 +103,7 @@ async function main() {
   if (existing[0]) {
     console.log('  · removing previous demo tenant');
 
-    /*
-     * `audit_logs` and `grievance_events` are append-only: database triggers
-     * reject UPDATE and DELETE so that institutional history cannot be
-     * rewritten. Re-seeding is a development-only operation that legitimately
-     * needs to purge a tenant, so the triggers are disabled for exactly that
-     * statement and immediately restored. This is the ONLY place in the
-     * codebase that does so, and it never runs in production.
-     */
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Refusing to reset a tenant while NODE_ENV=production.');
-    }
-
-    await db.execute(sql`ALTER TABLE audit_logs DISABLE TRIGGER audit_logs_no_update`);
-    await db.execute(sql`ALTER TABLE grievance_events DISABLE TRIGGER grievance_events_no_update`);
-    try {
-      await db.execute(sql`DELETE FROM audit_logs WHERE institution_id = ${existing[0].id}`);
-      await db.execute(sql`DELETE FROM grievance_events WHERE institution_id = ${existing[0].id}`);
-      await db.delete(s.institutions).where(eq(s.institutions.id, existing[0].id));
-    } finally {
-      await db.execute(sql`ALTER TABLE audit_logs ENABLE TRIGGER audit_logs_no_update`);
-      await db.execute(sql`ALTER TABLE grievance_events ENABLE TRIGGER grievance_events_no_update`);
-    }
+    await purgeTenant(db, existing[0].id);
   }
 
   /* ---------- institution ---------- */
@@ -140,6 +121,8 @@ async function main() {
       state: 'Karnataka',
       subscriptionTier: 'PROFESSIONAL',
       featureFlags: { ...defaultFlags(), anonymous_grievance_enabled: true },
+      registrationPolicy: { mode: 'ADMIN_APPROVAL' },
+      isListed: true,
       setupCompletedAt: new Date(),
     })
     .returning();
@@ -981,6 +964,14 @@ async function main() {
   await seedGrievances();
   await seedSkills();
   await seedWorkload();
+
+  // CampusOS 2.0 foundation: institution-issued accounts are verified, the
+  // demo college accepts self-registration with admin approval, and the
+  // default data-retention policies exist.
+  await db.execute(sql`UPDATE users SET email_verified_at = created_at WHERE institution_id = ${inst} AND status = 'ACTIVE'`);
+  await db.execute(sql`UPDATE notifications SET delivery_planned_at = created_at WHERE institution_id = ${inst}`);
+  await ensureRetentionPolicies(inst);
+  console.log('  · privacy defaults and registration policy');
 
   console.log(`\nSeed complete in ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
   console.log('\nDemo accounts (password from DEMO_PASSWORD):');

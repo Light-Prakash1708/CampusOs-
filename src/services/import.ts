@@ -121,7 +121,7 @@ export function parseCsv(text: string): { headers: string[]; rows: string[][] } 
   let row: string[] = [];
   let inQuotes = false;
 
-  const clean = text.replace(/^﻿/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const clean = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
   for (let i = 0; i < clean.length; i += 1) {
     const char = clean[i]!;

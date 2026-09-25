@@ -2,7 +2,8 @@ import { and, eq } from 'drizzle-orm';
 import { Settings as SettingsIcon, ShieldCheck, Sparkles } from 'lucide-react';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
-import { requirePermission } from '@/lib/auth/context';
+import { can, requirePermission } from '@/lib/auth/context';
+import { FeatureToggle, RegistrationPolicyForm } from './SettingsEditors';
 import { Alert, Badge, Card, CardBody, CardHeader, PageHeader, Section, Table, Td, Th } from '@/components/ui';
 import { FEATURE_FLAGS, isEnabled, type FeatureFlag } from '@/lib/features';
 import { humanize } from '@/lib/utils';
@@ -27,6 +28,7 @@ export default async function SettingsPage() {
 
   const aiProvider = process.env.AI_PROVIDER ?? 'local';
   const flags = (institution?.featureFlags ?? {}) as Record<string, boolean>;
+  const canManage = can(user, 'institution:manage');
 
   return (
     <div>
@@ -75,13 +77,41 @@ export default async function SettingsPage() {
                     <Td><span className="text-[12.5px] text-muted">{meta.description}</span></Td>
                     <Td><Badge tone="neutral">{humanize(meta.tier)}</Badge></Td>
                     <Td align="right">
-                      <Badge tone={on ? 'success' : 'neutral'}>{on ? 'Enabled' : 'Disabled'}</Badge>
+                      {canManage ? (
+                        <FeatureToggle flag={key} label={meta.label} enabled={on} />
+                      ) : (
+                        <Badge tone={on ? 'success' : 'neutral'}>{on ? 'Enabled' : 'Disabled'}</Badge>
+                      )}
                     </Td>
                   </tr>
                 );
               })}
             </tbody>
           </Table>
+        </Card>
+      </Section>
+
+      <Section title="Registration">
+        <Card>
+          <CardHeader
+            title="Student sign-up"
+            description="Decide how students get an account. Invitations and CSV import always work."
+          />
+          <CardBody>
+            {canManage ? (
+              <RegistrationPolicyForm
+                initial={{
+                  mode: institution?.registrationPolicy.mode ?? 'DISABLED',
+                  allowedDomains: institution?.registrationPolicy.allowedDomains ?? [],
+                  isListed: institution?.isListed ?? false,
+                }}
+              />
+            ) : (
+              <p className="text-[13px] text-muted">
+                Current policy: {humanize(institution?.registrationPolicy.mode ?? 'DISABLED')}. Only a super administrator can change it.
+              </p>
+            )}
+          </CardBody>
         </Card>
       </Section>
 
@@ -148,9 +178,9 @@ export default async function SettingsPage() {
       </Section>
 
       <Alert tone="info" icon={SettingsIcon} title="Editing settings">
-        This release ships settings as read-only. Values are changed through the institution
-        record and feature flags in the database or the setup wizard; an in-app editor is on the
-        roadmap. Nothing here is a placeholder control that silently does nothing.
+        Super administrators can switch modules and change the registration policy here; every
+        change is recorded in the audit log. Branding, SLAs and grievance categories are still
+        edited through the institution record — an editor for those is on the roadmap.
       </Alert>
     </div>
   );

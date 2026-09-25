@@ -1,0 +1,68 @@
+# Render Blueprint — CampusOS
+# One web service + one cron job. PostgreSQL can be Render Postgres (below) or
+# Supabase: to use Supabase, delete the `databases` block and set DATABASE_URL
+# by hand to the Supabase *session pooler* URL (port 5432).
+services:
+  - type: web
+    name: campusos
+    runtime: node
+    plan: starter
+    region: singapore
+    buildCommand: npm ci --include=dev && npm run build
+    preDeployCommand: npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass   # deploy only after GitHub CI passes
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: campusos-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: APP_URL
+        sync: false          # e.g. https://campusos.onrender.com
+      - key: DEMO_MODE
+        value: "false"
+      - key: AI_PROVIDER
+        value: local         # set "anthropic" + ANTHROPIC_API_KEY to enable the LLM
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: STORAGE_PROVIDER
+        value: none          # set supabase/s3 + STORAGE_* to enable uploads
+      - key: EMAIL_PROVIDER
+        value: none          # set resend + RESEND_API_KEY to enable email
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+
+  - type: cron
+    name: campusos-jobs
+    runtime: node
+    plan: starter
+    region: singapore
+    schedule: "*/10 * * * *"
+    buildCommand: "true"
+    startCommand: >-
+      curl -fsS -X POST "$APP_URL/api/jobs/run" -H "x-cron-secret: $CRON_SECRET" -H "content-type: application/json" -d '{}'
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          type: web
+          name: campusos
+          envVarKey: CRON_SECRET
+
+databases:
+  - name: campusos-db
+    plan: basic-256mb
+    region: singapore
+    postgresMajorVersion: "16"

@@ -113,7 +113,6 @@ export function AppShell({
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-[hsl(var(--border))] px-4">
           <Link href={`/${user.portal}`} className="flex min-w-0 items-center gap-2.5">
             {user.institutionLogoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={user.institutionLogoUrl} alt="" className="h-7 w-7 rounded-md object-cover" />
             ) : (
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand text-[13px] font-bold text-white">

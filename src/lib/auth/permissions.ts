@@ -114,6 +114,20 @@ export const PERMISSIONS = [
   'ai:use_copilot',
   'ai:propose_changes',
   'ai:view_usage',
+
+  // --- CampusOS 2.0: accounts, privacy, files ---
+  'user:invite',
+  'user:approve_registration',
+  'privacy:manage_own',
+  'privacy:handle_requests',
+  'file:upload',
+
+  // --- CampusOS 2.0: community (used from Phase 3/4 onward) ---
+  'club:manage',
+  'event:manage_own',
+  'event:checkin',
+  'event:moderate',
+  'campus_rep:act',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -131,7 +145,13 @@ export type Role =
   | 'FINANCE'
   | 'HR'
   | 'LIBRARY'
-  | 'MANAGEMENT';
+  | 'MANAGEMENT'
+  | 'CLUB_ADMIN'
+  | 'EVENT_ORGANIZER'
+  | 'CAMPUS_REP';
+
+/** Held by every authenticated account, whatever its role. */
+const BASE_PERMISSIONS: Permission[] = ['privacy:manage_own'];
 
 const STUDENT_PERMISSIONS: Permission[] = [
   'academic:view_structure',
@@ -147,6 +167,7 @@ const STUDENT_PERMISSIONS: Permission[] = [
   'analytics:view_own',
   'ai:use_assistant',
   'event:create',
+  'file:upload',
 ];
 
 const FACULTY_PERMISSIONS: Permission[] = [
@@ -180,6 +201,8 @@ const FACULTY_PERMISSIONS: Permission[] = [
   'ai:use_copilot',
   'event:create',
   'data:export',
+  'file:upload',
+  'event:checkin',
 ];
 
 const HOD_PERMISSIONS: Permission[] = [
@@ -252,6 +275,12 @@ const ADMIN_PERMISSIONS: Permission[] = [
   'ai:use_assistant',
   'ai:propose_changes',
   'ai:view_usage',
+  'user:invite',
+  'user:approve_registration',
+  'privacy:handle_requests',
+  'file:upload',
+  'event:checkin',
+  'event:moderate',
 ];
 
 /**
@@ -274,6 +303,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     ...HOD_PERMISSIONS,
     'user:create',
     'user:update',
+    'user:invite',
+    'user:approve_registration',
     'academic:manage_structure',
     'data:import',
   ],
@@ -324,6 +355,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'user:view_all',
     'user:create',
     'user:update',
+    'user:invite',
     'workload:view_all',
     'leave:approve',
     'leave:view_all',
@@ -356,6 +388,15 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'data:export',
     'ai:use_assistant',
   ],
+  /*
+   * Community roles. Normally granted as SECONDARY roles to a student
+   * (`users.secondary_roles`), so they add to — never replace — the student's
+   * own capabilities. Their modules arrive in Phases 3–4; the capabilities are
+   * declared now so authorization is in place before the UI is.
+   */
+  CLUB_ADMIN: ['club:manage', 'event:create', 'event:manage_own', 'event:checkin', 'file:upload'],
+  EVENT_ORGANIZER: ['event:create', 'event:manage_own', 'event:checkin', 'file:upload'],
+  CAMPUS_REP: ['campus_rep:act', 'event:create'],
 };
 
 /** Roles that currently have a built portal. Others are architecture-only. */
@@ -388,10 +429,13 @@ const IMPLIES: Partial<Record<Permission, Permission[]>> = {
   'assignment:view_all': ['assignment:evaluate'],
   'ai:use_copilot': ['ai:use_assistant'],
   'ai:propose_changes': ['ai:use_assistant'],
+  'institution:manage': ['institution:view_settings'],
+  'event:moderate': ['event:approve'],
+  'event:manage_own': ['event:create'],
 };
 
 export function permissionsForRoles(primary: string, secondary: string[] = []): Set<Permission> {
-  const set = new Set<Permission>();
+  const set = new Set<Permission>(BASE_PERMISSIONS);
   for (const role of [primary, ...secondary]) {
     const perms = ROLE_PERMISSIONS[role as Role];
     if (perms) perms.forEach((p) => set.add(p));
@@ -430,7 +474,9 @@ export function hasAnyPermission(
 
 /** Which portal a role lands in after login. */
 export function portalForRole(role: string): 'student' | 'faculty' | 'admin' {
-  if (role === 'STUDENT') return 'student';
+  if (role === 'STUDENT' || role === 'CLUB_ADMIN' || role === 'EVENT_ORGANIZER' || role === 'CAMPUS_REP') {
+    return 'student';
+  }
   if (role === 'FACULTY' || role === 'COUNSELLOR' || role === 'LIBRARY') return 'faculty';
   return 'admin';
 }

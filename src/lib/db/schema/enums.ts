@@ -23,10 +23,16 @@ export const userRoleEnum = pgEnum('user_role', [
   'HR',
   'LIBRARY',
   'MANAGEMENT',
+  // CampusOS 2.0 — community roles. Usually held as secondary roles by students.
+  'CLUB_ADMIN',
+  'EVENT_ORGANIZER',
+  'CAMPUS_REP',
 ]);
 
 export const userStatusEnum = pgEnum('user_status', [
   'INVITED',
+  /** Self-registered; awaiting email verification and/or institutional approval. */
+  'PENDING',
   'ACTIVE',
   'SUSPENDED',
   'ALUMNI',
@@ -162,6 +168,7 @@ export const notificationChannelEnum = pgEnum('notification_channel', [
   'EMAIL',
   'PUSH',
   'SMS',
+  'WHATSAPP',
 ]);
 
 export const changeKindEnum = pgEnum('change_kind', [
@@ -314,4 +321,45 @@ export const subscriptionTierEnum = pgEnum('subscription_tier', [
   'STARTER',
   'PROFESSIONAL',
   'ENTERPRISE',
+]);
+
+/* --------------------------- CampusOS 2.0 ---------------------------------- */
+
+/** Single-use, hashed, expiring tokens delivered out-of-band (email). */
+export const authTokenPurposeEnum = pgEnum('auth_token_purpose', [
+  'PASSWORD_RESET',
+  'EMAIL_VERIFY',
+  'INVITE',
+]);
+
+export const deliveryStatusEnum = pgEnum('delivery_status', [
+  'QUEUED',
+  'SENT',
+  'FAILED',
+  /** Deliberately not sent (preference, quiet hours, throttle, provider off). Reason recorded. */
+  'SKIPPED',
+]);
+
+export const fileScanStatusEnum = pgEnum('file_scan_status', [
+  'PENDING',
+  'CLEAN',
+  'INFECTED',
+  /** No scanner configured — recorded honestly rather than claiming CLEAN. */
+  'NOT_SCANNED',
+]);
+
+export const leaderboardVisibilityEnum = pgEnum('leaderboard_visibility', [
+  'PUBLIC',
+  'ANONYMOUS',
+  'PRIVATE',
+  'OPT_OUT',
+]);
+
+export const dataRequestStatusEnum = pgEnum('data_request_status', [
+  'PENDING',
+  'PROCESSING',
+  'COMPLETED',
+  'REJECTED',
+  'FAILED',
+  'EXPIRED',
 ]);

@@ -49,6 +49,11 @@ good intentions.
 
 ### Credential stuffing / brute force
 
+- Database-backed rate limits (shared across instances): 30 sign-ins per IP
+  and 10 per account per 15 minutes; limits on password reset, registration,
+  verification resends, uploads, exports and AI calls (`src/services/rate-limit.ts`).
+  Keys are hashed, so the counter table holds no emails or IPs in clear.
+
 - bcrypt cost 12; 8 failures locks the account for 15 minutes.
 - Uniform failure message and dummy bcrypt work for unknown emails, so timing
   and wording do not enumerate accounts.
@@ -121,3 +126,45 @@ makes.
 - Row-Level Security as defence in depth (schema is shaped for it).
 - MFA and SSO.
 - Automated dependency scanning in CI.
+
+
+## CampusOS 2.0 additions
+
+### Cross-site request forgery
+Session cookies are `SameSite=Lax`. In addition, middleware rejects any
+state-changing `/api/*` request whose `Origin` header is present and is not
+this site (`isCrossSiteMutation`, unit-tested). Non-browser clients (cron,
+mobile apps) send no Origin and carry no ambient cookie.
+
+### Account takeover via reset / invite links
+Tokens are 256-bit random, stored only as SHA-256, single-use (consumed in the
+same transaction as the change), short-lived (reset 30 min, verify 48 h, invite
+7 days), bound to the email they were sent to, and superseded when a new one is
+issued. Reset responses are identical whether or not the account exists.
+Links are built from `APP_URL`, never from the request's Host header.
+
+### Malicious uploads
+Type is detected from file content (magic bytes) and must match the extension;
+the client's MIME type is ignored. Size is capped (`STORAGE_MAX_FILE_MB`). A
+scanner adapter runs before storage (`MALWARE_SCANNER`); with none configured,
+files are recorded `NOT_SCANNED`, never `CLEAN`. Objects are private: reads go
+through `GET /api/files/:id`, which authorises per purpose and tenant, then
+streams with `Content-Security-Policy: sandbox` and `nosniff`, or redirects to a
+5-minute pre-signed URL. Storage keys are generated server-side and validated
+against traversal.
+
+### Secrets
+`src/lib/env.ts` validates configuration at boot; production refuses demo mode,
+placeholder secrets, console email and ephemeral local storage. No secret uses
+the `NEXT_PUBLIC_` prefix. (v1 inlined `NEXT_PUBLIC_DEMO_PASSWORD` into the
+client bundle; it is now passed server-side only in non-production demo mode.)
+
+### Headers
+`X-Frame-Options: DENY`, `nosniff`, strict referrer, a baseline CSP
+(`frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'`),
+COOP `same-origin`, HSTS in production, `Cache-Control: no-store` on APIs. A
+nonce-based `script-src` is planned for Phase 9.
+
+### Client IP trust
+`TRUST_PROXY` (default true for proxied hosts) governs whether
+`x-forwarded-for` is honoured for audit and rate limiting.

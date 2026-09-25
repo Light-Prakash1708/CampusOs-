@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { getCurrentUser, type AuthContext } from '@/lib/auth/context';
 import type { Permission } from '@/lib/auth/permissions';
+import { FEATURE_FLAGS, isEnabled, type FeatureFlag } from '@/lib/features';
+import { reportError } from '@/lib/logger';
 
 /**
  * API route helpers.
@@ -52,7 +54,7 @@ export function ok<T>(data: T, init?: ResponseInit) {
   return NextResponse.json({ ok: true, data }, init);
 }
 
-export function fail(error: unknown) {
+export function fail(error: unknown, requestId?: string | null) {
   if (error instanceof ZodError) {
     return NextResponse.json(
       {
@@ -72,6 +74,11 @@ export function fail(error: unknown) {
   }
 
   if (error instanceof AppError) {
+    const headers: Record<string, string> = {};
+    if (error.code === 'RATE_LIMITED') {
+      const retry = (error.details as { retryAfter?: number } | undefined)?.retryAfter;
+      if (retry) headers['Retry-After'] = String(retry);
+    }
     return NextResponse.json(
       {
         ok: false,
@@ -82,13 +89,13 @@ export function fail(error: unknown) {
           details: error.details,
         },
       },
-      { status: error.status },
+      { status: error.status, headers },
     );
   }
 
   // Map Postgres integrity violations to meaningful product errors rather than
   // leaking driver internals.
-  const pgError = error as { code?: string; constraint?: string; message?: string };
+  const pgError = pgErrorOf(error);
   if (pgError?.code === '23505') {
     return NextResponse.json(
       {
@@ -116,8 +123,8 @@ export function fail(error: unknown) {
     );
   }
 
-  const requestId = crypto.randomUUID();
-  console.error(`[campusos:${requestId}]`, error);
+  const ref = requestId ?? crypto.randomUUID();
+  reportError(error, { requestId: ref });
   return NextResponse.json(
     {
       ok: false,
@@ -125,11 +132,26 @@ export function fail(error: unknown) {
         code: 'INTERNAL_ERROR',
         message: 'The server could not complete this action.',
         hint: 'Try again. If it keeps happening, quote this reference to support.',
-        requestId,
+        requestId: ref,
       },
     },
     { status: 500 },
   );
+}
+
+/**
+ * Drizzle wraps driver errors (DrizzleQueryError) and puts the PostgreSQL error
+ * on `cause`. Returns whichever object carries the SQLSTATE `code`.
+ */
+export function pgErrorOf(error: unknown): { code?: string; constraint?: string; message?: string } {
+  const e = error as { code?: string; cause?: { code?: string } } | null;
+  if (e && typeof e === 'object') {
+    if (typeof e.code === 'string') return e as { code?: string; constraint?: string };
+    if (e.cause && typeof e.cause === 'object' && typeof e.cause.code === 'string') {
+      return e.cause as { code?: string; constraint?: string };
+    }
+  }
+  return {};
 }
 
 function describeUniqueViolation(constraint?: string): string {
@@ -143,6 +165,9 @@ function describeUniqueViolation(constraint?: string): string {
     assessment_room_uq: 'That room is already allocated to this exam.',
     assessment_invigilator_uq: 'That invigilator is already assigned to this exam.',
     users_email_uq: 'An account with that email already exists at this institution.',
+    data_export_requests_inflight_uq: 'An export is already being prepared.',
+    data_deletion_requests_inflight_uq: 'You already have a deletion request in progress.',
+    push_subscriptions_token_uq: 'This device is already registered.',
     student_profiles_roll_uq: 'That roll number is already in use.',
     faculty_profiles_code_uq: 'That employee code is already in use.',
     rooms_code_uq: 'A room with that code already exists.',
@@ -201,9 +226,43 @@ export function withAuth(permission: Permission | Permission[] | null, handler: 
       ) as Record<string, string>;
       return await handler(request, { user, params });
     } catch (error) {
-      return fail(error);
+      return fail(error, request.headers.get('x-request-id'));
     }
   };
+}
+
+/**
+ * Wrapper for unauthenticated endpoints (sign-in, registration, password
+ * reset, public college list). Same error envelope as `withAuth`.
+ */
+export function publicRoute(
+  handler: (request: Request, ctx: { params: Record<string, string> }) => Promise<Response>,
+) {
+  return async (
+    request: Request,
+    context: { params: Promise<Record<string, string | string[]>> },
+  ): Promise<Response> => {
+    try {
+      const raw = context?.params ? await context.params : {};
+      const params = Object.fromEntries(
+        Object.entries(raw).map(([k, v]) => [k, Array.isArray(v) ? (v[0] ?? '') : v]),
+      ) as Record<string, string>;
+      return await handler(request, { params });
+    } catch (error) {
+      return fail(error, request.headers.get('x-request-id'));
+    }
+  };
+}
+
+/** Throws a 404-style error when a tenant module is switched off. */
+export function requireFeatureEnabled(user: AuthContext, flag: FeatureFlag): void {
+  if (!isEnabled(user.featureFlags, flag)) {
+    throw new AppError(
+      `${FEATURE_FLAGS[flag].label} is not enabled for your institution.`,
+      404,
+      'FEATURE_DISABLED',
+    );
+  }
 }
 
 /** Parses and validates a JSON body, returning a 422 envelope on failure. */

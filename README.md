@@ -38,11 +38,13 @@ MESSAGE → CONTEXT → VALIDATION → DECISION → ACTION → NOTIFICATION → 
 ```bash
 cp .env.example .env          # set DATABASE_URL and AUTH_SECRET
 npm install
-npm run db:push               # create the schema
-npm run db:constraints        # integrity guarantees, triggers, full-text index
+npm run db:migrate            # versioned migrations (schema + integrity guarantees)
 npm run db:seed               # demo institution: 353 students, 22 faculty, live timetable
 npm run dev
 ```
+
+In development, emails (password reset, verification, invitations) are printed
+to the server console so you can click the links.
 
 Open <http://localhost:3000>. Demo accounts appear on the sign-in screen when
 `DEMO_MODE=true` (development builds only).
@@ -63,7 +65,8 @@ such in the interface — it never pretends to be a language model. Set
 
 ```bash
 npm run typecheck   # zero errors
-npm test            # 46 tests
+npm run lint        # zero errors
+npm test            # 112 tests (unit + integration against real PostgreSQL)
 npm run build       # production build
 ```
 
@@ -88,6 +91,9 @@ solver really does produce a clash-free 90-session week.
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production deployment and operations |
 | [LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md) | Getting set up |
 | [PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md) | What is built, what is scaffolded, what is next |
+| [CAMPUSOS_2_AUDIT.md](docs/CAMPUSOS_2_AUDIT.md) | 2.0 audit: what worked, defects found, migration plan, phase roadmap |
+| [PRIVACY.md](docs/PRIVACY.md) | Data catalogue, consent ledger, export and erasure (DPDP-aligned) |
+| [PHASE_1_REPORT.md](docs/PHASE_1_REPORT.md) | 2.0 Phase 1: what changed, APIs, tests, remaining work |
 | [CONVENTIONS.md](docs/CONVENTIONS.md) | Engineering conventions for contributors |
 
 ## Honest status

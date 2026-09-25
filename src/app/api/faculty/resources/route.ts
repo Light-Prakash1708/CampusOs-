@@ -1,17 +1,14 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import { AppError, ok, parseBody, withAuth } from '@/lib/api';
-import { STORAGE_AVAILABLE, STORAGE_LIMITATION } from '../_lib/storage';
+import { fileUrl } from '@/services/storage';
 
 /**
- * Creating a resource record.
- *
- * Only link-backed resources can be created here: this build has no storage
- * adapter, so accepting a file would produce a row pointing at nothing. The
- * limitation is surfaced in the UI rather than papered over, and the route
- * refuses a file payload outright instead of pretending it stored one.
+ * Creating a resource record — backed either by an external link or by a file
+ * the same user uploaded through POST /api/files (purpose RESOURCE). A file can
+ * back only one resource, and only its uploader can attach it.
  */
 
 const Body = z.object({
@@ -29,28 +26,46 @@ const Body = z.object({
     'LESSON_PLAN',
     'OTHER',
   ]),
-  externalUrl: z.string().url('Enter a full URL, including https://').max(2000),
+  externalUrl: z.string().url('Enter a full URL, including https://').max(2000).optional(),
+  /** A file previously uploaded via POST /api/files with purpose RESOURCE. */
+  fileId: z.string().uuid().optional(),
   subjectId: z.string().uuid().nullable().optional(),
   topic: z.string().trim().max(160).optional(),
   difficulty: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).nullable().optional(),
   visibility: z.enum(['PRIVATE', 'DEPARTMENT', 'INSTITUTION']),
   tags: z.array(z.string().trim().min(1).max(60)).max(12).default([]),
   publish: z.boolean().default(true),
-  /** Present only if a client tried to send a file. Always rejected here. */
-  hasFile: z.boolean().optional(),
+}).refine((v) => !!v.externalUrl !== !!v.fileId, {
+  message: 'Add either a link or an uploaded file.',
+  path: ['externalUrl'],
 });
 
 export const POST = withAuth('resource:upload', async (request, { user }) => {
   const input = await parseBody(request, Body);
 
-  if (input.hasFile && !STORAGE_AVAILABLE) {
-    throw new AppError(
-      'File uploads are not available in this deployment.',
-      501,
-      'STORAGE_NOT_CONFIGURED',
-      undefined,
-      STORAGE_LIMITATION,
-    );
+  let file: { url: string; name: string; size: number; mime: string } | null = null;
+  if (input.fileId) {
+    const [stored] = await db
+      .select()
+      .from(t.storedFiles)
+      .where(
+        and(
+          eq(t.storedFiles.id, input.fileId),
+          eq(t.storedFiles.institutionId, user.institutionId),
+          eq(t.storedFiles.ownerId, user.userId),
+          eq(t.storedFiles.purpose, 'RESOURCE'),
+          isNull(t.storedFiles.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!stored) throw new AppError('That upload was not found. Upload the file again.', 400, 'BAD_FILE');
+    const [attached] = await db
+      .select({ id: t.resources.id })
+      .from(t.resources)
+      .where(and(eq(t.resources.institutionId, user.institutionId), eq(t.resources.fileUrl, fileUrl(stored.id))))
+      .limit(1);
+    if (attached) throw new AppError('That file is already attached to another resource.', 409, 'FILE_IN_USE');
+    file = { url: fileUrl(stored.id), name: stored.originalName, size: stored.sizeBytes, mime: stored.mimeType };
   }
 
   if (input.subjectId) {
@@ -80,7 +95,11 @@ export const POST = withAuth('resource:upload', async (request, { user }) => {
         description: input.description ?? null,
         kind: input.kind,
         status: publishing ? 'PUBLISHED' : 'DRAFT',
-        externalUrl: input.externalUrl,
+        externalUrl: input.externalUrl ?? null,
+        fileUrl: file?.url ?? null,
+        fileName: file?.name ?? null,
+        fileSizeBytes: file?.size ?? null,
+        mimeType: file?.mime ?? null,
         ownerId: user.userId,
         departmentId: user.departmentId,
         subjectId: input.subjectId ?? null,

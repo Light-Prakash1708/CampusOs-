@@ -46,6 +46,18 @@ export const institutions = pgTable(
     subscriptionTier: subscriptionTierEnum('subscription_tier').notNull().default('STARTER'),
     /** Per-tenant feature toggles; see src/lib/features.ts for the canonical list. */
     featureFlags: jsonb('feature_flags').$type<Record<string, boolean>>().default({}),
+    /**
+     * Self-registration policy (CampusOS 2.0). See docs/AUTH.md §Registration.
+     *   mode DISABLED        — accounts only via invite/import (default)
+     *   mode EMAIL_DOMAIN    — open to verified addresses on `allowedDomains`
+     *   mode ADMIN_APPROVAL  — anyone may apply; an administrator activates
+     */
+    registrationPolicy: jsonb('registration_policy')
+      .$type<{ mode: 'DISABLED' | 'EMAIL_DOMAIN' | 'ADMIN_APPROVAL'; allowedDomains?: string[] }>()
+      .notNull()
+      .default({ mode: 'DISABLED' }),
+    /** Shown in public college discovery (registration picker, event discovery). */
+    isListed: boolean('is_listed').notNull().default(false),
     /** Setup wizard progress; the institution is not "live" until completed. */
     setupCompletedAt: timestamp('setup_completed_at', { withTimezone: true }),
     isActive: boolean('is_active').notNull().default(true),

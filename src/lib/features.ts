@@ -82,6 +82,12 @@ export const FEATURE_FLAGS = {
     defaultValue: false,
     tier: 'ENTERPRISE',
   },
+  whatsapp_enabled: {
+    label: 'WhatsApp Notifications',
+    description: 'Opt-in WhatsApp delivery for critical and important notices. Requires a WhatsApp Business provider.',
+    defaultValue: false,
+    tier: 'ENTERPRISE',
+  },
   pwa_enabled: {
     label: 'Installable App (PWA)',
     description: 'Lets students install CampusOS on their phone.',
@@ -100,6 +106,83 @@ export const FEATURE_FLAGS = {
       'Run alongside an existing ERP: import its data on a schedule and take over workflows gradually.',
     defaultValue: true,
     tier: 'PROFESSIONAL',
+  },
+
+  /* ------------------------- CampusOS 2.0 modules --------------------------
+   * All ship OFF. A module is switched on per tenant once it is built and the
+   * institution has chosen it — never shown as a dead button before that.
+   */
+  library_enabled: {
+    label: 'Library',
+    description: 'Catalogue, loans, renewals, reservations and fines.',
+    defaultValue: false,
+    tier: 'PROFESSIONAL',
+  },
+  gamification_enabled: {
+    label: 'XP, Streaks & Achievements',
+    description: 'Earned XP from verified activity, streaks and meaningful badges.',
+    defaultValue: false,
+    tier: 'STARTER',
+  },
+  personal_tracker_enabled: {
+    label: 'My Progress (personal goals & habits)',
+    description: 'Private personal goals and habit tracking for students.',
+    defaultValue: false,
+    tier: 'STARTER',
+  },
+  leaderboards_enabled: {
+    label: 'Leaderboards',
+    description: 'Opt-in, privacy-respecting leaderboards by class, department or friends.',
+    defaultValue: false,
+    tier: 'STARTER',
+  },
+  clubs_enabled: {
+    label: 'Clubs & Communities',
+    description: 'Club profiles, membership, announcements and club events.',
+    defaultValue: false,
+    tier: 'STARTER',
+  },
+  event_discovery_enabled: {
+    label: 'Event Discovery',
+    description: 'Discover, register for and check in to events across colleges.',
+    defaultValue: false,
+    tier: 'STARTER',
+  },
+  opportunity_hub_enabled: {
+    label: 'Opportunity Hub',
+    description: 'Internships, hackathons, competitions and scholarships from verified publishers.',
+    defaultValue: false,
+    tier: 'PROFESSIONAL',
+  },
+  ai_coach_enabled: {
+    label: 'AI Coach',
+    description: 'Personal planning coach that reads only the data a student permits.',
+    defaultValue: false,
+    tier: 'PROFESSIONAL',
+  },
+  ai_memory_enabled: {
+    label: 'AI Memory',
+    description: 'Optional, user-controlled memory of study and planning preferences.',
+    defaultValue: false,
+    tier: 'PROFESSIONAL',
+  },
+  campus_channels_enabled: {
+    label: 'Campus Channels',
+    description: 'Structured announcement feeds for classes, clubs and events.',
+    defaultValue: false,
+    tier: 'STARTER',
+  },
+  campus_rep_enabled: {
+    label: 'Campus Representatives',
+    description: 'Student ambassador programme with verified contributions.',
+    defaultValue: false,
+    tier: 'PROFESSIONAL',
+  },
+  billing_enabled: {
+    label: 'Billing',
+    description: 'Plans, subscriptions and invoices for this institution.',
+    defaultValue: false,
+    tier: 'STARTER',
   },
 } as const;
 
@@ -123,4 +206,8 @@ export const TIER_ORDER = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE'] as const;
 
 export function tierIncludes(tier: string, required: string): boolean {
   return TIER_ORDER.indexOf(tier as never) >= TIER_ORDER.indexOf(required as never);
+}
+
+export function isFeatureFlag(value: string): value is FeatureFlag {
+  return Object.prototype.hasOwnProperty.call(FEATURE_FLAGS, value);
 }

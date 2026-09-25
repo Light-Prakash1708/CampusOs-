@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import { isCrossSiteMutation } from '@/lib/http';
 
 /**
  * EDGE MIDDLEWARE — first line of defence only.
@@ -17,15 +18,21 @@ import { jwtVerify } from 'jose';
 const PUBLIC_PATHS = [
   '/',
   '/login',
+  '/register',
   '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/invite',
   '/forbidden',
   '/api/auth/login',
   '/api/auth/logout',
   '/api/health',
+  // Authenticates itself (CRON_SECRET or admin session); the scheduler has no cookie.
+  '/api/jobs/run',
   '/manifest.webmanifest',
 ];
 
-const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/api/auth/'];
+const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/api/auth/', '/api/public/'];
 
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;
@@ -38,6 +45,30 @@ export async function middleware(request: NextRequest) {
 
   const forward = new Headers(request.headers);
   forward.set('x-request-id', requestId);
+
+  // CSRF defence in depth (cookies are already SameSite=Lax): a browser
+  // mutation must come from our own origin. See src/lib/http.ts.
+  if (
+    pathname.startsWith('/api/') &&
+    isCrossSiteMutation(
+      request.method,
+      request.headers.get('origin'),
+      request.headers.get('host'),
+      process.env.APP_URL,
+    )
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: {
+          code: 'CROSS_SITE_REQUEST',
+          message: 'This request came from another website and was blocked.',
+          hint: 'Open CampusOS directly and try again.',
+        },
+      },
+      { status: 403 },
+    );
+  }
 
   if (isPublic(pathname)) {
     return NextResponse.next({ request: { headers: forward } });

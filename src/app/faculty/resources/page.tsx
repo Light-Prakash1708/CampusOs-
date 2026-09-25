@@ -15,7 +15,7 @@ import {
 } from '@/components/ui';
 import { formatDate, humanize, pluralize, truncate } from '@/lib/utils';
 import { getCurrentTerm, getMyOfferings } from '../_lib/faculty';
-import { STORAGE_AVAILABLE, STORAGE_LIMITATION } from '@/app/api/faculty/_lib/storage';
+import { storageAvailable, STORAGE_UNAVAILABLE_MESSAGE as STORAGE_LIMITATION } from '@/services/storage';
 import { ResourceForm } from './ResourceForm';
 import { SearchBox } from './SearchBox';
 
@@ -130,13 +130,13 @@ export default async function ResourcesPage({
           <ResourceForm
             subjects={subjects}
             canPublish={can(user, 'resource:publish')}
-            storageAvailable={STORAGE_AVAILABLE}
+            storageAvailable={storageAvailable()}
             storageLimitation={STORAGE_LIMITATION}
           />
         }
       />
 
-      {!STORAGE_AVAILABLE ? (
+      {!storageAvailable() ? (
         <Alert tone="warning" title="File storage is not configured in this deployment" className="mb-5">
           {STORAGE_LIMITATION} Resources already in the library that reference a stored file will
           show their link as unavailable rather than a broken download.
@@ -267,10 +267,13 @@ function ResourceTitle({
   externalUrl: string | null;
   fileUrl: string | null;
 }) {
-  if (externalUrl) {
+  // Files stored through CampusOS storage are served by the authorised
+  // /api/files/:id endpoint; legacy file URLs from other systems are not.
+  const href = externalUrl ?? (fileUrl?.startsWith('/api/files/') ? fileUrl : null);
+  if (href) {
     return (
       <a
-        href={externalUrl}
+        href={href}
         target="_blank"
         rel="noreferrer noopener"
         className="inline-flex items-center gap-1.5 text-[13.5px] font-medium text-default hover:text-brand"
@@ -283,7 +286,7 @@ function ResourceTitle({
   return (
     <span className="block">
       <span className="text-[13.5px] font-medium text-default">{title}</span>
-      {fileUrl ? (
+      {fileUrl?.startsWith('/api/files/') ? null : fileUrl ? (
         <span className="ml-2 text-[12px] text-warning">
           stored file — not retrievable in this deployment
         </span>

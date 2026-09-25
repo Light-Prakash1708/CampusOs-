@@ -16,3 +16,5 @@ export * from './resources';
 export * from './skills';
 export * from './operations';
 export * from './system';
+export * from './platform';
+export * from './privacy';

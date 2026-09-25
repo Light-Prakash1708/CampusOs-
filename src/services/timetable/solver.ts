@@ -240,7 +240,7 @@ export class ConstraintTimetableSolver implements TimetableSolver {
 
     const refinementDeadline = startedAt + timeLimitMs;
     const maxIterations = options.refinementIterations ?? 6000;
-    let temperature = 1.0;
+    let temperature: number;
 
     const movable = current.filter((a) => !a.session.pinnedSlotId);
 

@@ -52,6 +52,9 @@ export interface AuthContext {
   facultyProfileId: string | null;
   portal: 'student' | 'faculty' | 'admin';
   locale: string;
+  /** Set for imported/temporary-password accounts until they choose their own. */
+  mustChangePassword?: boolean;
+  emailVerified?: boolean;
 }
 
 export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
@@ -75,6 +78,8 @@ export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
       departmentId: users.departmentId,
       campusId: users.campusId,
       locale: users.locale,
+      mustChangePassword: users.mustChangePassword,
+      emailVerifiedAt: users.emailVerifiedAt,
       institutionId: users.institutionId,
       institutionName: institutions.name,
       institutionSlug: institutions.slug,
@@ -124,6 +129,8 @@ export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
     facultyProfileId: row.facultyProfileId,
     portal: portalForRole(row.role),
     locale: row.locale,
+    mustChangePassword: row.mustChangePassword,
+    emailVerified: !!row.emailVerifiedAt,
   };
 });
 

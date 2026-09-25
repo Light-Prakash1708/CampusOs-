@@ -174,3 +174,19 @@ export async function revokeAllSessionsForUser(userId: string): Promise<void> {
 export async function touchSession(sessionId: string): Promise<void> {
   await db.update(sessions).set({ lastSeenAt: new Date() }).where(eq(sessions.id, sessionId));
 }
+
+/** Creates a DB session for the user and sets the cookie on this response. */
+export async function startSession(
+  user: { id: string; institutionId: string; role: string; sessionEpoch: number },
+  meta: { ipAddress: string | null; userAgent: string | null },
+): Promise<void> {
+  const token = await createSession({
+    userId: user.id,
+    institutionId: user.institutionId,
+    role: user.role,
+    epoch: user.sessionEpoch,
+    userAgent: meta.userAgent,
+    ipAddress: meta.ipAddress,
+  });
+  await setSessionCookie(token);
+}

@@ -52,6 +52,9 @@ export const users = pgTable(
     failedLoginAttempts: integer('failed_login_attempts').notNull().default(0),
     lockedUntil: timestamp('locked_until', { withTimezone: true }),
     mustChangePassword: boolean('must_change_password').notNull().default(false),
+    /** Null until the user proves control of `email` (CampusOS 2.0). Imported/invited accounts are verified on invite acceptance. */
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+    passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }),
     /** Invalidates all issued sessions when bumped (logout-everywhere, role change). */
     sessionEpoch: integer('session_epoch').notNull().default(0),
 

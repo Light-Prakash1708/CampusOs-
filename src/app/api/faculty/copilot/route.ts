@@ -1,3 +1,4 @@
+import { enforceRateLimit, keyFor, RATE_LIMITS } from '@/services/rate-limit';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db';
@@ -24,6 +25,11 @@ const Body = z.object({
 
 export const POST = withAuth('ai:use_copilot', async (request, { user }) => {
   const input = await parseBody(request, Body);
+  await enforceRateLimit(
+    keyFor('ai', user.userId),
+    { limit: Number(process.env.AI_USER_HOURLY_LIMIT ?? RATE_LIMITS.aiPerUserHour.limit), windowSec: RATE_LIMITS.aiPerUserHour.windowSec },
+    'You have reached the hourly limit for AI features.',
+  );
 
   if (input.offeringId) {
     const offering = await assertOfferingBelongsToFaculty(user, input.offeringId);

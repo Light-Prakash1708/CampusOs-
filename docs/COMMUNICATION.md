@@ -116,3 +116,42 @@ created 51 notifications and one audit entry.
 Notices can allow comments, and administrators can close the thread. The goal is
 a question-and-answer trail attached to the notice, not another chat to monitor.
 Official responses are flagged and pinned.
+
+
+## External delivery (CampusOS 2.0)
+
+In-app notification rows are unchanged. External channels are added by a
+two-stage pipeline in `src/services/notifications/`, driven by the job runner:
+
+1. **Plan** (`planPendingNotifications`) — every notification with
+   `delivery_planned_at IS NULL` gets a decision per channel from the pure
+   planner (`planner.ts`). Because it scans the table, every existing insert
+   site (announcements, grievances, approvals) is covered without change.
+   Notifications older than 24 h when first seen are closed without sending.
+2. **Deliver** (`processDeliveryQueue`) — `QUEUED` rows are claimed with
+   `FOR UPDATE SKIP LOCKED`, sent through the configured provider, and marked
+   `SENT` / `FAILED` with exponential backoff (3 attempts). Dead push tokens are
+   revoked.
+
+| Priority | Channels | Quiet hours |
+|---|---|---|
+| CRITICAL | email, push, SMS, WhatsApp (opt-in) | ignored |
+| IMPORTANT | email, push, WhatsApp (opt-in) | push deferred |
+| NORMAL | push | deferred |
+| INFORMATIONAL | in-app only | — |
+
+A channel is used only if the institution enabled it (`email_enabled`,
+`push_enabled`, `sms_enabled`, `whatsapp_enabled`), a provider is configured,
+the recipient has the contact detail (verified email, phone, push token), the
+student has not switched it off globally or for the category, and the per-hour
+throttle (email 6, push 12, SMS 2, WhatsApp 3) is not exceeded. **Mandatory**
+notices bypass the student's switches and throttles — only the institution's
+switches and provider availability apply. Skips caused by the student's
+choices, missing contact details or throttling are recorded with a reason in
+`notification_deliveries`.
+
+Providers (`providers.ts`): email `console | resend | none`; push
+`none | console | fcm` (FCM HTTP v1 with service-account JWT); SMS
+`none | console | msg91` (DLT template); WhatsApp `none | console`
+(architecture only). Transactional mail (reset, verification, invitation) is
+sent immediately and also recorded as a delivery.

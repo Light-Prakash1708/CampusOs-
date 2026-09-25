@@ -55,9 +55,34 @@ export function ResourceForm({
   const [tags, setTags] = React.useState<string[]>([]);
 
   const mutation = useMutation<{ id: string; status: string }>();
+  const [uploaded, setUploaded] = React.useState<{ id: string; name: string; sizeBytes: number; scanStatus: string } | null>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
 
   const urlValid = /^https?:\/\/.+/i.test(externalUrl.trim());
-  const canSave = title.trim().length >= 3 && urlValid;
+  const canSave = title.trim().length >= 3 && (urlValid || !!uploaded);
+
+  async function upload(file: File) {
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('purpose', 'RESOURCE');
+      const res = await fetch('/api/files', { method: 'POST', body: form });
+      const json = await res.json();
+      if (!json.ok) {
+        setUploadError(json.error?.message ?? 'Upload failed.');
+      } else {
+        setUploaded(json.data);
+        if (!title.trim()) setTitle(json.data.name.replace(/\.[a-z0-9]+$/i, ''));
+      }
+    } catch {
+      setUploadError('Could not reach the server. Check your connection and try again.');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function addTag() {
     const tag = tagInput.trim();
@@ -73,7 +98,8 @@ export function ResourceForm({
         title: title.trim(),
         description: description.trim() || undefined,
         kind,
-        externalUrl: externalUrl.trim(),
+        externalUrl: uploaded ? undefined : externalUrl.trim(),
+        fileId: uploaded?.id,
         subjectId: subjectId || null,
         topic: topic.trim() || undefined,
         difficulty: difficulty || null,
@@ -86,6 +112,7 @@ export function ResourceForm({
       setTitle('');
       setDescription('');
       setExternalUrl('');
+      setUploaded(null);
       setTopic('');
       setTags([]);
     }
@@ -117,21 +144,40 @@ export function ResourceForm({
           </Alert>
         ) : null}
 
-        <div
-          className="flex items-center gap-3 rounded-lg border border-dashed border-[hsl(var(--border-strong))] bg-surface-sunken px-4 py-5 opacity-60"
-          aria-disabled="true"
-        >
-          <Upload size={18} className="text-subtle" aria-hidden />
-          <div>
-            <p className="text-[13px] font-medium text-default">Upload a file</p>
-            <p className="text-[12.5px] text-muted">
-              Disabled — no storage backend is configured, so a file cannot be stored.
-            </p>
+        {storageAvailable ? (
+          <div className="flex items-center gap-3 rounded-lg border border-dashed border-[hsl(var(--border-strong))] bg-surface-sunken px-4 py-5">
+            <Upload size={18} className="text-subtle" aria-hidden />
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-default">
+                {uploaded ? uploaded.name : 'Upload a file'}
+              </p>
+              <p className="text-[12.5px] text-muted">
+                {uploaded
+                  ? `${(uploaded.sizeBytes / 1024 / 1024).toFixed(2)} MB · stored privately${uploaded.scanStatus === 'NOT_SCANNED' ? ' · not virus-scanned' : ''}`
+                  : 'PDF, Word, PowerPoint, Excel or an image. Or paste a link below instead.'}
+              </p>
+              {uploadError ? (
+                <p className="mt-1 text-[12.5px] text-danger" role="alert">{uploadError}</p>
+              ) : null}
+            </div>
+            <label className="ml-auto">
+              <span className="sr-only">Choose file</span>
+              <input
+                type="file"
+                className="sr-only"
+                accept=".pdf,.docx,.pptx,.xlsx,.png,.jpg,.jpeg,.webp"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void upload(f);
+                  e.target.value = '';
+                }}
+              />
+              <span className="inline-flex h-8 cursor-pointer items-center rounded-md border border-[hsl(var(--border))] bg-surface px-3 text-[12.5px] font-medium text-default hover:bg-surface-sunken">
+                {uploading ? 'Uploading…' : uploaded ? 'Replace' : 'Choose file'}
+              </span>
+            </label>
           </div>
-          <Button className="ml-auto" size="sm" variant="secondary" disabled>
-            Choose file
-          </Button>
-        </div>
+        ) : null}
 
         <Field label="Title" htmlFor="res-title" required>
           <Input

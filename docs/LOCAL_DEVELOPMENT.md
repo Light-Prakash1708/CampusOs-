@@ -25,14 +25,14 @@ Then:
 
 ```bash
 createdb campusos
-npm run db:push          # schema
-npm run db:constraints    # integrity guarantees, triggers, search index
+npm run db:migrate       # schema + constraints (versioned)
 npm run db:seed           # demo institution
 npm run dev
 ```
 
-`db:constraints` matters. Without it the schema exists but the guarantees —
-no-double-booking, append-only history, full-text search — do not.
+The integrity guarantees (no double-booking, append-only history, full-text
+search) are migration `0001_hard_constraints`, so `db:migrate` always applies
+them. Emails print to the dev-server console (`EMAIL_PROVIDER=console`).
 
 ## Demo data
 
@@ -53,8 +53,8 @@ npm run dev          # development server
 npm run build        # production build
 npm start            # serve the build
 npm run typecheck    # tsc --noEmit, must be clean
-npm test             # vitest — 46 tests
-npm run db:push      # sync schema
+npm test             # vitest — unit + integration
+npm run db:migrate   # apply migrations
 npm run db:seed      # rebuild demo data
 npm run db:reset     # wipe and reseed
 ```
@@ -81,9 +81,9 @@ ANTHROPIC_API_KEY="sk-ant-…"
 **"DATABASE_URL is not set"** — scripts load `.env` via a side-effect import
 that must come first; check `.env` exists.
 
-**"relation does not exist"** — run `npm run db:push`.
+**"relation does not exist"** — run `npm run db:migrate`.
 
-**Double-booking is allowed** — `npm run db:constraints` was not run.
+**Double-booking is allowed** — the database was created with `db:push`; run `npm run db:migrate`.
 
 **`Module not found: '@/…'`** — the alias is declared in both `tsconfig.json`
 and `next.config.mjs`; both are required.

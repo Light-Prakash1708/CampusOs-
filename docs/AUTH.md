@@ -97,14 +97,60 @@ Anonymity that an administrator can casually undo is not anonymity — see
 it. **No service function accepts a caller-supplied institution id.** There is
 no code path where a request body can select which college's data to read.
 
+## Account lifecycle (CampusOS 2.0)
+
+All rules live in `src/services/auth/accounts.ts`; routes only validate and
+translate. Every credential change bumps `session_epoch`, so sessions issued
+before it stop working on the next request.
+
+| Flow | Endpoint(s) | Notes |
+|---|---|---|
+| Sign in | `POST /api/auth/login` | Rate-limited per IP (30/15 min) and per account (10/15 min) on top of the 8-failure lockout. Correct password + unverified email → `EMAIL_NOT_VERIFIED`; pending approval → `REGISTRATION_PENDING`. |
+| Forgot password | `POST /api/auth/password/forgot` → email → `/reset-password?token=` → `POST /api/auth/password/reset` | Uniform response whether or not the account exists. Token: 32 random bytes, SHA-256 hash stored, 30-minute TTL, single use, superseded by newer requests. A reset clears lockout, revokes every session and emails a "password changed" notice. |
+| Change password | `POST /api/auth/password/change` | Requires the current password; revokes every session, then re-issues one for this device. |
+| Must-change password | `users.must_change_password` | Imported / temporary accounts are redirected to `/account/security?required=1` before any portal page renders. |
+| Email verification | email → `/verify-email?token=` → `POST /api/auth/verify-email`; `POST /api/auth/verify-email/resend` | The page POSTs the token, so mail scanners that prefetch links cannot confirm on the user's behalf. |
+| Self-registration | `GET /api/public/institutions`, `GET /api/public/institutions/:slug/structure`, `POST /api/auth/register` | See below. |
+| Invitations | `POST /api/admin/users/invite`, `POST /api/admin/users/:id/resend-invite` → `/invite?token=` → `POST /api/auth/invite/accept` | 7-day single-use token. Accepting sets the password, activates and verifies the account, and signs in. Imported `INVITED` accounts can be sent an invitation from **Admin → Access & Privacy**. |
+| Registration approval | `GET /api/admin/registrations`, `POST /api/admin/registrations/:id` | Only verified addresses can be approved. |
+| Sessions | `GET /api/auth/sessions`, `DELETE /api/auth/sessions/:id`, `POST /api/auth/sessions/revoke-others` | Shown at `/account/security`. |
+
+### Registration
+
+Each institution chooses a policy (`institutions.registration_policy`), editable
+by a super administrator in **Settings → Registration**:
+
+| Mode | Behaviour |
+|---|---|
+| `DISABLED` (default) | Accounts only via invitation or CSV import. |
+| `EMAIL_DOMAIN` | Anyone with an address on `allowedDomains` may register; confirming the email activates the account. |
+| `ADMIN_APPROVAL` | Anyone may apply; after confirming the email an administrator activates it. |
+
+The student picks a college from the public list (only colleges with
+`is_listed = true` and a non-disabled policy appear) and supplies name, email,
+department, programme, year, section and student ID. The chosen programme and
+section are re-validated server-side against **that** college — an id from
+another tenant is rejected. Registration never reveals whether an email is
+already registered.
+
+### Roles added in 2.0
+
+`CLUB_ADMIN`, `EVENT_ORGANIZER`, `CAMPUS_REP` — intended as **secondary** roles
+on student accounts (`users.secondary_roles`), adding community capabilities
+(`club:manage`, `event:manage_own`, `event:checkin`, `campus_rep:act`) without
+removing any student capability. Every account also holds `privacy:manage_own`.
+
+### SSO preparation
+
+`auth_identities` links a provider subject (`google`, `microsoft`,
+`saml:<entity>`) to a user; `users.password_hash` is nullable so an SSO-only
+account has no password. No provider is wired yet — the next step is an
+OAuth/OIDC callback that looks up `auth_identities` by `(provider, subject)`
+and calls `startSession()`.
+
 ## What is not implemented
 
-Stated plainly rather than implied:
-
-- **Password reset by email** — needs an email provider; the flow is designed
-  but the `/forgot-password` route is not built.
-- **MFA** — the schema has room for it; no implementation.
-- **SSO / SAML / Google Workspace** — the intended path for most colleges, and
-  the reason `users.password_hash` is nullable.
+- **MFA** — schema has room; not built.
+- **SSO login** — architecture above; no provider wired.
 - **Impersonation** — `user:impersonate` is declared for support workflows but
   no UI exists.

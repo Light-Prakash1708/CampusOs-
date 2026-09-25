@@ -1,6 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
+import { poolConfig } from './config';
 
 /**
  * Database client.
@@ -23,14 +24,7 @@ function createPool(): Pool {
     );
   }
 
-  return new Pool({
-    connectionString,
-    max: Number(process.env.DB_POOL_MAX ?? 10),
-    idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 10_000,
-    // Managed Postgres (Supabase, RDS) terminates TLS at the pooler.
-    ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
-  });
+  return new Pool(poolConfig(connectionString));
 }
 
 export const pool: Pool = global.__campusosPool ?? createPool();

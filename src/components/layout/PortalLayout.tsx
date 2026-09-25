@@ -35,6 +35,8 @@ export async function PortalLayout({
 
   // A user who lands in the wrong portal is redirected to their own.
   if (user.portal !== portal) redirect(`/${user.portal}`);
+  // Temporary passwords (imports, admin resets) must be replaced before use.
+  if (user.mustChangePassword) redirect('/account/security?required=1');
 
   const nav = filterNav(navForPortal(portal), user);
   const badges = await loadBadges(user);

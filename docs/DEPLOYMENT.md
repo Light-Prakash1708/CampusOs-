@@ -2,58 +2,77 @@
 
 ## What you need
 
-- Node 20+ runtime (any host that runs Next.js: a VM, a container, Vercel)
-- PostgreSQL 16 (managed or self-hosted; Supabase works — it is Postgres)
-- HTTPS termination
-- A cron scheduler
+- Node 20+ (22 recommended)
+- PostgreSQL 15+ — Render Postgres, Supabase, RDS, or self-hosted
+- HTTPS termination (every platform below provides it)
+- A scheduler that can POST to `/api/jobs/run` every 5–15 minutes
 
-Deliberately *not* required: Redis, a message broker, a Python runtime, or a
-separate worker process. One app, one database.
+Not required: Redis, a queue, a worker process, a Python runtime.
 
-## Environment
+Optional integrations, each switched on by environment variable only:
+Anthropic (AI), Resend (email), FCM (push), MSG91 (SMS), S3-compatible or
+Supabase Storage (files).
+
+## Configuration
+
+See `.env.example` for every variable. `src/lib/env.ts` validates them at boot;
+in production an invalid configuration exits with the list of problems. It
+refuses: `DEMO_MODE=true`, placeholder `AUTH_SECRET`, missing `CRON_SECRET`,
+`EMAIL_PROVIDER=console`, and `STORAGE_PROVIDER=local` (unless
+`ALLOW_LOCAL_STORAGE=true` on a single persistent server). Use `none` for any
+integration you have not set up yet — the product says so honestly instead of
+failing.
+
+## Render + Supabase (recommended)
+
+1. **Database (Supabase).** Create a project in the Mumbai (`ap-south-1`)
+   region. Copy the **session pooler** connection string (port 5432). The
+   transaction pooler (6543) does not support the migration runner's
+   transaction and prepared statements.
+2. **Storage (optional, Supabase).** Storage → create a private bucket
+   `campusos`. Settings → Storage → S3 connection → create access keys. Set
+   `STORAGE_PROVIDER=supabase`, `STORAGE_ENDPOINT=https://<ref>.supabase.co/storage/v1/s3`,
+   `STORAGE_REGION=ap-south-1`, `STORAGE_BUCKET=campusos`, `STORAGE_ACCESS_KEY`,
+   `STORAGE_SECRET_KEY`.
+3. **App (Render).** New → Blueprint → select the repository; `render.yaml`
+   creates the web service and the cron job. If you use Supabase, remove the
+   `databases` block and set `DATABASE_URL` manually. Set `APP_URL` on both the
+   web service and the cron job to the service URL.
+4. Render runs `npm run db:migrate` before each deploy (`preDeployCommand`), then
+   `npm start` (binds `$PORT`). Health check: `/api/health`.
+5. **First administrator.** The seed is for development only — never run
+   `db:seed` in production. Create the institution and a `SUPER_ADMIN` with a
+   one-off SQL insert or a provisioning script, then invite everyone else from
+   **Admin → Access & Privacy**.
+
+## Single server (Docker)
 
 ```bash
-NODE_ENV=production
-APP_URL="https://campus.college.edu"
-
-DATABASE_URL="postgresql://user:pass@host:5432/campusos"
-AUTH_SECRET="<openssl rand -base64 48>"
-SESSION_MAX_AGE="28800"
-
-DEMO_MODE="false"          # MUST be false
-NEXT_PUBLIC_DEMO_PASSWORD=""
-
-AI_PROVIDER="local"        # or "anthropic"
-ANTHROPIC_API_KEY=""
-AI_MONTHLY_BUDGET_USD="50"
-
-CRON_SECRET="<openssl rand -base64 32>"
+docker build -t campusos .
+docker run -d -p 3000:3000 --env-file .env -v campusos-files:/app/.storage campusos
 ```
 
-### Pre-flight checks
+The container runs migrations on start. With a persistent volume you may use
+`STORAGE_PROVIDER=local` and `ALLOW_LOCAL_STORAGE=true`.
 
-- `AUTH_SECRET` is at least 32 characters and **not** the example value. The app
-  refuses to start otherwise.
-- `DEMO_MODE=false`. Demo accounts and the role switcher are unreachable in a
-  production build regardless, but set it explicitly.
-- `DATABASE_URL` does not point at a database containing the demo tenant.
-
-## Deploying
+## Without Docker
 
 ```bash
 npm ci
-npm run db:generate                              # emit migration SQL
-psql "$DATABASE_URL" -f drizzle/<migration>.sql
-psql "$DATABASE_URL" -f drizzle/0001_hard_constraints.sql
+npm run db:migrate
 npm run build
 npm start
 ```
 
-`0001_hard_constraints.sql` is idempotent and **must** be applied. Without it
-the schema exists but no-double-booking, append-only history and full-text
-search do not.
+## Upgrading a v1 database
 
-Do not run `db:seed` against production.
+Run `npm run db:migrate` against it. The runner detects a v1 schema created by
+`db:push`, records the baseline, and applies the 2.0 migrations. Nothing is
+dropped. Back up first anyway:
+
+```bash
+pg_dump --format=custom "$DATABASE_URL" > campusos-$(date +%F).dump
+```
 
 ## Database role
 
@@ -64,58 +83,32 @@ CREATE ROLE campusos_app LOGIN PASSWORD '…';
 GRANT CONNECT ON DATABASE campusos TO campusos_app;
 GRANT USAGE ON SCHEMA public TO campusos_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO campusos_app;
-
--- Reinforce append-only history at the privilege level as well as the trigger.
-REVOKE UPDATE, DELETE ON audit_logs FROM campusos_app;
-REVOKE UPDATE, DELETE ON grievance_events FROM campusos_app;
+REVOKE UPDATE, DELETE ON audit_logs, grievance_events, consent_records FROM campusos_app;
 ```
 
-Belt and braces: the triggers stop the application, the grants stop anything
-holding its credentials.
+Migrations need a role that can alter the schema; run them with the owner role.
 
 ## Scheduled jobs
 
 ```cron
-*/15 * * * * curl -fsS -X POST https://campus.college.edu/api/jobs/run \
-  -H "x-cron-secret: $CRON_SECRET" >> /var/log/campusos-jobs.log 2>&1
+*/10 * * * * curl -fsS -X POST https://campus.example.edu/api/jobs/run \
+  -H "x-cron-secret: $CRON_SECRET" -H "content-type: application/json" -d '{}'
 ```
 
-Runs SLA escalation, scheduled publishing and expiry. Idempotent and
-clock-driven, so a missed run self-corrects.
+With the secret, one call runs, for every tenant: grievance SLA escalation,
+scheduled notice publishing, notice expiry; and platform-wide: notification
+delivery planning, delivery, and sweeping expired rate-limit buckets and tokens.
+Every job is idempotent — a missed run self-corrects on the next.
 
-## First institution
+## Backups
 
-1. Insert the institution row (slug, name, timezone, feature flags).
-2. Create one `SUPER_ADMIN` with a bcrypt hash.
-3. Sign in and use **Data Import** for departments, programmes, sections,
-   rooms, subjects, faculty and students.
-4. Configure the academic year, term and period grid.
-5. Generate and publish a timetable.
+Supabase and Render Postgres take daily backups on paid plans; enable
+point-in-time recovery for production. Additionally keep your own nightly
+`pg_dump`. Files in S3/Supabase Storage should have bucket versioning enabled.
 
-### Overlay mode
+## CI
 
-A college cannot replace its ERP overnight, and pretending otherwise is how
-these deployments fail. CampusOS is designed to sit alongside the incumbent:
-import from it on a schedule, run communication and readdressal in CampusOS
-first (the workflows with the clearest immediate benefit), then move timetabling
-and attendance once people trust it.
-
-## Operations
-
-**Health:** `GET /api/health` returns database connectivity and latency; 503
-when unreachable. Point your uptime monitor here, not at `/`.
-
-**Logs:** structured to stdout. Server errors carry a `requestId` that is also
-returned to the user, so a support ticket maps to a log line.
-
-**Backups:** ordinary `pg_dump`. Everything is in Postgres; there is no other
-stateful component. Verify restores — an unverified backup is a hope.
-
-**Scaling:** the app is stateless (sessions live in the database), so scale
-horizontally behind a load balancer. `DB_POOL_MAX` defaults to 10 per instance;
-size it against your Postgres `max_connections`.
-
-## Cost
-
-For a 2,000-student college: one small VM (2 vCPU / 4 GB) and a small managed
-Postgres. AI is optional, capped, and zero with the offline provider.
+`.github/workflows/ci.yml` runs on every push and PR: install, typecheck, lint,
+migrate a fresh Postgres 16, seed, test, build; plus `npm audit` (high+) and a
+gitleaks secret scan. Configure Render's auto-deploy to wait for checks
+("Deploy only after CI checks pass") so a failing build never ships.

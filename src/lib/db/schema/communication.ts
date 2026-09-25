@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   pgTable,
   uuid,
@@ -210,10 +211,19 @@ export const notifications = pgTable(
     /** Mandatory notices cannot be suppressed by user preferences. */
     isMandatory: boolean('is_mandatory').notNull().default(false),
     deliveredChannels: jsonb('delivered_channels').$type<string[]>().default([]),
+    /**
+     * Set once the delivery planner has decided which external channels (email,
+     * push, SMS, WhatsApp) this notification goes to. Null = not yet planned.
+     * Planning is done by the job runner so every insert site is covered.
+     */
+    deliveryPlannedAt: timestamp('delivery_planned_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index('notifications_user_idx').on(t.userId, t.readAt),
+    index('notifications_unplanned_idx')
+      .on(t.createdAt)
+      .where(sql`delivery_planned_at IS NULL`),
     index('notifications_group_idx').on(t.userId, t.groupKey),
     index('notifications_created_idx').on(t.userId, t.createdAt),
   ],

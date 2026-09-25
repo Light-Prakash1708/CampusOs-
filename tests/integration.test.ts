@@ -270,7 +270,9 @@ describe('tenant isolation', () => {
     const { rows } = await pool.query<{ table_name: string }>(`
       SELECT table_name FROM information_schema.tables
       WHERE table_schema='public'
-        AND table_name NOT IN ('institutions','sessions','job_queue')
+        -- rate_limit_buckets keys on IPs/emails BEFORE a tenant is known (login,
+        -- registration); it holds hashed counters only, no tenant data.
+        AND table_name NOT IN ('institutions','sessions','job_queue','rate_limit_buckets')
         AND table_name NOT LIKE '\\_\\_%'
     `);
 

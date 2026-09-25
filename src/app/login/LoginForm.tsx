@@ -31,12 +31,32 @@ const DEMO_ACCOUNTS = [
   },
 ];
 
-export function LoginForm({ nextUrl, demoMode }: { nextUrl?: string; demoMode: boolean }) {
+export function LoginForm({
+  nextUrl,
+  demoMode,
+  demoPassword,
+  notice,
+}: {
+  nextUrl?: string;
+  demoMode: boolean;
+  demoPassword: string;
+  notice?: string | null;
+}) {
   const router = useRouter();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<{ message: string; hint?: string } | null>(null);
+  const [error, setError] = React.useState<{ message: string; hint?: string; code?: string } | null>(null);
+  const [resent, setResent] = React.useState(false);
+
+  async function resendVerification() {
+    await fetch('/api/auth/verify-email/resend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).catch(() => undefined);
+    setResent(true);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,12 +72,14 @@ export function LoginForm({ nextUrl, demoMode }: { nextUrl?: string; demoMode: b
       const json = await res.json();
 
       if (!json.ok) {
-        setError({ message: json.error?.message ?? 'Sign in failed.', hint: json.error?.hint });
+        setError({ message: json.error?.message ?? 'Sign in failed.', hint: json.error?.hint, code: json.error?.code });
         setLoading(false);
         return;
       }
 
-      router.push(nextUrl && nextUrl.startsWith('/') ? nextUrl : json.data.redirectTo);
+      // Only same-site relative paths are honoured ("//evil.com" is protocol-relative).
+      const safeNext = nextUrl && nextUrl.startsWith('/') && !nextUrl.startsWith('//') ? nextUrl : null;
+      router.push(json.data.mustChangePassword ? json.data.redirectTo : (safeNext ?? json.data.redirectTo));
       router.refresh();
     } catch {
       setError({
@@ -68,9 +90,9 @@ export function LoginForm({ nextUrl, demoMode }: { nextUrl?: string; demoMode: b
     }
   }
 
-  function useDemoAccount(demoEmail: string) {
+  function applyDemoAccount(demoEmail: string) {
     setEmail(demoEmail);
-    setPassword(DEMO_PASSWORD_PLACEHOLDER);
+    setPassword(demoPassword);
     setError(null);
   }
 
@@ -86,7 +108,24 @@ export function LoginForm({ nextUrl, demoMode }: { nextUrl?: string; demoMode: b
             <div>
               <p className="text-[13px] font-medium text-danger">{error.message}</p>
               {error.hint ? <p className="mt-0.5 text-[12.5px] text-muted">{error.hint}</p> : null}
+              {error.code === 'EMAIL_NOT_VERIFIED' ? (
+                resent ? (
+                  <p className="mt-1.5 text-[12.5px] text-default">A new confirmation link is on its way.</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={resendVerification}
+                    className="mt-1.5 text-[12.5px] font-medium text-brand hover:underline"
+                  >
+                    Send a new confirmation link
+                  </button>
+                )
+              ) : null}
             </div>
+          </div>
+        ) : notice ? (
+          <div className="rounded-lg border border-[hsl(var(--border))] bg-surface-sunken p-3 text-[13px] text-default" role="status">
+            {notice}
           </div>
         ) : null}
 
@@ -104,7 +143,11 @@ export function LoginForm({ nextUrl, demoMode }: { nextUrl?: string; demoMode: b
           />
         </Field>
 
-        <Field label="Password" htmlFor="password" required>
+        <Field
+          label="Password"
+          htmlFor="password"
+          required
+        >
           <Input
             id="password"
             name="password"
@@ -117,6 +160,12 @@ export function LoginForm({ nextUrl, demoMode }: { nextUrl?: string; demoMode: b
             aria-invalid={!!error}
           />
         </Field>
+
+        <div className="-mt-1 text-right">
+          <a href="/forgot-password" className="text-[12.5px] font-medium text-brand hover:underline">
+            Forgot password?
+          </a>
+        </div>
 
         <Button type="submit" variant="primary" size="lg" loading={loading} className="w-full">
           {loading ? 'Signing in…' : 'Sign in'}
@@ -139,7 +188,7 @@ export function LoginForm({ nextUrl, demoMode }: { nextUrl?: string; demoMode: b
                 <button
                   key={acc.email}
                   type="button"
-                  onClick={() => useDemoAccount(acc.email)}
+                  onClick={() => applyDemoAccount(acc.email)}
                   className="flex w-full items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 py-2.5 text-left transition-colors hover:bg-surface-sunken"
                 >
                   <Icon size={16} className="shrink-0 text-subtle" />
@@ -162,9 +211,3 @@ export function LoginForm({ nextUrl, demoMode }: { nextUrl?: string; demoMode: b
     </>
   );
 }
-
-/**
- * Populated at build time from NEXT_PUBLIC_DEMO_PASSWORD when demo mode is on.
- * Falls back to an empty string so a production build cannot leak anything.
- */
-const DEMO_PASSWORD_PLACEHOLDER = process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? '';

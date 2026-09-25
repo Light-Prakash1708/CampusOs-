@@ -90,6 +90,11 @@ codebase and must not be weakened.**
 | D8 | Some admin pages (`/admin/events`, `/admin/communications/[id]`) only rely on the portal check, not a capability — any admin-portal role (e.g. FINANCE) can view them | Low | 3 |
 | D9 | No environment validation at boot: a missing `AUTH_SECRET` surfaces only on first request | Low | 1 |
 | D10 | `x-forwarded-for` trusted unconditionally for IP (affects audit + any future rate limit) | Low | 1 (documented; trust proxy setting) |
+| D11 | *Found while building migrations:* `db:push` created `resources.search_vector` as a plain column, so the constraints file's generated column was skipped — resource full-text search **never had data** | High | 1 |
+| D12 | *Found by Phase 1 tests:* Drizzle 0.45 wraps driver errors in `DrizzleQueryError` with the SQLSTATE on `cause`; `fail()` read `error.code`, so **unique-violation → friendly 409 mapping never fired** (users got a 500 on double-booking) | High | 1 |
+| D13 | *Found by smoke test:* middleware required a session cookie for `/api/jobs/run`, so **cron could never run jobs** (escalation, scheduled publishing) | High | 1 |
+
+**Status after Phase 1:** D1–D6, D9–D13 fixed; D7 (PWA icons) → Phase 9; D8 (capability checks on two admin pages) → Phase 3.
 
 ## 6. What must NOT be rewritten
 
