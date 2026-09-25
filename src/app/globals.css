@@ -1,0 +1,262 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   CampusOS Design System
+   --------------------------------------------------------------------------
+   Restrained, information-dense, calm. The interface should reduce cognitive
+   load, not compete for attention. Light by default, full dark mode support.
+   All colour is expressed as CSS variables so a tenant can be white-labelled
+   without touching component code.
+   ========================================================================== */
+
+@theme {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+@layer base {
+  :root {
+    /* Neutrals — slate-based, slightly cool */
+    --surface: 0 0% 100%;
+    --surface-muted: 210 20% 98%;
+    --surface-raised: 0 0% 100%;
+    --surface-sunken: 210 20% 96.5%;
+    --surface-inverse: 222 47% 11%;
+
+    --border: 214 20% 90%;
+    --border-strong: 214 16% 82%;
+
+    --text: 222 47% 11%;
+    --text-muted: 215 16% 42%;
+    --text-subtle: 215 14% 58%;
+    --text-inverse: 210 20% 98%;
+
+    /* Brand — overridden per tenant at runtime */
+    --brand: 243 75% 59%;
+    --brand-hover: 243 70% 52%;
+    --brand-subtle: 243 100% 97%;
+    --brand-border: 243 60% 88%;
+    --brand-text: 243 68% 45%;
+
+    /* Semantic */
+    --success: 158 64% 34%;
+    --success-subtle: 152 76% 96%;
+    --success-border: 152 50% 84%;
+
+    --warning: 32 81% 40%;
+    --warning-subtle: 45 100% 96%;
+    --warning-border: 42 80% 82%;
+
+    --danger: 0 72% 45%;
+    --danger-subtle: 0 86% 97%;
+    --danger-border: 0 70% 88%;
+
+    --info: 205 85% 41%;
+    --info-subtle: 204 94% 96%;
+    --info-border: 204 70% 85%;
+
+    --focus: 243 75% 59%;
+
+    /* Elevation — restrained, never dramatic */
+    --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.04);
+    --shadow-sm: 0 1px 3px 0 rgb(16 24 40 / 0.07), 0 1px 2px -1px rgb(16 24 40 / 0.05);
+    --shadow-md: 0 4px 8px -2px rgb(16 24 40 / 0.08), 0 2px 4px -2px rgb(16 24 40 / 0.04);
+    --shadow-lg: 0 12px 20px -6px rgb(16 24 40 / 0.10), 0 4px 8px -4px rgb(16 24 40 / 0.05);
+  }
+
+  .dark {
+    --surface: 222 47% 9%;
+    --surface-muted: 222 40% 12%;
+    --surface-raised: 222 40% 13%;
+    --surface-sunken: 222 47% 7%;
+    --surface-inverse: 210 20% 98%;
+
+    --border: 217 25% 20%;
+    --border-strong: 217 20% 28%;
+
+    --text: 210 20% 96%;
+    --text-muted: 215 18% 68%;
+    --text-subtle: 215 16% 52%;
+    --text-inverse: 222 47% 11%;
+
+    --brand: 243 80% 70%;
+    --brand-hover: 243 85% 76%;
+    --brand-subtle: 243 45% 18%;
+    --brand-border: 243 40% 30%;
+    --brand-text: 243 85% 80%;
+
+    --success: 158 60% 52%;
+    --success-subtle: 158 45% 14%;
+    --success-border: 158 35% 26%;
+
+    --warning: 38 90% 62%;
+    --warning-subtle: 38 45% 14%;
+    --warning-border: 38 40% 28%;
+
+    --danger: 0 80% 66%;
+    --danger-subtle: 0 45% 16%;
+    --danger-border: 0 40% 30%;
+
+    --info: 205 85% 62%;
+    --info-subtle: 205 45% 15%;
+    --info-border: 205 40% 28%;
+
+    --focus: 243 80% 70%;
+
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 12px 20px -6px rgb(0 0 0 / 0.5);
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: hsl(var(--surface-muted));
+    color: hsl(var(--text));
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Visible, consistent focus for keyboard users — never removed. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--focus));
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background-color: hsl(var(--brand) / 0.18);
+  }
+
+  /* Respect reduced-motion preferences. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Slim, unobtrusive scrollbars. */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border-strong));
+    border-radius: 8px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--text-subtle));
+  }
+}
+
+@layer utilities {
+  .bg-surface { background-color: hsl(var(--surface)); }
+  .bg-surface-muted { background-color: hsl(var(--surface-muted)); }
+  .bg-surface-raised { background-color: hsl(var(--surface-raised)); }
+  .bg-surface-sunken { background-color: hsl(var(--surface-sunken)); }
+  .bg-brand { background-color: hsl(var(--brand)); }
+  .bg-brand-subtle { background-color: hsl(var(--brand-subtle)); }
+  .bg-success { background-color: hsl(var(--success)); }
+  .bg-success-subtle { background-color: hsl(var(--success-subtle)); }
+  .bg-warning { background-color: hsl(var(--warning)); }
+  .bg-warning-subtle { background-color: hsl(var(--warning-subtle)); }
+  .bg-danger { background-color: hsl(var(--danger)); }
+  .bg-danger-subtle { background-color: hsl(var(--danger-subtle)); }
+  .bg-info { background-color: hsl(var(--info)); }
+  .bg-info-subtle { background-color: hsl(var(--info-subtle)); }
+
+  .text-default { color: hsl(var(--text)); }
+  .text-muted { color: hsl(var(--text-muted)); }
+  .text-subtle { color: hsl(var(--text-subtle)); }
+  .text-inverse { color: hsl(var(--text-inverse)); }
+  .text-brand { color: hsl(var(--brand-text)); }
+  .text-success { color: hsl(var(--success)); }
+  .text-warning { color: hsl(var(--warning)); }
+  .text-danger { color: hsl(var(--danger)); }
+  .text-info { color: hsl(var(--info)); }
+
+  .border-default { border-color: hsl(var(--border)); }
+  .border-strong { border-color: hsl(var(--border-strong)); }
+  .border-brand { border-color: hsl(var(--brand-border)); }
+  .border-success { border-color: hsl(var(--success-border)); }
+  .border-warning { border-color: hsl(var(--warning-border)); }
+  .border-danger { border-color: hsl(var(--danger-border)); }
+  .border-info { border-color: hsl(var(--info-border)); }
+
+  .shadow-xs { box-shadow: var(--shadow-xs); }
+  .shadow-sm { box-shadow: var(--shadow-sm); }
+  .shadow-md { box-shadow: var(--shadow-md); }
+  .shadow-lg { box-shadow: var(--shadow-lg); }
+
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+/* --- Skeleton loading ---------------------------------------------------- */
+@keyframes campusos-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background-image: linear-gradient(
+    90deg,
+    hsl(var(--surface-sunken)) 25%,
+    hsl(var(--border)) 37%,
+    hsl(var(--surface-sunken)) 63%
+  );
+  background-size: 200% 100%;
+  animation: campusos-shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Entrance / streaming ------------------------------------------------ */
+@keyframes campusos-fade-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: campusos-fade-up 0.18s ease-out; }
+
+@keyframes campusos-pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.animate-pulse-dot { animation: campusos-pulse-dot 1.4s ease-in-out infinite; }
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; }
+}
