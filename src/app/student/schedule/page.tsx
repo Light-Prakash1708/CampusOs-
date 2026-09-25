@@ -385,10 +385,10 @@ export default async function SchedulePage({
                 <EmptyState
                   icon={CalendarClock}
                   title="No periods scheduled for your section"
-                  description="The published timetable contains no entries for your section. If that looks wrong, raise it through the Readdressal Centre."
+                  description="The published timetable contains no entries for your section. If that looks wrong, raise it through the Redressal Centre."
                   action={
                     <Button asChild size="sm" variant="secondary">
-                      <Link href="/student/readdressal/new?category=timetable">Raise a case</Link>
+                      <Link href="/student/redressal/new?category=timetable">Raise a case</Link>
                     </Button>
                   }
                 />

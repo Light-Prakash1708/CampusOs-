@@ -9,7 +9,7 @@ const REPORTS = [
   { key: 'attendance', title: 'Attendance register', description: 'Per-student attendance across every subject, with shortage flags.' },
   { key: 'workload', title: 'Faculty workload', description: 'Weekly hours by category against contracted maximums.' },
   { key: 'utilization', title: 'Room utilisation', description: 'Period-by-period occupancy for every bookable space.' },
-  { key: 'grievances', title: 'Readdressal summary', description: 'Case volumes, resolution times and SLA performance.' },
+  { key: 'grievances', title: 'Redressal summary', description: 'Case volumes, resolution times and SLA performance.' },
   { key: 'communication', title: 'Communication reach', description: 'Notice read and acknowledgement rates.' },
 ];
 

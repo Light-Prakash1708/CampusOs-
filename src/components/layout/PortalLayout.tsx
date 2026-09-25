@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { and, count, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, or } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import {
   notifications,
@@ -10,7 +10,7 @@ import {
   courseOfferings,
 } from '@/lib/db/schema';
 import { requireAuth, type AuthContext } from '@/lib/auth/context';
-import { isEnabled, type FeatureFlag } from '@/lib/features';
+import { isEnabled, plannedLabel, type FeatureFlag } from '@/lib/features';
 import { humanize } from '@/lib/utils';
 import { AppShell, type ShellBadges } from './AppShell';
 import {
@@ -20,6 +20,7 @@ import {
   type NavGroup,
   type MobileNavItem,
   type QuickCreateItem,
+  type QuickCreateEntry,
 } from './navigation';
 import { studentProfiles, programs, sections, institutions } from '@/lib/db/schema';
 import { avatarToneFor } from '@/components/campus/pixel';
@@ -65,6 +66,9 @@ export async function PortalLayout({
         institutionLogoUrl: user.institutionLogoUrl,
         portal,
         subtitle: identity.subtitle ?? humanize(user.role),
+        // Level/XP chip: students only. Real values arrive with the gamification
+        // engine; until then the chip shows its planned phase, never a fake level.
+        progress: portal === 'student' ? { level: null, planned: plannedLabel('gamification_enabled') } : null,
       }}
       nav={nav}
       badges={badges}
@@ -89,8 +93,20 @@ function filterMobileNav(items: MobileNavItem[], user: AuthContext): MobileNavIt
   ).filter((item) => allowed(user, item.feature));
 }
 
-function filterQuickCreate(items: QuickCreateItem[], user: AuthContext): QuickCreateItem[] {
-  return items.filter((i) => allowed(user, i.feature, i.permissions));
+/**
+ * Quick-create entries: working actions first, then planned ones labelled
+ * "Coming in Phase N". Entries the user may not use, or modules the college
+ * switched off, are hidden. A planned entry is never rendered as a link.
+ */
+function filterQuickCreate(items: QuickCreateItem[], user: AuthContext): QuickCreateEntry[] {
+  const out: QuickCreateEntry[] = [];
+  for (const { feature, permissions, plannedPhase, ...item } of items) {
+    if (permissions && !permissions.some((p) => user.permissions.has(p as never))) continue;
+    const planned = plannedPhase !== undefined ? `Coming in Phase ${plannedPhase}` : feature ? plannedLabel(feature) : null;
+    if (!planned && feature && !isEnabled(user.featureFlags, feature)) continue;
+    out.push({ ...item, planned });
+  }
+  return [...out.filter((i) => !i.planned), ...out.filter((i) => i.planned)];
 }
 
 /** "BBA · Year 1 · Section 2" for students; the institution's short label for the top bar. */

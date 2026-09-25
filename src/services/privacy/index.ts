@@ -134,6 +134,7 @@ export async function buildPersonalDataExport(ctx: AuthContext) {
     studentProfile, privacy, consents, notifSettings, notifPrefs, notifications, sessionsList,
     attendanceSummaries, attendanceRecords, submissions, results, skills, careerGoals, certifications,
     grievances, grievanceMessages, aiMessages, aiPrefs, eventRegs, pushSubs, files,
+    eventSaves, eventCertificates, eventReports, toolUsage,
   ] = await Promise.all([
     db.select().from(t.studentProfiles).where(and(eq(t.studentProfiles.userId, uid), eq(t.studentProfiles.institutionId, tid))),
     db.select().from(t.privacyPreferences).where(eq(t.privacyPreferences.userId, uid)),
@@ -153,9 +154,56 @@ export async function buildPersonalDataExport(ctx: AuthContext) {
     db.select().from(t.grievanceMessages).where(and(eq(t.grievanceMessages.authorId, uid), eq(t.grievanceMessages.institutionId, tid))),
     convIds.length ? db.select().from(t.aiMessages).where(inArray(t.aiMessages.conversationId, convIds)) : Promise.resolve([]),
     db.select().from(t.aiPreferences).where(and(eq(t.aiPreferences.userId, uid), eq(t.aiPreferences.institutionId, tid))),
-    db.select().from(t.eventRegistrations).where(and(eq(t.eventRegistrations.userId, uid), eq(t.eventRegistrations.institutionId, tid))),
+    // Registration rows carry the ORGANISER's institution_id, so a student's
+    // registrations for other colleges' public events live under another
+    // tenant. They are still this student's data: select by user only.
+    db
+      .select({
+        id: t.eventRegistrations.id,
+        eventId: t.eventRegistrations.eventId,
+        eventTitle: t.events.title,
+        eventStartsAt: t.events.startsAt,
+        organiser: t.events.organizerName,
+        status: t.eventRegistrations.status,
+        passCode: t.eventRegistrations.code,
+        teamName: t.eventRegistrations.teamName,
+        note: t.eventRegistrations.note,
+        registeredAt: t.eventRegistrations.registeredAt,
+        attendedAt: t.eventRegistrations.attendedAt,
+      })
+      .from(t.eventRegistrations)
+      .innerJoin(t.events, eq(t.events.id, t.eventRegistrations.eventId))
+      .where(eq(t.eventRegistrations.userId, uid))
+      .orderBy(desc(t.eventRegistrations.registeredAt)),
     db.select({ kind: t.pushSubscriptions.kind, createdAt: t.pushSubscriptions.createdAt, revokedAt: t.pushSubscriptions.revokedAt }).from(t.pushSubscriptions).where(eq(t.pushSubscriptions.userId, uid)),
     db.select({ id: t.storedFiles.id, name: t.storedFiles.originalName, purpose: t.storedFiles.purpose, sizeBytes: t.storedFiles.sizeBytes, createdAt: t.storedFiles.createdAt }).from(t.storedFiles).where(and(eq(t.storedFiles.ownerId, uid), eq(t.storedFiles.institutionId, tid), isNull(t.storedFiles.deletedAt))),
+    db
+      .select({ eventId: t.eventSaves.eventId, eventTitle: t.events.title, eventStartsAt: t.events.startsAt, savedAt: t.eventSaves.createdAt })
+      .from(t.eventSaves)
+      .innerJoin(t.events, eq(t.events.id, t.eventSaves.eventId))
+      .where(eq(t.eventSaves.userId, uid)),
+    db
+      .select({
+        id: t.eventCertificates.id,
+        eventId: t.eventCertificates.eventId,
+        eventTitle: t.events.title,
+        kind: t.eventCertificates.kind,
+        verificationCode: t.eventCertificates.verificationCode,
+        issuedAt: t.eventCertificates.issuedAt,
+      })
+      .from(t.eventCertificates)
+      .innerJoin(t.events, eq(t.events.id, t.eventCertificates.eventId))
+      .where(eq(t.eventCertificates.userId, uid)),
+    // Reports the student filed. Only their own words and the outcome; never
+    // the moderator's identity.
+    db
+      .select({ eventId: t.eventReports.eventId, reason: t.eventReports.reason, details: t.eventReports.details, status: t.eventReports.status, createdAt: t.eventReports.createdAt })
+      .from(t.eventReports)
+      .where(eq(t.eventReports.reporterId, uid)),
+    db
+      .select({ tool: t.toolUsage.toolKey, opened: t.toolUsage.openCount, lastOpenedAt: t.toolUsage.lastOpenedAt })
+      .from(t.toolUsage)
+      .where(eq(t.toolUsage.userId, uid)),
   ]);
 
   return {
@@ -178,8 +226,9 @@ export async function buildPersonalDataExport(ctx: AuthContext) {
     skills: { skills, careerGoals, certifications },
     grievances: { raised: grievances, messages: grievanceMessages },
     ai: { conversations, messages: aiMessages, memory: aiPrefs },
-    events: { registrations: eventRegs },
+    events: { registrations: eventRegs, saved: eventSaves, certificates: eventCertificates, reportsFiled: eventReports },
     devices: pushSubs,
+    tools: { usage: toolUsage },
     files,
   };
 }
@@ -311,6 +360,7 @@ export async function decideDeletionRequest(
     await tx.delete(t.aiConversations).where(eq(t.aiConversations.userId, uid));
     await tx.delete(t.aiPreferences).where(eq(t.aiPreferences.userId, uid));
     await tx.delete(t.pushSubscriptions).where(eq(t.pushSubscriptions.userId, uid));
+    await tx.delete(t.toolUsage).where(eq(t.toolUsage.userId, uid));
     await tx.delete(t.notificationPreferences).where(eq(t.notificationPreferences.userId, uid));
     await tx.delete(t.notificationSettings).where(eq(t.notificationSettings.userId, uid));
     await tx.delete(t.authTokens).where(eq(t.authTokens.userId, uid));

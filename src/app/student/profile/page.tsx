@@ -211,7 +211,7 @@ export default async function ProfilePage() {
         case and the correction is applied by the office with an audit trail.
         <span className="mt-2 block">
           <Button asChild size="sm" variant="secondary" icon={ShieldQuestion}>
-            <Link href="/student/readdressal/new?category=fees-admin">Request a correction</Link>
+            <Link href="/student/redressal/new?category=fees-admin">Request a correction</Link>
           </Button>
         </span>
       </Alert>

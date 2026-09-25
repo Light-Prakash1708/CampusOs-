@@ -590,3 +590,285 @@ export function CampusLinkRow({ href, children }: { href: string; children: Reac
     </Link>
   );
 }
+
+/* ==========================================================================
+   Phase 1 additions — ring, stat, search, filter, level chip, coming-soon.
+   All server-compatible. Interactive overlays and the slider live in
+   ./overlays (client). See docs/CAMPUSOS_UI_SYSTEM.md.
+   ========================================================================== */
+
+/** Ring stroke colours by tone (SVG needs a colour, not a class). */
+const RING_STROKE: Record<Tone, string> = {
+  mint: 'hsl(var(--tone-mint-ink))',
+  coral: 'hsl(var(--tone-coral-ink))',
+  lavender: 'hsl(var(--brand))',
+  sun: 'hsl(var(--tone-sun-ink))',
+  peach: 'hsl(var(--tone-peach-ink))',
+  sky: 'hsl(var(--tone-sky-ink))',
+  rose: 'hsl(var(--tone-rose-ink))',
+  plain: 'hsl(var(--brand))',
+};
+
+/**
+ * Donut ring (attendance, completion). `value` null draws an empty track and
+ * the `emptyLabel` — never a made-up number. Optional `marker` draws a tick at
+ * a threshold (e.g. the 75% attendance line).
+ */
+export function CampusRing({
+  value,
+  label,
+  sublabel,
+  tone = 'mint',
+  size = 132,
+  thickness = 14,
+  marker,
+  emptyLabel = 'No data yet',
+  className,
+}: {
+  /** 0–100, or null when there is no data. */
+  value: number | null;
+  label: string;
+  sublabel?: string;
+  tone?: Tone;
+  size?: number;
+  thickness?: number;
+  /** 0–100 threshold tick. */
+  marker?: number;
+  emptyLabel?: string;
+  className?: string;
+}) {
+  const r = (size - thickness) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = value === null ? 0 : Math.max(0, Math.min(100, value));
+  const markerAngle = marker === undefined ? null : (Math.max(0, Math.min(100, marker)) / 100) * 2 * Math.PI - Math.PI / 2;
+  const text = value === null ? emptyLabel : `${label}: ${Number.isInteger(pct) ? pct : pct.toFixed(1)}%${sublabel ? `, ${sublabel}` : ''}`;
+  return (
+    <div className={cn('relative inline-flex shrink-0 items-center justify-center', className)} style={{ width: size, height: size }} role="img" aria-label={text}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--surface-sunken))" strokeWidth={thickness} />
+        <circle cx={size / 2} cy={size / 2} r={r + thickness / 2} fill="none" stroke="hsl(var(--ink))" strokeWidth={1.5} opacity={0.9} />
+        <circle cx={size / 2} cy={size / 2} r={r - thickness / 2} fill="none" stroke="hsl(var(--ink))" strokeWidth={1.5} opacity={0.9} />
+        {value !== null ? (
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={RING_STROKE[tone]}
+            strokeWidth={thickness - 3}
+            strokeDasharray={`${(pct / 100) * c} ${c}`}
+            strokeLinecap="butt"
+          />
+        ) : null}
+      </svg>
+      {markerAngle !== null ? (
+        <span
+          aria-hidden
+          className="absolute h-[18px] w-[3px] rounded-full bg-ink"
+          style={{
+            left: size / 2 + r * Math.cos(markerAngle) - 1.5,
+            top: size / 2 + r * Math.sin(markerAngle) - 9,
+            transform: `rotate(${markerAngle + Math.PI / 2}rad)`,
+          }}
+        />
+      ) : null}
+      <span className="absolute inset-0 flex flex-col items-center justify-center text-center" aria-hidden>
+        {value === null ? (
+          <span className="px-4 text-[11.5px] font-semibold leading-tight text-subtle">{emptyLabel}</span>
+        ) : (
+          <>
+            {/* Small rings show whole percent so the figure always fits inside. */}
+            <span className="tabular font-display font-extrabold leading-none text-default" style={{ fontSize: Math.max(13, size / 5.2) }}>
+              {size < 90 || Number.isInteger(pct) ? Math.round(pct) : pct.toFixed(1)}%
+            </span>
+            {sublabel ? <span className="mt-1 px-3 text-[10.5px] font-semibold leading-tight text-subtle">{sublabel}</span> : null}
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
+
+/** Compact number tile ("48 · Total classes"). `value` null shows "—". */
+export function CampusStat({
+  label,
+  value,
+  hint,
+  tone = 'plain',
+  href,
+  className,
+}: {
+  label: string;
+  value: React.ReactNode | null;
+  hint?: string;
+  tone?: Tone;
+  href?: string;
+  className?: string;
+}) {
+  const body = (
+    <>
+      <span className="flex items-center gap-1.5 text-[12px] font-semibold text-muted">
+        {tone !== 'plain' ? <span className={cn('h-2.5 w-2.5 rounded-full border border-ink', TONE_BG[tone])} aria-hidden /> : null}
+        {label}
+      </span>
+      <span className="tabular mt-0.5 block font-display text-[24px] font-extrabold leading-tight text-default">{value ?? '—'}</span>
+      {hint ? <span className="block text-[11.5px] text-subtle">{hint}</span> : null}
+    </>
+  );
+  const cls = cn('block rounded-2xl border-[1.5px] border-ink bg-surface-raised p-3.5 shadow-pop', href && 'campus-press', className);
+  return href ? (
+    <Link href={href} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <div className={cls}>{body}</div>
+  );
+}
+
+/**
+ * Search box. A plain GET form, so it works without JavaScript, keeps the
+ * query in the URL (shareable, back-button friendly) and preserves the other
+ * filters via hidden fields.
+ */
+export function CampusSearch({
+  action,
+  name = 'q',
+  defaultValue,
+  placeholder,
+  label,
+  hidden,
+  className,
+}: {
+  action: string;
+  name?: string;
+  defaultValue?: string;
+  placeholder: string;
+  /** Accessible name for the field. */
+  label: string;
+  hidden?: Record<string, string | undefined>;
+  className?: string;
+}) {
+  return (
+    <form action={action} method="get" role="search" className={cn('flex gap-2', className)}>
+      {Object.entries(hidden ?? {}).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
+      <label className="relative flex-1">
+        <span className="sr-only">{label}</span>
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
+        <input
+          type="search"
+          name={name}
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          className="h-11 w-full rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface pl-9 pr-3 text-[14px] text-default placeholder:text-subtle focus:border-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+        />
+      </label>
+      <button type="submit" className="h-11 rounded-xl border-[1.5px] border-ink bg-brand px-4 text-[13.5px] font-bold text-white shadow-pop campus-press">
+        Search
+      </button>
+    </form>
+  );
+}
+
+/**
+ * Filter chips. Link-based: each chip is a URL, so filters are shareable and
+ * server-rendered. Scrolls horizontally on phones instead of wrapping into a
+ * wall of pills.
+ */
+export function CampusFilter({
+  label,
+  options,
+  className,
+}: {
+  label: string;
+  options: { key: string; label: string; href: string; active: boolean; count?: number }[];
+  className?: string;
+}) {
+  return (
+    <nav aria-label={label} className={cn('-mx-1 overflow-x-auto px-1 scrollbar-none', className)}>
+      <ul className="flex w-max gap-2 py-1">
+        {options.map((o) => (
+          <li key={o.key}>
+            <Link
+              href={o.href}
+              aria-current={o.active ? 'true' : undefined}
+              scroll={false}
+              className={cn(
+                'inline-flex min-h-[36px] items-center gap-1.5 rounded-full border-[1.5px] px-3.5 text-[12.5px] font-bold transition-colors',
+                o.active ? 'border-ink bg-brand text-white shadow-pop' : 'border-[hsl(var(--border-strong))] bg-surface text-muted hover:border-ink hover:text-default',
+              )}
+            >
+              {o.label}
+              {o.count !== undefined ? <span className={cn('tabular text-[11px]', o.active ? 'text-white/80' : 'text-subtle')}>{o.count}</span> : null}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** "Coming in Phase 5" — the only acceptable stand-in for an unbuilt feature. */
+export function CampusComingSoon({ label, className }: { label: string; className?: string }) {
+  return (
+    <span className={cn('inline-flex items-center gap-1 rounded-md border border-dashed border-[hsl(var(--border-strong))] bg-surface px-2 py-0.5 text-[11px] font-bold text-subtle', className)}>
+      <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden fill="currentColor"><rect x="5" y="2" width="2" height="5" /><rect x="5" y="5" width="4" height="2" /><rect x="1" y="1" width="10" height="1" /><rect x="1" y="10" width="10" height="1" /><rect x="1" y="1" width="1" height="10" /><rect x="10" y="1" width="1" height="10" /></svg>
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Level / XP chip for the user card. Renders real XP when the gamification
+ * engine supplies it; until then it shows the planned state honestly — no
+ * invented level, no fake progress.
+ */
+export function CampusLevelChip({
+  level,
+  xpIntoLevel,
+  xpForLevel,
+  plannedLabel,
+  className,
+}: {
+  level: number | null;
+  xpIntoLevel?: number;
+  xpForLevel?: number;
+  /** Shown when `level` is null, e.g. "Coming in Phase 7". */
+  plannedLabel?: string;
+  className?: string;
+}) {
+  if (level === null) {
+    return (
+      <span className={cn('flex items-center gap-2', className)} title={plannedLabel ? `Levels & XP: ${plannedLabel}` : undefined}>
+        <span className="font-display text-[12px] font-extrabold text-subtle">Lv –</span>
+        <span className="h-1.5 flex-1 rounded-full border border-dashed border-[hsl(var(--border-strong))]" aria-hidden />
+        <span className="text-[10px] font-bold text-subtle">
+          <span className="sr-only">Levels and XP: </span>
+          {plannedLabel ? plannedLabel.replace('Coming in ', '') : 'Soon'}
+        </span>
+      </span>
+    );
+  }
+  const pct = ((xpIntoLevel ?? 0) / Math.max(1, xpForLevel ?? 1)) * 100;
+  return (
+    <span className={cn('flex items-center gap-2', className)}>
+      <span className="font-display text-[12px] font-extrabold text-default">Lv {level}</span>
+      {/* spans, not CampusProgressBar's div: this chip sits inside a <button>. */}
+      <span
+        className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken"
+        role="progressbar"
+        aria-label={`Level ${level}: ${xpIntoLevel} of ${xpForLevel} XP`}
+        aria-valuenow={Math.round(pct)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <span className="block h-full rounded-full bg-brand" style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
+      </span>
+      <span className="tabular text-[10px] font-bold text-subtle">
+        {xpIntoLevel}/{xpForLevel}
+      </span>
+    </span>
+  );
+}

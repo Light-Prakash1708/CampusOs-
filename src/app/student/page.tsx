@@ -1,12 +1,11 @@
 import Link from 'next/link';
-import { and, count, eq, isNotNull, isNull, lt } from 'drizzle-orm';
+import { and, count, eq, isNotNull, lt } from 'drizzle-orm';
 import {
   AlertTriangle,
   BookOpen,
   Briefcase,
   CalendarCheck2,
   CalendarDays,
-  CheckSquare,
   ClipboardList,
   FileText,
   Flame,
@@ -36,7 +35,6 @@ import {
   CampusTimeline,
   PixelAvatar,
   avatarToneFor,
-  toneForTag,
   type TimelineItem,
   type Tone,
 } from '@/components/campus';
@@ -53,7 +51,9 @@ import {
   summariseAttendance,
 } from './_lib/student';
 import { getStudentAssignments } from './_lib/coursework';
-import { getCampusEvents, getHolidays, getStudentAnnouncements, getStudentChanges } from './_lib/campus';
+import { getHolidays, getStudentAnnouncements, getStudentChanges } from './_lib/campus';
+import { EVENT_CATEGORIES, listEvents } from '@/services/events';
+import { categoryTone, EventCoverArt, formatEventDates } from '@/components/campus/events';
 import { findNextClass, occurrencesForDate, type ClassOccurrence } from './_lib/schedule';
 import { addIsoDays, DAY_LABEL, isoToDate, timeToMinutes, zonedNow } from './_lib/time';
 
@@ -78,7 +78,7 @@ export default async function StudentHome() {
     getStudentAnnouncements(user.institutionId, user.userId),
     getStudentChanges(user.institutionId, user.sectionId, user.userId, 6),
     loadIdentity(user.studentProfileId),
-    loadCampusActivity(user.institutionId, user.userId),
+    loadCampusActivity(user.userId),
   ]);
 
   const timetable = term ? await getPublishedTimetable(user.institutionId, term.id) : null;
@@ -89,7 +89,7 @@ export default async function StudentHome() {
     getScheduleExceptions(user.institutionId, offerings.map((o) => o.offeringId), classes.map((c) => c.entryId), now.today, horizonEnd),
     getHolidays(user.institutionId, now.today, horizonEnd),
     isEnabled(user.featureFlags, 'events_enabled')
-      ? getCampusEvents(user.institutionId, user.userId, now.today, addIsoDays(now.today, 60))
+      ? listEvents(user, { when: 'upcoming', sort: 'date', limit: 3 })
       : Promise.resolve([]),
   ]);
 
@@ -164,7 +164,9 @@ export default async function StudentHome() {
     .sort((a, b) => b.at - a.at)
     .slice(0, 4);
 
-  const upcomingEvents = events.filter((e) => e.status === 'SCHEDULED').slice(0, 3);
+  // Events 2.0: includes other colleges' public events when discovery is on,
+  // and the student's own registration state.
+  const upcomingEvents = events;
 
   return (
     <div className="space-y-5">
@@ -280,20 +282,22 @@ export default async function StudentHome() {
             ) : (
               <ul className="mt-4 grid gap-3 sm:grid-cols-3">
                 {upcomingEvents.map((e) => {
-                  const tag = eventTag(e.title, e.description);
+                  const where = e.mode === 'ONLINE' ? 'Online' : e.venue ?? e.area ?? e.city ?? 'Venue to be announced';
                   return (
                     <li key={e.id}>
                       <Link href={`/student/events/${e.id}`} className="group block overflow-hidden rounded-xl border-[1.5px] border-ink bg-surface-raised shadow-pop campus-press">
-                        <EventArt title={e.title} tone={toneForTag(tag)} />
+                        <EventCoverArt title={e.title} tone={categoryTone(e.category)} className="h-20 border-b-[1.5px] border-ink" />
                         <div className="p-3">
                           <p className="line-clamp-2 text-[13px] font-extrabold leading-snug text-default">{e.title}</p>
                           <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-muted">
-                            <MapPin size={11} aria-hidden /> {e.roomCode ?? e.venueText ?? 'On campus'}
+                            <MapPin size={11} aria-hidden /> <span className="truncate">{where}{e.ownCollege ? '' : ` · ${e.institutionShort ?? e.institutionName}`}</span>
                           </p>
-                          <p className="text-[11.5px] font-semibold text-subtle">{formatDate(e.startsAt)}</p>
+                          <p className="text-[11.5px] font-semibold text-subtle">{formatEventDates(e.startsAt, e.endsAt)}</p>
                           <div className="mt-2 flex flex-wrap gap-1">
-                            <CampusPill tone={toneForTag(tag)}>{tag}</CampusPill>
-                            {e.isRegistered ? <CampusPill tone="mint">Registered ✓</CampusPill> : null}
+                            <CampusPill tone={categoryTone(e.category)}>{EVENT_CATEGORIES[e.category as keyof typeof EVENT_CATEGORIES] ?? 'Event'}</CampusPill>
+                            {e.myStatus === 'REGISTERED' ? <CampusPill tone="mint">Registered ✓</CampusPill> : null}
+                            {e.myStatus === 'WAITLISTED' ? <CampusPill tone="sun">Waitlisted</CampusPill> : null}
+                            {e.demo ? <CampusPill tone="sun">Demo</CampusPill> : null}
                           </div>
                         </div>
                       </Link>
@@ -384,11 +388,15 @@ async function loadIdentity(studentProfileId: string): Promise<string | null> {
 }
 
 /** Event registrations whose event has ended, and how many were attended. */
-async function loadCampusActivity(institutionId: string, userId: string) {
+/**
+ * Past confirmed registrations vs attended. Selected by user, not tenant:
+ * registrations for other colleges' public events are stored under the
+ * organiser's institution but are still this student's campus activity.
+ */
+async function loadCampusActivity(userId: string) {
   const base = and(
-    eq(t.eventRegistrations.institutionId, institutionId),
     eq(t.eventRegistrations.userId, userId),
-    isNull(t.eventRegistrations.cancelledAt),
+    eq(t.eventRegistrations.status, 'REGISTERED'),
     lt(t.events.endsAt, new Date()),
   );
   const [past] = await db
@@ -429,34 +437,3 @@ function dailyLine(iso: string): string {
   return LINES[d]!;
 }
 
-function eventTag(title: string, description: string | null): string {
-  const s = `${title} ${description ?? ''}`.toLowerCase();
-  if (/hackathon/.test(s)) return 'Hackathon';
-  if (/workshop/.test(s)) return 'Workshop';
-  if (/seminar|talk|lecture|guest/.test(s)) return 'Seminar';
-  if (/fest|cultural|music|dance/.test(s)) return 'Cultural';
-  if (/placement|career|intern|recruit/.test(s)) return 'Career';
-  if (/sport|football|cricket|tournament/.test(s)) return 'Sports';
-  if (/competition|contest|case|quiz|debate/.test(s)) return 'Competition';
-  return 'Campus';
-}
-
-/** Placeholder cover until Events 2.0 adds organiser-uploaded covers: tone + pixel skyline. */
-function EventArt({ title, tone }: { title: string; tone: Tone }) {
-  const bg: Record<Tone, string> = {
-    lavender: '#5B52DB', rose: '#C8457E', coral: '#D9533E', peach: '#E07B2E', mint: '#2F9E6B', sky: '#2F7FD6', sun: '#D69A12', plain: '#5B52DB',
-  };
-  let h = 0;
-  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
-  const bars = Array.from({ length: 10 }, (_, i) => 6 + ((h >> (i * 3)) & 7) * 2);
-  return (
-    <svg viewBox="0 0 40 20" className="block h-20 w-full border-b-[1.5px] border-ink" preserveAspectRatio="none" shapeRendering="crispEdges" aria-hidden>
-      <rect width="40" height="20" fill={bg[tone]} />
-      <rect y="0" width="40" height="7" fill="#fff" opacity="0.12" />
-      {bars.map((bh, i) => (
-        <rect key={i} x={i * 4} y={20 - bh} width="3" height={bh} fill="#1F1B3D" opacity="0.55" />
-      ))}
-      {bars.map((bh, i) => (i % 2 === 0 ? <rect key={`w${i}`} x={i * 4 + 1} y={20 - bh + 2} width="1" height="1" fill="#FFD84A" /> : null))}
-    </svg>
-  );
-}

@@ -5,7 +5,7 @@ import * as t from '@/lib/db/schema';
 import { can, requirePermission } from '@/lib/auth/context';
 import { FeatureToggle, RegistrationPolicyForm } from './SettingsEditors';
 import { Alert, Badge, Card, CardBody, CardHeader, PageHeader, Section, Table, Td, Th } from '@/components/ui';
-import { FEATURE_FLAGS, isEnabled, type FeatureFlag } from '@/lib/features';
+import { FEATURE_FLAGS, isEnabled, plannedLabel, type FeatureFlag } from '@/lib/features';
 import { humanize } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -71,13 +71,16 @@ export default async function SettingsPage() {
             <tbody>
               {Object.entries(FEATURE_FLAGS).map(([key, meta]) => {
                 const on = isEnabled(flags, key as FeatureFlag);
+                const planned = plannedLabel(key as FeatureFlag);
                 return (
                   <tr key={key}>
                     <Td><span className="text-[13.5px] font-medium text-default">{meta.label}</span></Td>
                     <Td><span className="text-[12.5px] text-muted">{meta.description}</span></Td>
                     <Td><Badge tone="neutral">{humanize(meta.tier)}</Badge></Td>
                     <Td align="right">
-                      {canManage ? (
+                      {planned ? (
+                        <Badge tone="neutral">{planned}</Badge>
+                      ) : canManage ? (
                         <FeatureToggle flag={key} label={meta.label} enabled={on} />
                       ) : (
                         <Badge tone={on ? 'success' : 'neutral'}>{on ? 'Enabled' : 'Disabled'}</Badge>
@@ -136,7 +139,7 @@ export default async function SettingsPage() {
         </Card>
       </Section>
 
-      <Section title="Readdressal">
+      <Section title="Redressal">
         <Card>
           <CardHeader
             title="Categories and service levels"

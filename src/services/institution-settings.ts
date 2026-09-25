@@ -2,9 +2,9 @@ import 'server-only';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
-import { ForbiddenError, NotFoundError } from '@/lib/api';
+import { AppError, ForbiddenError, NotFoundError } from '@/lib/api';
 import type { AuthContext } from '@/lib/auth/context';
-import { isFeatureFlag, type FeatureFlag } from '@/lib/features';
+import { FEATURE_FLAGS, isBuilt, isFeatureFlag, type FeatureFlag } from '@/lib/features';
 import { recordAudit } from '@/services/audit';
 
 /**
@@ -23,6 +23,15 @@ export async function updateFeatureFlags(
   if (!inst) throw new NotFoundError('Institution');
   const before = (inst.flags ?? {}) as Record<string, boolean>;
   const clean = Object.fromEntries(Object.entries(changes).filter(([k, v]) => isFeatureFlag(k) && typeof v === 'boolean'));
+  const unbuilt = Object.entries(clean).filter(([k, v]) => v === true && !isBuilt(k as FeatureFlag)).map(([k]) => k);
+  if (unbuilt.length) {
+    throw new AppError(
+      `${unbuilt.map((k) => FEATURE_FLAGS[k as FeatureFlag].label).join(', ')}: not built yet, so it cannot be switched on.`,
+      422,
+      'MODULE_NOT_BUILT',
+      { flags: unbuilt },
+    );
+  }
   const after = { ...before, ...clean };
   await db.update(t.institutions).set({ featureFlags: after }).where(eq(t.institutions.id, ctx.institutionId));
   await recordAudit(ctx, {

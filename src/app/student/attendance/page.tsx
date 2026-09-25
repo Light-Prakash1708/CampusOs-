@@ -112,7 +112,7 @@ export default async function AttendancePage() {
           ) : null}
 
           {/* ------------------------------- Table ---------------------------- */}
-          <Section title="By subject">
+          <Section title="By subject" id="subjects">
             <Card className="hidden sm:block">
               <Table>
                 <thead>
@@ -270,5 +270,5 @@ function disputeHref(row: AttendanceRow): string {
     offering: row.offeringId,
     subject: row.code,
   });
-  return `/student/readdressal/new?${params.toString()}`;
+  return `/student/redressal/new?${params.toString()}`;
 }

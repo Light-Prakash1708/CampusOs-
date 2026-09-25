@@ -66,7 +66,7 @@ database is unreachable.
 | POST | `/api/announcements/[id]/acknowledge` | authenticated recipient | Idempotent |
 | POST | `/api/announcements/[id]/read` | authenticated recipient | Idempotent |
 
-### Readdressal
+### Redressal
 | Method | Path | Capability |
 |---|---|---|
 | POST | `/api/grievances` | `grievance:raise` |

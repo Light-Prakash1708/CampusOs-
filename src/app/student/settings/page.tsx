@@ -146,7 +146,7 @@ export default async function SettingsPage() {
                 <Link href="/student/profile">View profile</Link>
               </Button>
               <Button asChild size="sm" variant="ghost">
-                <Link href="/student/readdressal/new?category=it-support">Report a problem</Link>
+                <Link href="/student/redressal/new?category=it-support">Report a problem</Link>
               </Button>
             </div>
           </CardBody>

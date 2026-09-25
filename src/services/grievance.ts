@@ -7,7 +7,7 @@ import { recordAudit } from '@/services/audit';
 import { AppError, ForbiddenError, NotFoundError } from '@/lib/api';
 
 /**
- * READDRESSAL / GRIEVANCE SERVICE
+ * REDRESSAL / GRIEVANCE SERVICE
  * ---------------------------------------------------------------------------
  * Design commitments, all enforced here rather than by convention:
  *
@@ -142,7 +142,7 @@ export async function createGrievance(
         body: input.subject,
         priority: input.urgency === 'CRITICAL' ? 'CRITICAL' : 'IMPORTANT',
         category: 'ADMINISTRATIVE',
-        actionUrl: `/admin/readdressal/${id}`,
+        actionUrl: `/admin/redressal/${id}`,
         groupKey: 'grievances',
         sourceType: 'grievance',
         sourceId: id,
@@ -264,7 +264,7 @@ export async function transitionGrievance(
         body: params.resolutionSummary ?? params.note ?? grievance.subject,
         priority: 'IMPORTANT',
         category: 'ADMINISTRATIVE',
-        actionUrl: `/student/readdressal/${grievanceId}`,
+        actionUrl: `/student/redressal/${grievanceId}`,
         groupKey: 'grievances',
         sourceType: 'grievance',
         sourceId: grievanceId,
@@ -329,7 +329,7 @@ export async function assignGrievance(
       body: grievance.subject,
       priority: 'IMPORTANT',
       category: 'ADMINISTRATIVE',
-      actionUrl: `/admin/readdressal/${grievanceId}`,
+      actionUrl: `/admin/redressal/${grievanceId}`,
       groupKey: 'grievances',
       sourceType: 'grievance',
       sourceId: grievanceId,
@@ -398,7 +398,7 @@ export async function addGrievanceMessage(
           body: body.slice(0, 140),
           priority: 'NORMAL',
           category: 'ADMINISTRATIVE',
-          actionUrl: `/admin/readdressal/${grievanceId}`,
+          actionUrl: `/admin/redressal/${grievanceId}`,
           groupKey: 'grievances',
           sourceType: 'grievance',
           sourceId: grievanceId,
@@ -669,7 +669,7 @@ export async function runEscalationSweep(institutionId: string): Promise<{
             body: g.subject,
             priority: 'CRITICAL',
             category: 'ADMINISTRATIVE',
-            actionUrl: `/admin/readdressal/${g.id}`,
+            actionUrl: `/admin/redressal/${g.id}`,
             groupKey: 'grievance-escalations',
             isMandatory: true,
             sourceType: 'grievance',
@@ -711,7 +711,7 @@ export async function runEscalationSweep(institutionId: string): Promise<{
           body: g.subject,
           priority: 'IMPORTANT',
           category: 'ADMINISTRATIVE',
-          actionUrl: `/admin/readdressal/${g.id}`,
+          actionUrl: `/admin/redressal/${g.id}`,
           groupKey: 'grievance-sla',
           sourceType: 'grievance',
           sourceId: g.id,

@@ -14,7 +14,7 @@ here and the interface says so too.
 | Natural-language constraints | Rule-based; reports what it did *and did not* understand |
 | Communication engine | Complete; hierarchy audience resolution, frozen recipients, acknowledgement tracking |
 | Change feed | Complete; before/after, reason, approver, affected people |
-| Readdressal | Complete; workflow, working-hours SLA, automatic escalation, real anonymity |
+| Redressal | Complete; workflow, working-hours SLA, automatic escalation, real anonymity |
 | Faculty workload | Complete; derived from timetable + recorded duties, traceable to components |
 | Skill & employability | Complete; evidence-backed profiles, role gap analysis, cohort readiness |
 | Attendance | Complete; marking, non-destructive correction, summaries, risk detection |

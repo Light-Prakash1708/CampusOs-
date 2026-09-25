@@ -321,3 +321,54 @@
   .no-print { display: none !important; }
   body { background: white; }
 }
+
+/* ---------------------------------------------------------------------------
+   CampusSlider — native range input in the CampusOS style: ink-outlined
+   track, filled to the value, chunky thumb with the pop shadow. 44px hit
+   area for touch.
+   --------------------------------------------------------------------------- */
+.campus-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  background: transparent;
+  cursor: pointer;
+}
+.campus-slider:focus { outline: none; }
+.campus-slider::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  border: 1.5px solid hsl(var(--ink));
+  background: linear-gradient(to right, hsl(var(--brand)) 0 var(--campus-slider-fill, 0%), hsl(var(--surface-sunken)) var(--campus-slider-fill, 0%) 100%);
+}
+.campus-slider::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  border: 1.5px solid hsl(var(--ink));
+  background: hsl(var(--surface-sunken));
+}
+.campus-slider::-moz-range-progress {
+  height: 10px;
+  border-radius: 999px;
+  background: hsl(var(--brand));
+}
+.campus-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -8.5px;
+  border-radius: 999px;
+  border: 2px solid hsl(var(--ink));
+  background: hsl(var(--surface));
+  box-shadow: 2px 2px 0 hsl(var(--ink));
+}
+.campus-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid hsl(var(--ink));
+  background: hsl(var(--surface));
+  box-shadow: 2px 2px 0 hsl(var(--ink));
+}
+.campus-slider:focus-visible::-webkit-slider-thumb { outline: 3px solid hsl(var(--brand) / 0.45); outline-offset: 2px; }
+.campus-slider:focus-visible::-moz-range-thumb { outline: 3px solid hsl(var(--brand) / 0.45); outline-offset: 2px; }

@@ -21,12 +21,28 @@ const nextConfig = {
     return config;
   },
 
+  // "Readdressal" was a misspelling of "Redressal". Old links (bookmarks,
+  // notification action URLs stored before the rename) keep working. 308
+  // preserves the method, so an old POST to the messages API still lands.
+  async redirects() {
+    return ['student', 'faculty', 'admin', 'api/student'].map((portal) => ({
+      source: `/${portal}/readdressal/:path*`,
+      destination: `/${portal}/redressal/:path*`,
+      permanent: true,
+    })).concat(['student', 'faculty', 'admin'].map((portal) => ({
+      source: `/${portal}/readdressal`,
+      destination: `/${portal}/redressal`,
+      permanent: true,
+    })));
+  },
+
   async headers() {
     const security = [
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+      // camera=(self): the organiser check-in desk scans QR passes with the camera.
+      { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
       { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
       // A baseline CSP that cannot break Next.js hydration: it forbids framing,
       // plugins, <base> hijacking and off-site form posts. A nonce-based

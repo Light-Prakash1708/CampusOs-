@@ -4,7 +4,7 @@ import {
   Megaphone, LifeBuoy, Users, Building2, CalendarClock, Gauge, BarChart3, Settings,
   FileText, ScrollText, Boxes, UserCog, DoorOpen, Target, CheckSquare, Upload,
   ShieldCheck, Bell, History, House, Ticket, Briefcase, Library, UserRound, Compass,
-  Mountain, Flame, Inbox, Plus,
+  Mountain, Flame, Inbox, Plus, LayoutGrid, FolderLock, Bookmark,
 } from 'lucide-react';
 
 /**
@@ -50,6 +50,9 @@ export const NAV_ICONS = {
   tracker: Flame,
   inbox: Inbox,
   plus: Plus,
+  tools: LayoutGrid,
+  folder: FolderLock,
+  bookmark: Bookmark,
 } satisfies Record<string, LucideIcon>;
 
 export type NavIconKey = keyof typeof NAV_ICONS;

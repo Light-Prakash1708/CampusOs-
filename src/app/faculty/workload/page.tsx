@@ -249,7 +249,7 @@ export default async function WorkloadPage() {
                 {total > contracted ? (
                   <p className="mt-2 text-[12.5px] text-danger">
                     You are {num(total - contracted)} hours a week above your contracted maximum.
-                    Raise a workload readdressal case if this needs to be rebalanced.
+                    Raise a workload redressal case if this needs to be rebalanced.
                   </p>
                 ) : null}
               </CardBody>

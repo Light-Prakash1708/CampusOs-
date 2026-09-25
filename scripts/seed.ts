@@ -1543,7 +1543,7 @@ async function main() {
         body: 'Two attendance disputes and one infrastructure request need attention today.',
         priority: 'IMPORTANT',
         category: 'ADMINISTRATIVE',
-        actionUrl: '/admin/readdressal',
+        actionUrl: '/admin/redressal',
         groupKey: 'grievances',
         sourceType: 'grievance',
       },

@@ -167,7 +167,7 @@ export default async function SchedulePage() {
           {pluralize(clashes.length, 'period')} in the published timetable falls outside the
           availability recorded on your profile:{' '}
           {clashes.map((c) => `${humanize(c.dayOfWeek)} ${formatTime(c.startTime)}`).join(', ')}.
-          Raise a timetable readdressal case if this is wrong.
+          Raise a timetable redressal case if this is wrong.
         </Alert>
       ) : null}
 

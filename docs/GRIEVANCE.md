@@ -1,4 +1,4 @@
-# Readdressal (Grievance) System
+# Redressal (Grievance) System
 
 ## Design commitments
 

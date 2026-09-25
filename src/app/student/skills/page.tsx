@@ -155,7 +155,7 @@ export default async function SkillsPage() {
                   description="Your skills are being tracked, but without a target role there is nothing to measure readiness against. The placement cell can set your primary goal."
                   action={
                     <Button asChild size="sm" variant="secondary">
-                      <Link href="/student/readdressal/new?category=academic">
+                      <Link href="/student/redressal/new?category=academic">
                         Ask for a goal to be set
                       </Link>
                     </Button>

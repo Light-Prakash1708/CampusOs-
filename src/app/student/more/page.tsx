@@ -30,7 +30,7 @@ const DESCRIPTIONS: Record<string, string> = {
   '/student/skills': 'Skill graph, career goal and gap plan',
   '/student/announcements': 'Notices addressed to you',
   '/student/calendar': 'Everything on one calendar',
-  '/student/readdressal': 'Raise and track an issue',
+  '/student/redressal': 'Raise and track an issue',
   '/student/assistant': 'Ask about your own records',
 };
 

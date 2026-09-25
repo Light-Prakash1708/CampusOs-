@@ -19,3 +19,4 @@ export * from './system';
 export * from './platform';
 export * from './privacy';
 export * from './events';
+export * from './tools';

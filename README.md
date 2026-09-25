@@ -111,4 +111,4 @@ Built for Smart India Hackathon 2026 · combines problem statements
 **SIH-2026-13-009** (timetable & classroom utilisation),
 **SIH-2026-13-011** (skill-gap & employability),
 **SIH-2026-13-012** (teacher workload & academic resources),
-with the communication and readdressal layers that make them usable together.
+with the communication and redressal layers that make them usable together.

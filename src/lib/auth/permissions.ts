@@ -87,7 +87,7 @@ export const PERMISSIONS = [
   'skill:assess_student',
   'skill:manage_catalog',
 
-  // --- Readdressal / grievance ---
+  // --- Redressal / grievance ---
   'grievance:raise',
   'grievance:view_own',
   'grievance:view_assigned',

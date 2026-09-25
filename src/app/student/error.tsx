@@ -25,7 +25,7 @@ export default function StudentError({
       <ErrorState
         title="This page could not be loaded"
         message={error.message || 'The server did not return the data this page needs.'}
-        hint="Retrying usually resolves a temporary database or network problem. If it keeps failing, report it through the Readdressal Centre and quote the reference below."
+        hint="Retrying usually resolves a temporary database or network problem. If it keeps failing, report it through the Redressal Centre and quote the reference below."
         reference={error.digest}
         action={
           <div className="flex flex-wrap gap-2">
@@ -36,7 +36,7 @@ export default function StudentError({
               <Link href="/student">Back to dashboard</Link>
             </Button>
             <Button asChild variant="ghost">
-              <Link href="/student/readdressal/new?category=it-support">Report a problem</Link>
+              <Link href="/student/redressal/new?category=it-support">Report a problem</Link>
             </Button>
           </div>
         }

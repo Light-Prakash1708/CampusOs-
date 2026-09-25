@@ -248,7 +248,7 @@ export default async function AssessmentsPage() {
                 <p className="mt-3 text-[12.5px] text-subtle">
                   Something look wrong?{' '}
                   <Link
-                    href="/student/readdressal/new?category=examination"
+                    href="/student/redressal/new?category=examination"
                     className="font-medium text-brand hover:underline"
                   >
                     Request a re-evaluation

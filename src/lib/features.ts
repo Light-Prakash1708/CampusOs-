@@ -7,6 +7,7 @@
  *
  * Rule enforced across the UI: if a feature is disabled, its navigation entry
  * is hidden entirely — we never render a control that silently does nothing.
+ * Modules that are not built yet can never be enabled (see UNBUILT_MODULES).
  */
 
 export const FEATURE_FLAGS = {
@@ -41,7 +42,7 @@ export const FEATURE_FLAGS = {
     tier: 'PROFESSIONAL',
   },
   grievance_enabled: {
-    label: 'Readdressal Centre',
+    label: 'Redressal Centre',
     description: 'Structured grievance handling with SLA and escalation.',
     defaultValue: true,
     tier: 'STARTER',
@@ -188,10 +189,51 @@ export const FEATURE_FLAGS = {
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;
 
+/**
+ * MODULE AVAILABILITY
+ * ---------------------------------------------------------------------------
+ * A flag may only switch on a module that actually exists. Flags for modules
+ * that are not built yet are listed here with the roadmap phase that delivers
+ * them (docs/CAMPUSOS_PRODUCT_AUDIT.md §14). For these, `isEnabled` is always
+ * false — whatever is stored for the tenant — the settings API refuses to turn
+ * them on, and the UI shows "Coming in Phase N" instead of a link. This is what
+ * guarantees a flag can never expose a route that 404s.
+ *
+ * When a module ships, delete its line here in the same commit.
+ */
+export const UNBUILT_MODULES: Partial<Record<FeatureFlag, number | 'later'>> = {
+  clubs_enabled: 4,
+  campus_channels_enabled: 4,
+  campus_rep_enabled: 4,
+  opportunity_hub_enabled: 5,
+  library_enabled: 6,
+  personal_tracker_enabled: 7,
+  gamification_enabled: 7,
+  leaderboards_enabled: 7,
+  ai_coach_enabled: 9,
+  ai_memory_enabled: 9,
+  pwa_enabled: 11,
+  whatsapp_enabled: 'later',
+  billing_enabled: 'later',
+  virtual_lab_enabled: 'later',
+};
+
+export function isBuilt(flag: FeatureFlag): boolean {
+  return !(flag in UNBUILT_MODULES);
+}
+
+/** "Coming in Phase 7" / "Planned" — the label shown wherever the module would appear. */
+export function plannedLabel(flag: FeatureFlag): string | null {
+  const phase = UNBUILT_MODULES[flag];
+  if (phase === undefined) return null;
+  return phase === 'later' ? 'Planned' : `Coming in Phase ${phase}`;
+}
+
 export function isEnabled(
   flags: Record<string, boolean> | undefined,
   flag: FeatureFlag,
 ): boolean {
+  if (!isBuilt(flag)) return false;
   if (flags && flag in flags) return flags[flag] === true;
   return FEATURE_FLAGS[flag].defaultValue;
 }

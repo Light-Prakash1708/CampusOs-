@@ -45,7 +45,7 @@ codebase and must not be weakened.**
 | Timetable CSP solver + conflict engine | `src/services/timetable/*` | real algorithm, tested |
 | Communication engine | `src/services/communication.ts` | hierarchy audience resolution, frozen recipients, acknowledgement, change feed |
 | Notifications (in-app) | `notifications`, `notification_preferences`, `notification_settings` | grouping, mandatory flag, quiet hours columns |
-| Readdressal / grievances | `src/services/grievance.ts` | workflow, SLA, escalation, anonymity |
+| Redressal / grievances | `src/services/grievance.ts` | workflow, SLA, escalation, anonymity |
 | Attendance | schema + faculty marking + student view | basis-point precision; student page already shows "classes you can still miss" headroom |
 | Assignments / assessments | schema + faculty/student pages | AI suggestion kept separate from human score |
 | Skills & employability | `src/services/skills.ts` | evidence-backed profiles, career roles, gap analysis |

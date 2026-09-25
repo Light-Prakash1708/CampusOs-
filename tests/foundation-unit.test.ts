@@ -4,7 +4,7 @@ import { fail, pgErrorOf } from '@/lib/api';
 import { resolveSslMode, poolConfig } from '@/lib/db/config';
 import { isCrossSiteMutation } from '@/lib/http';
 import { permissionsForRoles, portalForRole } from '@/lib/auth/permissions';
-import { FEATURE_FLAGS, isEnabled } from '@/lib/features';
+import { FEATURE_FLAGS, isBuilt, isEnabled, plannedLabel } from '@/lib/features';
 import {
   planDelivery,
   inQuietHours,
@@ -131,8 +131,19 @@ describe('CampusOS 2.0 roles and capabilities', () => {
     for (const m of modules) {
       expect(FEATURE_FLAGS[m].defaultValue, m).toBe(false);
       expect(isEnabled({}, m)).toBe(false);
-      expect(isEnabled({ [m]: true }, m)).toBe(true);
+      // A stored `true` only takes effect once the module is actually built.
+      expect(isEnabled({ [m]: true }, m)).toBe(isBuilt(m));
     }
+  });
+  it('never lets a flag switch on a module that is not built', () => {
+    for (const m of ['personal_tracker_enabled', 'clubs_enabled', 'opportunity_hub_enabled', 'gamification_enabled'] as const) {
+      expect(isBuilt(m)).toBe(false);
+      expect(isEnabled({ [m]: true }, m)).toBe(false);
+      expect(plannedLabel(m)).toMatch(/^Coming in Phase \d+$/);
+    }
+    expect(isBuilt('events_enabled')).toBe(true);
+    expect(plannedLabel('events_enabled')).toBeNull();
+    expect(isEnabled({ events_enabled: true }, 'events_enabled')).toBe(true);
   });
 });
 

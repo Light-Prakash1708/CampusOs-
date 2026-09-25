@@ -203,11 +203,11 @@ so map them rather than duplicate:
 
 ## 12. UX problems found
 
-1. Feature flags reveal nav items and quick-create entries for pages that don't exist yet. With the flag on, **Tracker, Communities and Opportunities return 404**. The flags are off by default, so the problem is latent, but an admin toggle exposes broken routes. **Fix in Phase 1:** a route registry, so a flag can't be switched on for a module that isn't built.
+1. **Fixed in Phase 1.** Feature flags revealed nav items and quick-create entries for pages that don't exist yet. With the flag on, **Tracker, Communities and Opportunities return 404**. The flags are off by default, so the problem is latent, but an admin toggle exposes broken routes. **Fix in Phase 1:** a route registry, so a flag can't be switched on for a module that isn't built.
 2. `/student/library` silently redirects to resources, which is confusing once a real library exists.
 3. There's no single "Tools" entry point; the calculators are buried in the attendance page.
 4. The dashboard events card and the events module disagree (v1 versus 2.0 data).
-5. The "Readdressal" label is a misspelling of "Redressal" in 10+ places (nav, routes, AI tool). Renaming the label is safe; the route could keep a redirect.
+5. ~~The "Readdressal" label is a misspelling of "Redressal" in 10+ places.~~ **Fixed in Phase 1:** renamed everywhere (routes, labels, AI tool, docs). Old `/…/readdressal` URLs return a 308 redirect, and stored notification links were rewritten by migration 0004.
 6. The timetable has no "next class" card and no month view.
 7. Attendance has no trend or history, only current totals.
 
@@ -250,3 +250,35 @@ Each phase ends with typecheck, test, build, UI screenshots, commit and push.
 5. **GitHub push.** This session still receives HTTP 403 from the git proxy for `Light-Prakash1708/CampusOs-`. Pulls work; pushes don't. Commits will be made locally per phase, and each push is retried. The repository needs to be added to the session's authorized sources for pushes to go through.
 6. **Migrations.** All new migrations are additive, and v1 baselining stays intact. No migration drops data.
 7. **Brand of the mockup.** The mockup shows "SNU, Kolkata" and named students. The seed keeps fictional West Bengal institutions and clearly labelled demo data.
+
+
+---
+
+## Phase 1 status (student OS brief)
+
+Delivered in the Phase 1 commit:
+
+- **Design system additions:**
+  - `CampusRing`, `CampusStat`, `CampusSearch`, `CampusFilter`, `CampusComingSoon`, `CampusLevelChip`;
+  - overlays `CampusModal`, `CampusDrawer`, `CampusBottomSheet`, `CampusSlider`;
+  - `CampusToolCard`.
+- **App shell:**
+  - "Tools & Utilities" in the sidebar;
+  - level/XP chip in the student user card (planned state until Phase 7);
+  - a desktop **Create** button;
+  - a quick-create menu with working actions first and planned ones labelled.
+- **The `/tools` hub:** registry-driven, real per-student highlights, usage-based ordering (`tool_usage`), and loading, error and empty states.
+- **Flags:** a module-availability guard (`UNBUILT_MODULES`), enforced in `isEnabled`, the settings API (422) and the settings UI.
+- **Fixes:**
+  - The privacy export now includes cross-college registrations, saved events, certificates, filed reports and tool usage.
+  - Home events use the Events 2.0 service, and Campus Activity counts cross-college events.
+  - "Redressal" rename.
+
+Also fixed after being found during Phase 1:
+
+- The admin sidebar linked to `/admin/assessments`, a page that never existed (a v1 404). The link is removed, and a test now guards every nav link.
+- `Permissions-Policy: camera=()` blocked the organiser's QR scanner. Changed to `camera=(self)`.
+
+**Note for Phase 7.** The stashed tracker schema was generated as migration
+0004, before this phase took that number. When it's restored, it must be
+regenerated (it becomes 0005).

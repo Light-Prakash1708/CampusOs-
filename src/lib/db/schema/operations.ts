@@ -134,7 +134,7 @@ export const leaveRequests = pgTable(
 );
 
 /**
- * READDRESSAL / GRIEVANCE CENTRE
+ * REDRESSAL / GRIEVANCE CENTRE
  * ---------------------------------------------------------------------------
  * Structured issue resolution with SLA and escalation. Cases are NEVER hard
  * deleted — `withdrawnAt` / status CLOSED are the only terminal transitions,

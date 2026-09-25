@@ -16,11 +16,14 @@ import {
   Search,
   Sparkles,
   Sun,
+  Plus,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PixelAvatar, type AvatarTone } from '@/components/campus/pixel';
-import type { MobileNavItem, NavGroup, QuickCreateItem } from './navigation';
+import type { MobileNavItem, NavGroup, QuickCreateEntry } from './navigation';
+import { CampusBottomSheet, CampusDrawer } from '@/components/campus/overlays';
+import { CampusComingSoon, CampusLevelChip } from '@/components/campus';
 import { navIcon } from './icons';
 import { CommandPalette } from './CommandPalette';
 
@@ -37,6 +40,8 @@ export interface ShellUser {
   institutionLogoUrl: string | null;
   portal: 'student' | 'faculty' | 'admin';
   subtitle: string | null;
+  /** Students only. `level` null until the gamification engine ships. */
+  progress: { level: number | null; xpIntoLevel?: number; xpForLevel?: number; planned: string | null } | null;
 }
 
 export interface ShellBadges {
@@ -67,7 +72,7 @@ export function AppShell({
   nav: NavGroup[];
   badges: ShellBadges;
   mobileNav: MobileNavItem[];
-  quickCreate: QuickCreateItem[];
+  quickCreate: QuickCreateEntry[];
   demoMode: boolean;
   children: React.ReactNode;
 }) {
@@ -88,10 +93,6 @@ export function AppShell({
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setPaletteOpen((v) => !v);
-      }
-      if (e.key === 'Escape') {
-        setDrawerOpen(false);
-        setCreateOpen(false);
       }
     }
     window.addEventListener('keydown', onKey);
@@ -161,15 +162,10 @@ export function AppShell({
         {sidebar}
       </aside>
 
-      {/* Mobile drawer */}
-      {drawerOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Navigation">
-          <div className="absolute inset-0 bg-ink/40" onClick={() => setDrawerOpen(false)} aria-hidden />
-          <aside className="absolute inset-y-0 left-0 flex w-[280px] max-w-[85vw] flex-col border-r-[1.5px] border-ink bg-surface-muted animate-fade-up">
-            {sidebar}
-          </aside>
-        </div>
-      ) : null}
+      {/* Mobile drawer (shared CampusDrawer: focus trap, Esc, scroll lock) */}
+      <CampusDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title="Navigation" side="left" bare className="w-[280px] lg:hidden">
+        {sidebar}
+      </CampusDrawer>
 
       <div className="lg:pl-[232px]">
         {/* Top bar */}
@@ -211,6 +207,16 @@ export function AppShell({
                 <span className="mr-1 hidden rounded-md bg-sun px-2 py-0.5 text-[11px] font-bold text-sun-ink xl:inline">
                   Demo data
                 </span>
+              ) : null}
+              {quickCreate.length ? (
+                <button
+                  onClick={() => setCreateOpen(true)}
+                  className="mr-1 hidden h-10 items-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-brand px-3 text-[13px] font-bold text-white shadow-pop campus-press lg:inline-flex"
+                  aria-haspopup="dialog"
+                  aria-expanded={createOpen}
+                >
+                  <Plus size={16} strokeWidth={2.5} aria-hidden /> Create
+                </button>
               ) : null}
               <TopIcon href={assistantHref} label={user.portal === 'faculty' ? 'Teaching copilot' : 'AI assistant'} className="hidden sm:inline-flex">
                 <Sparkles size={18} />
@@ -306,43 +312,65 @@ export function AppShell({
         </ul>
       </nav>
 
-      {/* Quick-create bottom sheet */}
-      {createOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Create">
-          <div className="absolute inset-0 bg-ink/40" onClick={() => setCreateOpen(false)} aria-hidden />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t-[1.5px] border-ink bg-surface px-4 pb-[calc(env(safe-area-inset-bottom)+16px)] pt-3 animate-fade-up">
-            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-[hsl(var(--border-strong))]" aria-hidden />
-            <p className="mb-2 font-display text-[17px] font-extrabold text-default">What would you like to do?</p>
-            {quickCreate.length === 0 ? (
-              <p className="py-4 text-[13px] text-muted">Nothing to create here yet.</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {quickCreate.map((q) => {
-                  const Icon = navIcon(q.icon);
-                  return (
-                    <li key={q.href}>
-                      <Link href={q.href} className="flex min-h-[56px] items-center gap-3 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] px-3 hover:border-ink">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg border-[1.5px] border-ink bg-lavender text-lavender-ink">
-                          <Icon size={17} aria-hidden />
-                        </span>
-                        <span>
-                          <span className="block text-[14px] font-bold text-default">{q.label}</span>
-                          <span className="block text-[12px] text-muted">{q.description}</span>
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </div>
-      ) : null}
+      {/* Quick-create: bottom sheet on phones, centred dialog on desktop */}
+      <CampusBottomSheet open={createOpen} onClose={() => setCreateOpen(false)} title="What would you like to do?" desktop="modal">
+        <QuickCreateList items={quickCreate} />
+      </CampusBottomSheet>
     </div>
   );
 }
 
 /* ------------------------------- Pieces ---------------------------------- */
+
+function QuickCreateList({ items }: { items: QuickCreateEntry[] }) {
+  if (items.length === 0) return <p className="py-4 text-[13px] text-muted">Nothing to create here yet.</p>;
+  const ready = items.filter((q) => !q.planned);
+  const planned = items.filter((q) => q.planned);
+  return (
+    <div className="space-y-4">
+      <ul className="space-y-1.5">
+        {ready.map((q) => {
+          const Icon = navIcon(q.icon);
+          return (
+            <li key={q.href}>
+              <Link href={q.href} className="flex min-h-[56px] items-center gap-3 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] px-3 hover:border-ink focus-visible:border-ink">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[1.5px] border-ink bg-lavender text-lavender-ink">
+                  <Icon size={17} aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-bold text-default">{q.label}</span>
+                  <span className="block text-[12px] text-muted">{q.description}</span>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      {planned.length ? (
+        <div>
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-subtle">On the roadmap</p>
+          <ul className="space-y-1.5">
+            {planned.map((q) => {
+              const Icon = navIcon(q.icon);
+              return (
+                <li key={q.href} className="flex min-h-[52px] items-center gap-3 rounded-xl border-[1.5px] border-dashed border-[hsl(var(--border-strong))] px-3" aria-disabled="true">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] text-subtle">
+                    <Icon size={17} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-bold text-muted">{q.label}</span>
+                    <span className="block text-[12px] text-subtle">{q.description}</span>
+                  </span>
+                  <CampusComingSoon label={q.planned!} className="shrink-0" />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function Logo() {
   return (
@@ -460,6 +488,15 @@ function UserCard({ user, onSignOut, signingOut }: { user: ShellUser; onSignOut:
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13px] font-extrabold leading-tight text-default">{user.displayName}</span>
           <span className="block truncate text-[11px] font-medium leading-tight text-subtle">{user.subtitle ?? user.roleLabel}</span>
+          {user.progress ? (
+            <CampusLevelChip
+              className="mt-1"
+              level={user.progress.level}
+              xpIntoLevel={user.progress.xpIntoLevel}
+              xpForLevel={user.progress.xpForLevel}
+              plannedLabel={user.progress.planned ?? undefined}
+            />
+          ) : null}
         </span>
         <ChevronDown size={14} className="shrink-0 text-subtle" aria-hidden />
       </button>

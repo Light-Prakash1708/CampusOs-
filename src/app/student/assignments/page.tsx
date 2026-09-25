@@ -273,7 +273,7 @@ function AssignmentCard({ assignment }: { assignment: StudentAssignment }) {
           />
           {assignment.bucket === 'EVALUATED' ? (
             <Link
-              href={`/student/readdressal/new?category=academic&subject=${encodeURIComponent(assignment.subjectCode)}`}
+              href={`/student/redressal/new?category=academic&subject=${encodeURIComponent(assignment.subjectCode)}`}
               className="text-[12.5px] font-medium text-muted hover:text-default hover:underline"
             >
               Query this evaluation

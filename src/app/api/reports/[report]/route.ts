@@ -115,7 +115,7 @@ export const GET = withAuth('report:generate', async (_request, { user, params }
           r.breached ? 'YES' : 'NO', r.anonymous ? 'YES' : 'NO',
         ]),
       );
-      filename = 'readdressal-summary.csv';
+      filename = 'redressal-summary.csv';
       break;
     }
 

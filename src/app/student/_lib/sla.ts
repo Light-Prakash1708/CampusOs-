@@ -1,7 +1,7 @@
 import { pluralize } from '@/lib/utils';
 
 /**
- * Human SLA countdown for a readdressal case, derived entirely from the
+ * Human SLA countdown for a redressal case, derived entirely from the
  * deadlines stored on the record. The escalation engine writes the deadlines;
  * this only renders them, so the UI can never disagree with the database.
  */

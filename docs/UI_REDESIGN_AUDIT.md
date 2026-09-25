@@ -31,7 +31,7 @@ Every page composes from these — **re-styling them re-skins all ~60 pages**.
 ## 3. Existing pages
 
 Student (18): dashboard, schedule, attendance, assignments, assessments,
-resources, skills, announcements, calendar, notifications, readdressal (+new,
+resources, skills, announcements, calendar, notifications, redressal (+new,
 +detail), assistant, profile, settings, more. Faculty (16) and admin (22)
 portals. Signed-out: login, register, forgot/reset password, verify email,
 invite. Account: security, privacy.

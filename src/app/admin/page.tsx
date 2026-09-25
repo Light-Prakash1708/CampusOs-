@@ -75,7 +75,7 @@ export default async function AdminDashboard() {
       tone: 'danger',
       title: `${pluralize(grievances.breached, 'case')} past the resolution deadline`,
       detail: 'These have escalated automatically to the next authority.',
-      href: '/admin/readdressal?filter=breached',
+      href: '/admin/redressal?filter=breached',
       cta: 'Open cases',
     });
   }
@@ -84,7 +84,7 @@ export default async function AdminDashboard() {
       tone: 'warning',
       title: `${pluralize(grievances.approachingSla, 'case')} approaching SLA`,
       detail: 'Due within the next six working hours.',
-      href: '/admin/readdressal?filter=due',
+      href: '/admin/redressal?filter=due',
       cta: 'Open cases',
     });
   }

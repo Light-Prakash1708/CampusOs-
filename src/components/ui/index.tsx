@@ -425,15 +425,18 @@ export function Section({
   action,
   children,
   className,
+  id,
 }: {
   title?: string;
   description?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  /** Anchor target, e.g. `#subjects` deep links from the Tools hub. */
+  id?: string;
 }) {
   return (
-    <section className={cn('mb-6', className)}>
+    <section id={id} className={cn('mb-6 scroll-mt-20', className)}>
       {title ? (
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>

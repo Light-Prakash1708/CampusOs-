@@ -38,6 +38,7 @@ export const STUDENT_NAV: NavGroup[] = [
       { label: 'Communities', href: '/student/communities', icon: 'users', feature: 'clubs_enabled' },
       { label: 'Library', href: '/student/library', icon: 'library', feature: 'resource_hub_enabled' },
       { label: 'Opportunities', href: '/student/opportunities', icon: 'briefcase', feature: 'opportunity_hub_enabled' },
+      { label: 'Tools & Utilities', href: '/tools', icon: 'tools' },
       { label: 'Career', href: '/student/skills', icon: 'career', feature: 'skill_engine_enabled' },
       { label: 'Tracker', href: '/student/tracker', icon: 'tracker', feature: 'personal_tracker_enabled' },
       {
@@ -58,8 +59,8 @@ export const STUDENT_NAV: NavGroup[] = [
       { label: 'Certificates', href: '/student/certificates', icon: 'shield', feature: 'events_enabled' },
       { label: 'Host an event', href: '/organize', icon: 'plus', feature: 'events_enabled', permissions: ['event:create'] },
       {
-        label: 'Readdressal',
-        href: '/student/readdressal',
+        label: 'Redressal',
+        href: '/student/redressal',
         icon: 'lifebuoy',
         feature: 'grievance_enabled',
         badgeKey: 'grievances',
@@ -123,8 +124,8 @@ export const FACULTY_NAV: NavGroup[] = [
       { label: 'Calendar', href: '/faculty/calendar', icon: 'calendarClock' },
       { label: 'Organise events', href: '/organize', icon: 'ticket', feature: 'events_enabled', permissions: ['event:create'] },
       {
-        label: 'Readdressal',
-        href: '/faculty/readdressal',
+        label: 'Redressal',
+        href: '/faculty/redressal',
         icon: 'lifebuoy',
         feature: 'grievance_enabled',
         badgeKey: 'grievances',
@@ -175,12 +176,10 @@ export const ADMIN_NAV: NavGroup[] = [
         icon: 'calendarClock',
         permissions: ['timetable:view_all'],
       },
-      {
-        label: 'Assessments',
-        href: '/admin/assessments',
-        icon: 'clipboard',
-        permissions: ['assessment:manage'],
-      },
+      // v1 listed "Assessments" → /admin/assessments here, but that page never
+      // existed (a 404). Removed in Phase 1; an admin exam-scheduling screen is
+      // tracked in docs/CAMPUSOS_PRODUCT_AUDIT.md. tests/phase1-tools.test.ts
+      // now fails the build if any nav entry points at a missing page.
     ],
   },
   {
@@ -200,8 +199,8 @@ export const ADMIN_NAV: NavGroup[] = [
         permissions: ['workload:view_all', 'workload:view_department'],
       },
       {
-        label: 'Readdressal',
-        href: '/admin/readdressal',
+        label: 'Redressal',
+        href: '/admin/redressal',
         icon: 'lifebuoy',
         feature: 'grievance_enabled',
         permissions: ['grievance:view_all', 'grievance:view_assigned'],
@@ -296,7 +295,7 @@ export const MOBILE_NAV: Record<'student' | 'faculty' | 'admin', MobileNavItem[]
     { label: 'Home', href: '/admin', icon: 'home' },
     { label: 'Timetable', href: '/admin/timetable', icon: 'calendarClock' },
     { label: 'Notices', href: '/admin/communications', icon: 'megaphone' },
-    { label: 'Cases', href: '/admin/readdressal', icon: 'lifebuoy' },
+    { label: 'Cases', href: '/admin/redressal', icon: 'lifebuoy' },
     { label: 'Menu', href: '#menu', icon: 'boxes' },
   ],
 };
@@ -309,15 +308,28 @@ export interface QuickCreateItem {
   icon: NavIconKey;
   feature?: FeatureFlag;
   permissions?: Permission[];
+  /**
+   * Not built yet: shown in the menu as "Coming in Phase N", never as a link.
+   * (An item whose `feature` is an unbuilt module gets the same treatment.)
+   */
+  plannedPhase?: number;
+}
+
+/** A quick-create entry as the shell renders it. `planned` set ⇒ not a link. */
+export interface QuickCreateEntry extends Omit<QuickCreateItem, 'feature' | 'permissions' | 'plannedPhase'> {
+  planned: string | null;
 }
 
 export const QUICK_CREATE: Record<'student' | 'faculty' | 'admin', QuickCreateItem[]> = {
   student: [
+    { label: 'Ask AI', description: 'Plans, notices, topics — from your own records', href: '/student/assistant', icon: 'sparkles', feature: 'ai_assistant_enabled', permissions: ['ai:use_assistant'] },
+    { label: 'Create event', description: 'For your club or class — goes live after approval', href: '/organize/new', icon: 'ticket', feature: 'events_enabled', permissions: ['event:create'] },
+    { label: 'Explore events', description: 'Fests, hackathons, workshops', href: '/student/events', icon: 'compass', feature: 'events_enabled' },
+    { label: 'Raise a request', description: 'Complaint or help request', href: '/student/redressal/new', icon: 'lifebuoy', feature: 'grievance_enabled' },
     { label: 'Create goal', description: 'Something small you want to improve', href: '/student/tracker/goals/new', icon: 'target', feature: 'personal_tracker_enabled' },
     { label: 'Add task', description: 'A to-do for today', href: '/student/tracker?add=task', icon: 'check', feature: 'personal_tracker_enabled' },
-    { label: 'Ask AI', description: 'Plans, notices, topics', href: '/student/assistant', icon: 'sparkles', feature: 'ai_assistant_enabled', permissions: ['ai:use_assistant'] },
-    { label: 'Explore events', description: 'Fests, hackathons, workshops', href: '/student/events', icon: 'ticket', feature: 'events_enabled' },
-    { label: 'Raise a request', description: 'Complaint or help request', href: '/student/readdressal/new', icon: 'lifebuoy', feature: 'grievance_enabled' },
+    { label: 'Save resource', description: 'Bookmark notes and PYQs', href: '/student/resources', icon: 'bookmark', plannedPhase: 6 },
+    { label: 'Upload document', description: 'Into your private document storage', href: '/student/documents', icon: 'folder', plannedPhase: 6 },
   ],
   faculty: [
     { label: 'Mark attendance', description: 'For your current class', href: '/faculty/attendance', icon: 'check', permissions: ['attendance:mark'] },

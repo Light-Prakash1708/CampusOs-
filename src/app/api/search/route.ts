@@ -209,7 +209,7 @@ export const GET = withAuth(null, async (request, { user }) => {
       title: row.caseNumber,
       subtitle: `${row.subject} · ${row.status.replace('_', ' ').toLowerCase()}`,
       group: 'Cases',
-      href: `/${user.portal}/readdressal/${row.id}`,
+      href: `/${user.portal}/redressal/${row.id}`,
     });
   }
 

@@ -427,7 +427,7 @@ const analyzeWorkload: RegisteredTool = {
 const getGrievances: RegisteredTool = {
   name: 'get_grievances',
   description:
-    'Return readdressal cases visible to the caller, with SLA status. Students see only their own cases.',
+    'Return redressal cases visible to the caller, with SLA status. Students see only their own cases.',
   requiredPermission: 'grievance:view_own',
   inputSchema: {
     type: 'object',
@@ -484,7 +484,7 @@ const getGrievances: RegisteredTool = {
         })),
       },
       citations: [
-        { type: 'grievance', label: 'Readdressal centre', href: `/${user.portal}/readdressal` },
+        { type: 'grievance', label: 'Redressal centre', href: `/${user.portal}/redressal` },
       ],
     };
   },
