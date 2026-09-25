@@ -31,6 +31,7 @@ const PUBLIC_PATHS = [
   '/api/jobs/run',
   '/manifest.webmanifest',
   '/icon.svg',
+  '/api/client-errors',
 ];
 
 const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/illustrations', '/verify/', '/api/auth/', '/api/public/'];

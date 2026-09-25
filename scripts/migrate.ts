@@ -22,6 +22,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
 import { poolConfig } from '../src/lib/db/config';
+import { hardenDataApi } from './lib/data-api-hardening';
 
 const MIGRATIONS_FOLDER = path.resolve(__dirname, '../drizzle/migrations');
 const MIGRATIONS_SCHEMA = 'drizzle';
@@ -44,6 +45,8 @@ async function main() {
       `SELECT count(*)::int AS n FROM "${MIGRATIONS_SCHEMA}"."${MIGRATIONS_TABLE}"`,
     );
     console.log(`[migrate] up to date — ${rows[0].n} migrations recorded.`);
+    const hardening = await hardenDataApi(pool);
+    if (hardening.applied) console.log(`[migrate] Data API locked down for anon/authenticated on ${hardening.tables} tables (RLS + revoke).`);
   } finally {
     await pool.end();
   }

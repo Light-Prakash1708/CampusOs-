@@ -1,5 +1,6 @@
 'use client';
 
+import { useReportClientError } from '@/components/ClientErrorReporter';
 import * as React from 'react';
 import Link from 'next/link';
 import { RotateCw } from 'lucide-react';
@@ -16,6 +17,7 @@ export default function StudentError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useReportClientError(error);
   React.useEffect(() => {
     console.error('[campusos:student]', error);
   }, [error]);

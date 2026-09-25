@@ -1,0 +1,63 @@
+name: Deploy
+
+# Deployment is separate from validation (ci.yml). Two supported paths:
+#   A) Render auto-deploy with `autoDeployTrigger: checksPass` (render.yaml) —
+#      Render deploys by itself once CI is green; this workflow is not needed.
+#   B) Explicit deploys from GitHub: set repository secrets
+#        RENDER_DEPLOY_HOOK_URL  (Render → service → Settings → Deploy Hook)
+#        APP_URL                 (e.g. https://campusos.onrender.com)
+#      and set autoDeployTrigger to `off` in render.yaml.
+# With no secrets configured the job skips cleanly instead of failing.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - name: Check configuration
+        id: cfg
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL is not set — using Render auto-deploy (or nothing to do)."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Trigger Render deploy
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$HOOK" > /dev/null && echo "Deploy triggered."
+      - name: Wait for a healthy release
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          if [ -z "$APP_URL" ]; then echo "APP_URL secret not set; skipping health wait."; exit 0; fi
+          want="${SHA:0:12}"
+          for i in $(seq 1 60); do
+            body=$(curl -fsS "$APP_URL/api/health" || true)
+            if echo "$body" | grep -q "\"release\":\"$want\"" && echo "$body" | grep -q '"status":"healthy"'; then
+              echo "Release $want is healthy."; exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::Release $want did not become healthy within 20 minutes."; echo "$body"; exit 1

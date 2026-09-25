@@ -1,7 +1,7 @@
 {
   "name": "campusos",
   "version": "0.1.0",
-  "description": "CampusOS — the operating system for college life",
+  "description": "CampusOS \u2014 the operating system for college life",
   "main": "index.js",
   "scripts": {
     "dev": "next dev -p 3000",
@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "provision": "tsx --conditions=react-server scripts/provision.ts"
   },
   "keywords": [],
   "author": "",

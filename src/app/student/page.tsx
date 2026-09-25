@@ -436,4 +436,3 @@ function dailyLine(iso: string): string {
   const d = Number(iso.replace(/-/g, '')) % LINES.length;
   return LINES[d]!;
 }
-

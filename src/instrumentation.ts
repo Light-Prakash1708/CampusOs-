@@ -27,3 +27,19 @@ export async function register() {
   }
   logger.warn('config.invalid', { issues: result.issues });
 }
+
+/**
+ * Server-side errors during rendering, route handlers and server actions
+ * (Next.js 15 hook). Forwarded to the same reporter as API errors, with only
+ * routing fields — never headers, cookies or bodies.
+ */
+export async function onRequestError(
+  error: unknown,
+  request: { path: string; method: string },
+  context: { routePath?: string; routeType?: string },
+) {
+  if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+  const { reportError } = await import('./lib/logger');
+  const digest = (error as { digest?: string } | null)?.digest;
+  reportError(error, { where: context.routeType ?? 'request', route: context.routePath ?? request.path.split('?')[0], method: request.method, digest });
+}

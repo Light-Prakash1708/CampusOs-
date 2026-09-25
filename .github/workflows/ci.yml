@@ -1,9 +1,15 @@
 name: CI
 
+# Validation only — never deploys. Deployment is .github/workflows/deploy.yml
+# (or Render's own auto-deploy, which waits for these checks to pass).
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -41,16 +47,29 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: Whitespace / conflict markers
+        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
         run: npm run lint
       - name: Migrate (fresh database)
         run: npm run db:migrate
+      - name: Migrations are idempotent
+        run: npm run db:migrate
+      - name: Schema matches migrations (no un-generated changes)
+        run: npx drizzle-kit check && npx drizzle-kit generate --name ci-drift-check | tee /tmp/drift.txt && ! grep -q "Your SQL migration file" /tmp/drift.txt
       - name: Seed
         run: npm run db:seed
       - name: Test
         run: npm test
+      - name: Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
       - name: Build
         run: npm run build
 

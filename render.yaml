@@ -30,6 +30,12 @@ services:
         sync: false          # e.g. https://campusos.onrender.com
       - key: DEMO_MODE
         value: "false"
+      - key: TRUST_PROXY
+        value: "true"          # Render terminates TLS in front of Node
+      - key: LOG_LEVEL
+        value: info
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
       - key: AI_PROVIDER
         value: local         # set "anthropic" + ANTHROPIC_API_KEY to enable the LLM
       - key: ANTHROPIC_API_KEY
@@ -41,6 +47,24 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
+        sync: false
+      - key: STORAGE_ENDPOINT
+        sync: false
+      - key: STORAGE_REGION
+        sync: false
+      - key: STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_ACCESS_KEY
+        sync: false
+      - key: STORAGE_SECRET_KEY
+        sync: false
+      - key: PUSH_PROVIDER
+        value: none          # fcm + FCM_* to enable push
+      - key: SMS_PROVIDER
+        value: none          # msg91 + MSG91_* to enable SMS
+      - key: ERROR_REPORTER
+        value: none          # webhook + ERROR_WEBHOOK_URL to forward errors
+      - key: ERROR_WEBHOOK_URL
         sync: false
 
   - type: cron

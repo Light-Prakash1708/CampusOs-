@@ -48,6 +48,40 @@ export const logger = {
   error: (event: string, fields?: Fields) => write('error', event, fields),
 };
 
+/**
+ * Log an unhandled error and, when configured, forward it to an error
+ * collector. ERROR_REPORTER=webhook POSTs a small scrubbed JSON event to
+ * ERROR_WEBHOOK_URL (any collector that accepts JSON: a logging service,
+ * an incident tool, a Slack-compatible relay). Fire-and-forget: reporting
+ * can never slow down or break the request that failed. Request bodies,
+ * cookies and user data are never sent — only the error, a route and ids.
+ */
 export function reportError(error: unknown, context: Fields = {}): void {
   write('error', 'unhandled_error', { ...context, error });
+  if (process.env.ERROR_REPORTER !== 'webhook' || !process.env.ERROR_WEBHOOK_URL) return;
+  const err = error instanceof Error ? error : new Error(String(error));
+  const payload = {
+    source: 'campusos',
+    environment: process.env.NODE_ENV ?? 'development',
+    release: process.env.RENDER_GIT_COMMIT ?? process.env.GIT_COMMIT ?? null,
+    time: new Date().toISOString(),
+    error: { name: err.name, message: err.message.slice(0, 500), stack: err.stack?.split('\n').slice(0, 12).join('\n') },
+    context: scrub(pickContext(context)),
+  };
+  try {
+    void fetch(process.env.ERROR_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(3000),
+    }).catch(() => undefined);
+  } catch {
+    /* never let reporting throw */
+  }
+}
+
+/** Only routing/correlation fields leave the process. */
+function pickContext(context: Fields): Fields {
+  const allowed = ['requestId', 'route', 'method', 'status', 'digest', 'institutionId', 'where'];
+  return Object.fromEntries(Object.entries(context).filter(([k]) => allowed.includes(k)));
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useReportClientError } from '@/components/ClientErrorReporter';
 import { useEffect } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { Button, ErrorState, PageHeader } from '@/components/ui';
@@ -11,6 +12,7 @@ export default function AdminError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useReportClientError(error);
   useEffect(() => {
     console.error('[campusos:admin]', error);
   }, [error]);

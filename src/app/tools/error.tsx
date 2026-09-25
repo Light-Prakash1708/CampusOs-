@@ -1,9 +1,11 @@
 'use client';
 
+import { useReportClientError } from '@/components/ClientErrorReporter';
 import { CampusEmptyState } from '@/components/campus';
 import { Button } from '@/components/ui';
 
-export default function ToolsError({ reset }: { error: Error; reset: () => void }) {
+export default function ToolsError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useReportClientError(error);
   return (
     <CampusEmptyState
       sprite="robot"
