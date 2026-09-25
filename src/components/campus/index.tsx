@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { PixelFlame, PixelAvatar, PixelRobot, type AvatarTone } from './pixel';
 
 export * from './pixel';
+/** CampusButton / CampusBadge are the restyled base primitives (ink outline, pop shadow, pastel tones). */
+export { Button as CampusButton, Badge as CampusBadge } from '@/components/ui';
 
 /* ==========================================================================
    CampusOS component system

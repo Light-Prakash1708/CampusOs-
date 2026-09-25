@@ -112,33 +112,88 @@ export function AppShell({
 
   const home = `/${user.portal}`;
   const isActive = (href: string) => pathname === href || (href !== home && pathname.startsWith(`${href}/`));
+
+  return (
+    <div className="min-h-screen bg-surface-muted">
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} portal={user.portal} />
+
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[232px] flex-col border-r border-[hsl(var(--border))] bg-surface-muted lg:flex">
+        <CampusSidebar user={user} nav={nav} badges={badges} isActive={isActive} onSignOut={signOut} signingOut={signingOut} />
+      </aside>
+
+      {/* Mobile drawer (shared CampusDrawer: focus trap, Esc, scroll lock) */}
+      <CampusDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title="Navigation" side="left" bare className="w-[280px] lg:hidden">
+        <CampusSidebar user={user} nav={nav} badges={badges} isActive={isActive} onSignOut={signOut} signingOut={signingOut} onClose={() => setDrawerOpen(false)} />
+      </CampusDrawer>
+
+      <div className="lg:pl-[232px]">
+        <CampusTopbar
+          user={user}
+          badges={badges}
+          demoMode={demoMode}
+          canCreate={quickCreate.length > 0}
+          createOpen={createOpen}
+          onOpenNav={() => setDrawerOpen(true)}
+          onOpenSearch={() => setPaletteOpen(true)}
+          onOpenCreate={() => setCreateOpen(true)}
+        />
+        <main id="main" className="px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-12">
+          <div className="mx-auto max-w-[1400px]">{children}</div>
+        </main>
+      </div>
+
+      <CampusMobileNav items={mobileNav} isActive={isActive} createOpen={createOpen} onCreate={() => setCreateOpen(true)} onMenu={() => setDrawerOpen(true)} />
+
+      {/* Quick-create: bottom sheet on phones, centred dialog on desktop */}
+      <CampusBottomSheet open={createOpen} onClose={() => setCreateOpen(false)} title="What would you like to do?" desktop="modal">
+        <QuickCreateList items={quickCreate} />
+      </CampusBottomSheet>
+    </div>
+  );
+}
+
+/* ----------------------------- Shell parts -------------------------------- */
+
+/** Sidebar content: logo, grouped nav, pinned Profile/Settings, user card. */
+export function CampusSidebar({
+  user,
+  nav,
+  badges,
+  isActive,
+  onSignOut,
+  signingOut,
+  onClose,
+}: {
+  user: ShellUser;
+  nav: NavGroup[];
+  badges: ShellBadges;
+  isActive: (href: string) => boolean;
+  onSignOut: () => void;
+  signingOut: boolean;
+  /** Present when rendered in the mobile drawer. */
+  onClose?: () => void;
+}) {
   const mainGroups = nav.filter((g) => g.position !== 'bottom');
   const bottomGroups = nav.filter((g) => g.position === 'bottom');
-  const assistantHref = user.portal === 'faculty' ? '/faculty/copilot' : `/${user.portal}/assistant`;
-  const inboxHref = user.portal === 'admin' ? '/admin/communications' : `/${user.portal}/announcements`;
-
-  const sidebar = (
+  return (
     <>
       <div className="flex h-16 shrink-0 items-center justify-between px-5">
-        <Link href={home} className="flex items-center gap-2" aria-label="CampusOS home">
+        <Link href={`/${user.portal}`} className="flex items-center gap-2" aria-label="CampusOS home">
           <Logo />
           <span className="font-display text-[19px] font-extrabold text-brand">CampusOS</span>
         </Link>
-        <button
-          onClick={() => setDrawerOpen(false)}
-          className="rounded-lg p-2 text-muted hover:bg-surface-sunken lg:hidden"
-          aria-label="Close navigation"
-        >
-          <X size={18} />
-        </button>
+        {onClose ? (
+          <button onClick={onClose} className="rounded-lg p-2 text-muted hover:bg-surface-sunken lg:hidden" aria-label="Close navigation">
+            <X size={18} />
+          </button>
+        ) : null}
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-3 scrollbar-none" aria-label="Main navigation">
         {mainGroups.map((group, gi) => (
           <div key={gi} className={gi > 0 ? 'mt-5' : ''}>
-            {group.label ? (
-              <p className="mb-1 px-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-subtle">{group.label}</p>
-            ) : null}
+            {group.label ? <p className="mb-1 px-3 text-[10.5px] font-bold uppercase tracking-[0.08em] text-subtle">{group.label}</p> : null}
             <NavList items={group.items} isActive={isActive} badges={badges} />
           </div>
         ))}
@@ -148,175 +203,164 @@ export function AppShell({
         {bottomGroups.map((g, i) => (
           <NavList key={i} items={g.items} isActive={isActive} badges={badges} />
         ))}
-        <UserCard user={user} onSignOut={signOut} signingOut={signingOut} />
+        <UserCard user={user} onSignOut={onSignOut} signingOut={signingOut} />
       </div>
     </>
   );
+}
 
+/** Top bar: search (⌘K), Create, AI, notices, notifications, theme, college, avatar. */
+export function CampusTopbar({
+  user,
+  badges,
+  demoMode,
+  canCreate,
+  createOpen,
+  onOpenNav,
+  onOpenSearch,
+  onOpenCreate,
+}: {
+  user: ShellUser;
+  badges: ShellBadges;
+  demoMode: boolean;
+  canCreate: boolean;
+  createOpen: boolean;
+  onOpenNav: () => void;
+  onOpenSearch: () => void;
+  onOpenCreate: () => void;
+}) {
+  const home = `/${user.portal}`;
+  const assistantHref = user.portal === 'faculty' ? '/faculty/copilot' : `/${user.portal}/assistant`;
+  const inboxHref = user.portal === 'admin' ? '/admin/communications' : `/${user.portal}/announcements`;
   return (
-    <div className="min-h-screen bg-surface-muted">
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} portal={user.portal} />
+    <header className="sticky top-0 z-30 border-b border-[hsl(var(--border))] bg-surface-muted/90 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-2 px-4 sm:px-6 lg:px-8">
+        <button onClick={onOpenNav} className="-ml-1 rounded-lg p-2 text-default hover:bg-surface-sunken lg:hidden" aria-label="Open navigation">
+          <Menu size={20} />
+        </button>
+        <Link href={home} className="flex items-center gap-1.5 lg:hidden" aria-label="CampusOS home">
+          <Logo />
+          <span className="font-display text-[16px] font-extrabold text-brand">CampusOS</span>
+        </Link>
 
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[232px] flex-col border-r border-[hsl(var(--border))] bg-surface-muted lg:flex">
-        {sidebar}
-      </aside>
+        <button
+          onClick={onOpenSearch}
+          className="ml-auto hidden h-10 max-w-[440px] flex-1 items-center gap-2 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[13px] text-subtle transition-colors hover:border-ink sm:flex lg:ml-0"
+          aria-label="Search classes, events, tools, people"
+        >
+          <Search size={15} aria-hidden />
+          <span className="flex-1 truncate text-left">Search classes, events, tools, people…</span>
+          <kbd className="hidden items-center gap-0.5 rounded-md border border-[hsl(var(--border))] bg-surface-sunken px-1.5 py-0.5 font-mono text-[10px] md:inline-flex">
+            <Command size={9} />K
+          </kbd>
+        </button>
 
-      {/* Mobile drawer (shared CampusDrawer: focus trap, Esc, scroll lock) */}
-      <CampusDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} title="Navigation" side="left" bare className="w-[280px] lg:hidden">
-        {sidebar}
-      </CampusDrawer>
-
-      <div className="lg:pl-[232px]">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 border-b border-[hsl(var(--border))] bg-surface-muted/90 backdrop-blur-md">
-          <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-2 px-4 sm:px-6 lg:px-8">
+        <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+          <button onClick={onOpenSearch} className="rounded-lg p-2 text-default hover:bg-surface-sunken sm:hidden" aria-label="Search">
+            <Search size={19} />
+          </button>
+          {demoMode ? <span className="mr-1 hidden rounded-md bg-sun px-2 py-0.5 text-[11px] font-bold text-sun-ink xl:inline">Demo data</span> : null}
+          {canCreate ? (
             <button
-              onClick={() => setDrawerOpen(true)}
-              className="-ml-1 rounded-lg p-2 text-default hover:bg-surface-sunken lg:hidden"
-              aria-label="Open navigation"
+              onClick={onOpenCreate}
+              className="mr-1 hidden h-10 items-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-brand px-3 text-[13px] font-bold text-white shadow-pop campus-press lg:inline-flex"
+              aria-haspopup="dialog"
+              aria-expanded={createOpen}
             >
-              <Menu size={20} />
+              <Plus size={16} strokeWidth={2.5} aria-hidden /> Create
             </button>
-            <Link href={home} className="flex items-center gap-1.5 lg:hidden" aria-label="CampusOS home">
-              <Logo />
-              <span className="font-display text-[16px] font-extrabold text-brand">CampusOS</span>
-            </Link>
+          ) : null}
+          <TopIcon href={assistantHref} label={user.portal === 'faculty' ? 'Teaching copilot' : 'AI assistant'} className="hidden sm:inline-flex">
+            <Sparkles size={18} />
+          </TopIcon>
+          <TopIcon href={inboxHref} label="Notices" className="hidden sm:inline-flex">
+            <Inbox size={18} />
+          </TopIcon>
+          <TopIcon href={`/${user.portal}/notifications`} label={`Notifications${badges.notifications ? `, ${badges.notifications} unread` : ''}`}>
+            <Bell size={18} />
+            {badges.notifications > 0 ? (
+              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-ink bg-coral-ink px-1 text-[9.5px] font-extrabold text-white">
+                {badges.notifications > 9 ? '9+' : badges.notifications}
+              </span>
+            ) : null}
+          </TopIcon>
+          <ThemeToggle />
+          <span
+            className="ml-1 hidden items-center gap-1.5 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-2.5 py-1.5 text-[12px] font-bold text-default md:inline-flex"
+            title={user.institutionName}
+          >
+            <Building2 size={14} className="text-brand" aria-hidden />
+            <span className="max-w-[150px] truncate">{user.institutionLabel}</span>
+          </span>
+          <Link href={`/${user.portal}/profile`} className="ml-1 rounded-xl border-[1.5px] border-ink bg-lavender p-0.5 shadow-pop" aria-label="Your profile">
+            <PixelAvatar tone={user.avatarTone} size={30} />
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
 
-            <button
-              onClick={() => setPaletteOpen(true)}
-              className="ml-auto hidden h-10 max-w-[440px] flex-1 items-center gap-2 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[13px] text-subtle transition-colors hover:border-ink sm:flex lg:ml-0"
-              aria-label="Search events, people, resources"
-            >
-              <Search size={15} aria-hidden />
-              <span className="flex-1 truncate text-left">Search events, people, resources…</span>
-              <kbd className="hidden items-center gap-0.5 rounded-md border border-[hsl(var(--border))] bg-surface-sunken px-1.5 py-0.5 font-mono text-[10px] md:inline-flex">
-                <Command size={9} />K
-              </kbd>
-            </button>
-
-            <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
-              <button
-                onClick={() => setPaletteOpen(true)}
-                className="rounded-lg p-2 text-default hover:bg-surface-sunken sm:hidden"
-                aria-label="Search"
-              >
-                <Search size={19} />
-              </button>
-              {demoMode ? (
-                <span className="mr-1 hidden rounded-md bg-sun px-2 py-0.5 text-[11px] font-bold text-sun-ink xl:inline">
-                  Demo data
-                </span>
-              ) : null}
-              {quickCreate.length ? (
+/** Phone bottom navigation: 5 slots with the central ＋ (create sheet). */
+export function CampusMobileNav({
+  items,
+  isActive,
+  createOpen,
+  onCreate,
+  onMenu,
+}: {
+  items: MobileNavItem[];
+  isActive: (href: string) => boolean;
+  createOpen: boolean;
+  onCreate: () => void;
+  onMenu: () => void;
+}) {
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-ink bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Quick navigation">
+      <ul className="flex items-end">
+        {items.map((item) => {
+          const Icon = navIcon(item.icon);
+          if (item.kind === 'create') {
+            return (
+              <li key="create" className="flex flex-1 justify-center">
                 <button
-                  onClick={() => setCreateOpen(true)}
-                  className="mr-1 hidden h-10 items-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-brand px-3 text-[13px] font-bold text-white shadow-pop campus-press lg:inline-flex"
+                  onClick={onCreate}
+                  className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full border-[1.5px] border-ink bg-brand text-white shadow-pop campus-press"
+                  aria-label="Create"
                   aria-haspopup="dialog"
                   aria-expanded={createOpen}
                 >
-                  <Plus size={16} strokeWidth={2.5} aria-hidden /> Create
+                  <Icon size={24} strokeWidth={2.5} />
                 </button>
-              ) : null}
-              <TopIcon href={assistantHref} label={user.portal === 'faculty' ? 'Teaching copilot' : 'AI assistant'} className="hidden sm:inline-flex">
-                <Sparkles size={18} />
-              </TopIcon>
-              <TopIcon href={inboxHref} label="Notices" className="hidden sm:inline-flex">
-                <Inbox size={18} />
-              </TopIcon>
-              <TopIcon
-                href={`/${user.portal}/notifications`}
-                label={`Notifications${badges.notifications ? `, ${badges.notifications} unread` : ''}`}
-              >
-                <Bell size={18} />
-                {badges.notifications > 0 ? (
-                  <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-ink bg-coral-ink px-1 text-[9.5px] font-extrabold text-white">
-                    {badges.notifications > 9 ? '9+' : badges.notifications}
-                  </span>
-                ) : null}
-              </TopIcon>
-              <ThemeToggle />
-              <span
-                className="ml-1 hidden items-center gap-1.5 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-2.5 py-1.5 text-[12px] font-bold text-default md:inline-flex"
-                title={user.institutionName}
-              >
-                <Building2 size={14} className="text-brand" aria-hidden />
-                <span className="max-w-[150px] truncate">{user.institutionLabel}</span>
-              </span>
-              <Link
-                href={`/${user.portal}/profile`}
-                className="ml-1 rounded-xl border-[1.5px] border-ink bg-lavender p-0.5 shadow-pop"
-                aria-label="Your profile"
-              >
-                <PixelAvatar tone={user.avatarTone} size={30} />
-              </Link>
-            </div>
-          </div>
-        </header>
-
-        <main id="main" className="px-4 pb-28 pt-5 sm:px-6 lg:px-8 lg:pb-12">
-          <div className="mx-auto max-w-[1400px]">{children}</div>
-        </main>
-      </div>
-
-      {/* Mobile bottom navigation */}
-      <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-ink bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
-        aria-label="Quick navigation"
-      >
-        <ul className="flex items-end">
-          {mobileNav.map((item) => {
-            const Icon = navIcon(item.icon);
-            if (item.kind === 'create') {
-              return (
-                <li key="create" className="flex flex-1 justify-center">
-                  <button
-                    onClick={() => setCreateOpen(true)}
-                    className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full border-[1.5px] border-ink bg-brand text-white shadow-pop campus-press"
-                    aria-label="Create"
-                    aria-haspopup="dialog"
-                    aria-expanded={createOpen}
-                  >
-                    <Icon size={24} strokeWidth={2.5} />
-                  </button>
-                </li>
-              );
-            }
-            if (item.href === '#menu') {
-              return (
-                <li key="menu" className="flex-1">
-                  <button onClick={() => setDrawerOpen(true)} className="flex min-h-[56px] w-full flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-subtle">
-                    <Icon size={20} aria-hidden />
-                    {item.label}
-                  </button>
-                </li>
-              );
-            }
-            const active = isActive(item.href);
-            return (
-              <li key={item.href} className="flex-1">
-                <Link
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px] font-semibold',
-                    active ? 'text-brand' : 'text-subtle',
-                  )}
-                >
-                  <Icon size={20} strokeWidth={active ? 2.5 : 2} aria-hidden />
-                  {item.label}
-                </Link>
               </li>
             );
-          })}
-        </ul>
-      </nav>
-
-      {/* Quick-create: bottom sheet on phones, centred dialog on desktop */}
-      <CampusBottomSheet open={createOpen} onClose={() => setCreateOpen(false)} title="What would you like to do?" desktop="modal">
-        <QuickCreateList items={quickCreate} />
-      </CampusBottomSheet>
-    </div>
+          }
+          if (item.href === '#menu') {
+            return (
+              <li key="menu" className="flex-1">
+                <button onClick={onMenu} className="flex min-h-[56px] w-full flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-subtle">
+                  <Icon size={20} aria-hidden />
+                  {item.label}
+                </button>
+              </li>
+            );
+          }
+          const active = isActive(item.href);
+          return (
+            <li key={item.href} className="flex-1">
+              <Link
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={cn('flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px] font-semibold', active ? 'text-brand' : 'text-subtle')}
+              >
+                <Icon size={20} strokeWidth={active ? 2.5 : 2} aria-hidden />
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 

@@ -39,14 +39,15 @@ export function CommandPalette({
   const [error, setError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
+  // Reset when the palette closes, not when it opens: the input is focused on
+  // mount (autoFocus) so the very first keystroke after ⌘K is never lost, and
+  // an on-open reset could wipe what was already typed.
   React.useEffect(() => {
-    if (open) {
+    if (!open) {
       setQuery('');
       setResults([]);
       setActiveIndex(0);
       setError(null);
-      // Focus after the dialog paints.
-      requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
 
@@ -147,6 +148,7 @@ export function CommandPalette({
           )}
           <input
             ref={inputRef}
+            autoFocus
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);

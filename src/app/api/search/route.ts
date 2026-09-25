@@ -2,6 +2,10 @@ import { and, eq, ilike, or, isNull, sql, desc } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import { withAuth, ok } from '@/lib/api';
+import { isEnabled } from '@/lib/features';
+import { toolsFor } from '@/lib/tools';
+import { listEvents } from '@/services/events';
+import { formatEventDates } from '@/components/campus/events';
 
 /**
  * Global search for the command palette.
@@ -211,6 +215,30 @@ export const GET = withAuth(null, async (request, { user }) => {
       group: 'Cases',
       href: `/${user.portal}/redressal/${row.id}`,
     });
+  }
+
+  // --- Tools (students): the registry, available tools only --------------
+  if (user.portal === 'student') {
+    const needle = q.toLowerCase();
+    for (const tool of toolsFor(user).filter((x) => x.status === 'AVAILABLE' && x.href)) {
+      if (tool.title.toLowerCase().includes(needle)) {
+        results.push({ id: `tool-${tool.key}`, title: tool.title, subtitle: tool.cta ?? 'Open', group: 'Tools', href: tool.href! });
+      }
+    }
+  }
+
+  // --- Events 2.0: same visibility rules as discovery ----------------------
+  if (isEnabled(user.featureFlags, 'events_enabled') && (user.portal === 'student' || user.permissions.has('event:approve'))) {
+    const events = await listEvents(user, { q, when: 'upcoming', sort: 'date', limit: 4 });
+    for (const e of events) {
+      results.push({
+        id: `event-${e.id}`,
+        title: e.title,
+        subtitle: `${formatEventDates(e.startsAt, e.endsAt)} · ${e.ownCollege ? e.organizerName : e.institutionShort ?? e.institutionName}`,
+        group: 'Events',
+        href: user.portal === 'student' ? `/student/events/${e.id}` : `/organize/${e.id}`,
+      });
+    }
   }
 
   return ok({ results });

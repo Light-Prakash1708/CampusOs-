@@ -72,6 +72,7 @@ slider (whose hit area is 44px), bottom-nav tabs (56px), and quick-create rows (
 
 | Component | Notes |
 |---|---|
+| `CampusSidebar` / `CampusTopbar` / `CampusMobileNav` | The shell's parts, exported from `AppShell.tsx`: sidebar content (desktop rail and mobile drawer), sticky top bar, and the 5-slot phone nav with the central ＋. |
 | `AppShell` | **Sidebar:** 232px; logo, nav groups, pinned Profile and Settings, user card with the **level/XP chip**. **Top bar:** search palette (⌘K), **Create** button (desktop), AI, notices, bell, theme, college chip, avatar. **Mobile:** 5-slot bottom nav with the central ＋, and the nav drawer. |
 | `PortalLayout` | Filters navigation by permission and flag, builds the quick-create menu (working entries first, then planned ones), and passes the user's identity and progress. |
 | `navigation.ts` | The IA. Items carry `feature`, `permissions`, `plannedPhase`. See §4. |
@@ -80,6 +81,7 @@ slider (whose hit area is 44px), bottom-nav tabs (56px), and quick-create rows (
 
 | Component | Purpose |
 |---|---|
+| `CampusButton`, `CampusBadge` | The restyled base `Button`/`Badge` (ink outline, pop shadow, pastel tones), re-exported under campus names |
 | `CampusCard`, `CampusSectionHeader` | Card shell; section title with a "View all" link |
 | `CampusPill`, `CampusIconTile` | Tag pill; outlined icon square in a tone |
 | `CampusProgressBar`, `CampusProgressRow` | Bar; a row with an honest empty state when the value is `null` |
@@ -139,3 +141,11 @@ yet, together with its roadmap phase.
 - Quick-create and Tools show them as planned.
 
 When a module ships, delete its line in the same commit as the pages.
+
+## 5. Global search (⌘K)
+
+`/api/search` returns groups filtered at query level by what the caller may
+see: Classes, Notices, Resources, Rooms, People, Cases, **Tools** (students;
+available tools only — planned ones never appear as results) and **Events**
+(Events 2.0 visibility rules, including cross-college discovery; staff with
+`event:approve` land on the organiser view).
