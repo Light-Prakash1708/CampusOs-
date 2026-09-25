@@ -13,7 +13,7 @@ import {
   Video,
   type LucideIcon,
 } from 'lucide-react';
-import { and, desc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import {
@@ -31,6 +31,8 @@ import { isEnabled } from '@/lib/features';
 import { requireStudentContext } from '../_lib/auth';
 import { getEnrolledOfferings } from '../_lib/student';
 import { AskAiLink, ModuleDisabled } from '../_components/bits';
+import { studentResourceVisibility } from '@/services/resources';
+import { ResourceSaveToggle } from '@/components/campus/ResourceSave';
 
 export const metadata = { title: 'Resources' };
 export const dynamic = 'force-dynamic';
@@ -72,40 +74,9 @@ export default async function ResourcesPage({
   const offerings = await getEnrolledOfferings(user.institutionId, user.studentProfileId);
   const subjectIds = offerings.map((o) => o.subjectId);
 
-  /* ------------------------------ Visibility ----------------------------- */
-  // A student sees institution-wide material, their own department's material,
-  // and anything explicitly shared with their section. Nothing else.
-  const visibility: SQL[] = [eq(t.resources.visibility, 'INSTITUTION')];
-  if (user.departmentId) {
-    visibility.push(
-      and(
-        eq(t.resources.visibility, 'DEPARTMENT'),
-        eq(t.resources.departmentId, user.departmentId),
-      ) as SQL,
-    );
-  }
-  if (user.sectionId) {
-    visibility.push(
-      and(
-        eq(t.resources.visibility, 'SECTION'),
-        inArray(
-          t.resources.id,
-          db
-            .select({ id: t.resourceShares.resourceId })
-            .from(t.resourceShares)
-            .where(eq(t.resourceShares.sectionId, user.sectionId)),
-        ),
-      ) as SQL,
-    );
-  }
-
-  const filters: SQL[] = [
-    eq(t.resources.institutionId, user.institutionId),
-    // Only approved, published material — AI-generated drafts stay hidden.
-    eq(t.resources.status, 'PUBLISHED'),
-    isNull(t.resources.deletedAt),
-    or(...visibility) as SQL,
-  ];
+  // One shared rule (services/resources): published material that is
+  // institution-wide, from the student's department, or shared with their section.
+  const filters: SQL[] = [studentResourceVisibility(user)];
 
   if (query) {
     // PostgreSQL full-text search over the generated `search_vector` column.
@@ -140,6 +111,7 @@ export default async function ResourcesPage({
       departmentName: t.departments.name,
       ownerFirst: t.users.firstName,
       ownerLast: t.users.lastName,
+      savedId: t.resourceSaves.id,
       rank: query
         ? sql<number>`ts_rank(${t.resources.searchVector}, plainto_tsquery('english', ${query}))`
         : sql<number>`0`,
@@ -148,6 +120,7 @@ export default async function ResourcesPage({
     .leftJoin(t.subjects, eq(t.subjects.id, t.resources.subjectId))
     .leftJoin(t.departments, eq(t.departments.id, t.resources.departmentId))
     .leftJoin(t.users, eq(t.users.id, t.resources.ownerId))
+    .leftJoin(t.resourceSaves, and(eq(t.resourceSaves.resourceId, t.resources.id), eq(t.resourceSaves.userId, user.userId)))
     .where(and(...filters))
     .orderBy(
       query
@@ -322,6 +295,7 @@ export default async function ResourcesPage({
                       </div>
 
                       <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <ResourceSaveToggle resourceId={row.id} saved={!!row.savedId} title={row.title} />
                         {href ? (
                           <Button asChild size="sm" variant="secondary">
                             <a

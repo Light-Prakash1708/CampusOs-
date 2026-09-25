@@ -38,9 +38,10 @@ does **today**. Optionally it also has:
 | Host an Event | available (`event:create`) | `/organize/new` |
 | Attendance Planner (Bunk Calculator) | available (`attendance_planner_enabled`) | `/tools/attendance-planner` |
 | Goals & Habits | available (`personal_tracker_enabled`) | `/student/tracker` (see `GAMIFICATION.md`) |
+| PYQs | available (`resource_hub_enabled`) | `/student/library?tab=pyqs` (see `LIBRARY.md`) |
 | Smart Reminders, Room Finder | planned | Phase 3 |
 | Internships & Jobs | planned (`opportunity_hub_enabled`) | Phase 5 |
-| PYQs, Document Storage | planned | Phase 6 |
+| Document Storage | planned | Phase 6 |
 | Study Planner | planned | Phase 7 |
 | CGPA Calculator | planned | Phase 8 |
 

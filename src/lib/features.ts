@@ -121,7 +121,7 @@ export const FEATURE_FLAGS = {
    */
   library_enabled: {
     label: 'Library',
-    description: 'Catalogue, loans, renewals, reservations and fines.',
+    description: 'Book catalogue with live availability, desk issue and return, renewals, a reservation queue and estimated fines (no payments). Notes, PYQs and saved resources come from the Resource Hub.',
     defaultValue: false,
     tier: 'PROFESSIONAL',
   },
@@ -212,7 +212,6 @@ export const UNBUILT_MODULES: Partial<Record<FeatureFlag, number | 'later'>> = {
   campus_channels_enabled: 4,
   campus_rep_enabled: 4,
   opportunity_hub_enabled: 5,
-  library_enabled: 6,
   ai_coach_enabled: 9,
   ai_memory_enabled: 9,
   pwa_enabled: 11,

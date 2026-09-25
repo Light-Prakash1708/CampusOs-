@@ -200,6 +200,7 @@ export const ADMIN_NAV: NavGroup[] = [
         permissions: ['announcement:create_official', 'announcement:create_informational'],
       },
       { label: 'Events', href: '/admin/events', icon: 'ticket', feature: 'events_enabled', permissions: ['event:approve', 'event:create'] },
+      { label: 'Library', href: '/admin/library', icon: 'library', feature: 'library_enabled', permissions: ['library:manage'] },
       {
         label: 'Workload',
         href: '/admin/workload',
@@ -336,7 +337,7 @@ export const QUICK_CREATE: Record<'student' | 'faculty' | 'admin', QuickCreateIt
     { label: 'Raise a request', description: 'Complaint or help request', href: '/student/redressal/new', icon: 'lifebuoy', feature: 'grievance_enabled' },
     { label: 'Create goal', description: 'Something small you want to improve', href: '/student/tracker/goals/new', icon: 'target', feature: 'personal_tracker_enabled' },
     { label: 'Add task', description: 'A to-do for today', href: '/student/tracker?add=task', icon: 'check', feature: 'personal_tracker_enabled' },
-    { label: 'Save resource', description: 'Bookmark notes and PYQs', href: '/student/resources', icon: 'bookmark', plannedPhase: 6 },
+    { label: 'Save resource', description: 'Bookmark notes and PYQs', href: '/student/library?tab=pyqs', icon: 'bookmark', feature: 'resource_hub_enabled', permissions: ['resource:view_department'] },
     { label: 'Upload document', description: 'Into your private document storage', href: '/student/documents', icon: 'folder', plannedPhase: 6 },
   ],
   faculty: [

@@ -57,6 +57,7 @@ import { EVENT_CATEGORIES, listEvents } from '@/services/events';
 import { getAttendanceOverview } from '@/services/attendance';
 import { trackerForToday } from '@/services/tracker';
 import { levelOf } from '@/services/gamification';
+import { loansDueSoon } from '@/services/library';
 import { buildToday, type TodayItem } from '@/lib/today';
 import { categoryTone, EventCoverArt, formatEventDates } from '@/components/campus/events';
 import { findNextClass, occurrencesForDate, type ClassOccurrence } from './_lib/schedule';
@@ -98,12 +99,13 @@ export default async function StudentHome() {
       : Promise.resolve([]),
   ]);
   const eventsOnForDay = isEnabled(user.featureFlags, 'events_enabled');
-  const [myEvents, savedEvents, attendanceOverview, trackerToday, level] = await Promise.all([
+  const [myEvents, savedEvents, attendanceOverview, trackerToday, level, loansDue] = await Promise.all([
     eventsOnForDay ? listEvents(user, { mine: 'registered', when: 'upcoming', sort: 'date', limit: 10 }) : Promise.resolve([]),
     eventsOnForDay ? listEvents(user, { mine: 'saved', when: 'upcoming', sort: 'date', limit: 20 }) : Promise.resolve([]),
     user.permissions.has('attendance:view_own') ? getAttendanceOverview(user) : Promise.resolve(null),
     trackerForToday(user),
     isEnabled(user.featureFlags, 'gamification_enabled') ? levelOf(user.userId) : Promise.resolve(null),
+    user.permissions.has('library:borrow') ? loansDueSoon(user) : Promise.resolve([]),
   ]);
 
   const holidayToday = holidays.find((h) => h.date === now.today) ?? null;
@@ -191,6 +193,7 @@ export default async function StudentHome() {
     notices: announcements.map((a) => ({ id: a.id, title: a.title, critical: a.priority === 'CRITICAL' && !a.readAt, needsAck: a.requiresAcknowledgement && !a.acknowledgedAt })),
     tasks: trackerToday.tasks,
     goals: trackerToday.goals,
+    loans: loansDue,
   });
 
   // Events 2.0: includes other colleges' public events when discovery is on,
@@ -472,6 +475,7 @@ const DAY_KIND: Record<TodayItem['kind'], { icon: LucideIcon; tone: Tone; label:
   notice: { icon: Megaphone, tone: 'rose', label: 'Notice' },
   task: { icon: ClipboardList, tone: 'mint', label: 'Task' },
   goal: { icon: Target, tone: 'mint', label: 'Goal' },
+  library: { icon: BookOpen, tone: 'peach', label: 'Library' },
 };
 
 /** "What matters today" — one ranked list from real records (src/lib/today.ts). */

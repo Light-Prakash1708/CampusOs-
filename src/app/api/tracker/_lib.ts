@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AppError, ForbiddenError } from '@/lib/api';
+import { ForbiddenError } from '@/lib/api';
 import type { AuthContext } from '@/lib/auth/context';
 import { GOAL_CATEGORIES } from '@/lib/tracker';
 
@@ -13,10 +13,7 @@ export function studentOnly(user: AuthContext): AuthContext {
   return user;
 }
 
-export function idParam(value: string | undefined, what = 'That item'): string {
-  if (!value || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) throw new AppError(`${what} was not found.`, 404, 'NOT_FOUND');
-  return value;
-}
+export { idParam } from '@/lib/http';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-10-01');
 export const Title = z.string().trim().min(1, 'Give it a name').max(120);

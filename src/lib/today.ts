@@ -8,7 +8,7 @@
  * → today by time → tomorrow → the rest. Capped by the caller.
  */
 
-export type TodayKind = 'class' | 'deadline' | 'attendance' | 'event' | 'notice' | 'registration' | 'task' | 'goal';
+export type TodayKind = 'class' | 'deadline' | 'attendance' | 'event' | 'notice' | 'registration' | 'task' | 'goal' | 'library';
 
 export interface TodayItem {
   key: string;
@@ -35,6 +35,8 @@ export interface TodayInputs {
   notices: { id: string; title: string; critical: boolean; needsAck: boolean }[];
   tasks?: { id: string; title: string; dueDate: string | null; href: string }[];
   goals?: { id: string; title: string; streak: number; href: string; doneToday: boolean }[];
+  /** Library books due by tomorrow, or overdue. */
+  loans?: { id: string; title: string; dueAt: Date }[];
 }
 
 const toMin = (hhmm: string) => {
@@ -143,6 +145,17 @@ export function buildToday(input: TodayInputs, limit = 7): TodayItem[] {
   for (const g of input.goals ?? []) {
     if (g.doneToday) continue;
     out.push({ key: `g-${g.id}`, kind: 'goal', when: g.streak > 0 ? `Day ${g.streak + 1}` : 'Today', title: g.title, detail: g.streak > 0 ? `Keep your ${g.streak}-day streak going` : 'Check in today', href: g.href, urgent: false, order: 1300 });
+  }
+
+  // Library: overdue books are urgent; due today/tomorrow are reminders.
+  for (const l of input.loans ?? []) {
+    const due = localParts(l.dueAt, input.timeZone);
+    const overdue = l.dueAt.getTime() < Date.now() && (due.date < input.today || (due.date === input.today && due.minutes <= input.nowMinutes));
+    if (overdue) {
+      out.push({ key: `lib-${l.id}`, kind: 'library', when: 'Overdue', title: `Return “${l.title}”`, detail: `Library book · was due ${shortDate(due.date)}`, href: '/student/library?tab=loans', urgent: true, order: 15 });
+    } else if (due.date === input.today || due.date === tomorrow) {
+      out.push({ key: `lib-${l.id}`, kind: 'library', when: due.date === input.today ? 'Due today' : 'Tomorrow', title: `Return “${l.title}”`, detail: 'Library book · renew it if you need longer', href: '/student/library?tab=loans', urgent: false, order: due.date === input.today ? 1100 : 2600 });
+    }
   }
 
   return out.sort((a, b) => Number(b.urgent) - Number(a.urgent) || a.order - b.order).slice(0, limit);

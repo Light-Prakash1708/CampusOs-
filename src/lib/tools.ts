@@ -122,10 +122,13 @@ export const TOOLS: readonly ToolDefinition[] = [
   {
     key: 'pyqs',
     title: 'PYQs',
-    description: 'Previous years’ question papers by subject and semester, contributed and moderated.',
+    description: 'Previous years’ question papers and question banks your faculty share, by subject. Save the ones you need.',
     icon: 'notes',
     tone: 'rose',
-    plannedPhase: 6,
+    href: '/student/library?tab=pyqs',
+    cta: 'Open PYQs',
+    feature: 'resource_hub_enabled',
+    permissions: ['resource:view_department'],
   },
   {
     key: 'documents',

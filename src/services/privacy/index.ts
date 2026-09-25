@@ -13,6 +13,7 @@ import {
 } from './catalogue';
 import { consentChanges, PRIVACY_DEFAULTS, type PrivacyPrefs } from './rules';
 import { eraseTrackerData, exportTrackerData } from '@/services/tracker';
+import { exportLibraryData } from '@/services/library';
 
 export * from './rules';
 
@@ -231,6 +232,7 @@ export async function buildPersonalDataExport(ctx: AuthContext) {
     devices: pushSubs,
     tools: { usage: toolUsage },
     tracker: await exportTrackerData(uid),
+    library: await exportLibraryData(uid),
     files,
   };
 }
@@ -363,6 +365,9 @@ export async function decideDeletionRequest(
     await tx.delete(t.aiPreferences).where(eq(t.aiPreferences.userId, uid));
     await tx.delete(t.pushSubscriptions).where(eq(t.pushSubscriptions.userId, uid));
     await tx.delete(t.toolUsage).where(eq(t.toolUsage.userId, uid));
+    await tx.delete(t.resourceSaves).where(eq(t.resourceSaves.userId, uid));
+    // Open reservations are withdrawn; loan records stay with the library (an institutional record).
+    await tx.update(t.libraryReservations).set({ status: 'CANCELLED', closedAt: new Date() }).where(and(eq(t.libraryReservations.userId, uid), inArray(t.libraryReservations.status, ['WAITING', 'READY'])));
     await tx.delete(t.notificationPreferences).where(eq(t.notificationPreferences.userId, uid));
     await tx.delete(t.notificationSettings).where(eq(t.notificationSettings.userId, uid));
     await tx.delete(t.authTokens).where(eq(t.authTokens.userId, uid));

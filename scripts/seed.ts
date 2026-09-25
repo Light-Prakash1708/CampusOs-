@@ -24,6 +24,7 @@ import { hashPassword } from '../src/lib/auth/password';
 import { defaultFlags } from '../src/lib/features';
 import { purgeTenant } from './lib/purge';
 import { seedEventsNetwork } from './seed-events';
+import { seedLibrary } from './seed-library';
 import { ensureRetentionPolicies } from '../src/services/privacy/retention';
 import { defaultSolver } from '../src/services/timetable/solver';
 import type { SolverSession, SolverInput } from '../src/services/timetable/types';
@@ -121,7 +122,7 @@ async function main() {
       city: 'Kolkata',
       state: 'West Bengal',
       subscriptionTier: 'PROFESSIONAL',
-      featureFlags: { ...defaultFlags(), anonymous_grievance_enabled: true, personal_tracker_enabled: true, gamification_enabled: true, leaderboards_enabled: true },
+      featureFlags: { ...defaultFlags(), anonymous_grievance_enabled: true, library_enabled: true, personal_tracker_enabled: true, gamification_enabled: true, leaderboards_enabled: true },
       registrationPolicy: { mode: 'ADMIN_APPROVAL' },
       isListed: true,
       setupCompletedAt: new Date(),
@@ -976,6 +977,7 @@ async function main() {
     otherStudentUserIds: studentProfiles.slice(2, 60).map((p) => p.userId),
     eventOrganizerUserId: clubLead,
   });
+  await seedLibrary(db, { institutionId: inst, adminUserId: admin.id, demoStudentUserId: studentProfiles[0]!.userId, otherStudentUserId: studentProfiles[5]!.userId });
 
   // CampusOS 2.0 foundation: institution-issued accounts are verified, the
   // demo college accepts self-registration with admin approval, and the

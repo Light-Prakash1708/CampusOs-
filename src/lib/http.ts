@@ -1,3 +1,5 @@
+import { AppError } from '@/lib/api';
+
 /**
  * Request metadata helpers shared by route handlers and services.
  *
@@ -66,4 +68,10 @@ export function isCrossSiteMutation(
 /** IP + user agent for audit records and rate limiting. */
 export function metaFrom(request: Request): { ipAddress: string | null; userAgent: string | null } {
   return { ipAddress: clientIp(request.headers), userAgent: userAgent(request.headers) };
+}
+
+/** A route's `[id]` segment as a UUID, or a 404 naming what wasn't found. */
+export function idParam(value: string | undefined, what = 'That item'): string {
+  if (!value || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) throw new AppError(`${what} was not found.`, 404, 'NOT_FOUND');
+  return value;
 }
