@@ -1,120 +1,164 @@
 @import 'tailwindcss';
 
 /* ==========================================================================
-   CampusOS Design System
+   CampusOS Design System — "playful academic, serious underneath"
    --------------------------------------------------------------------------
-   Restrained, information-dense, calm. The interface should reduce cognitive
-   load, not compete for attention. Light by default, full dark mode support.
-   All colour is expressed as CSS variables so a tenant can be white-labelled
-   without touching component code.
+   Warm cream canvas, indigo primary, pastel semantic tiles, dark ink outlines
+   with a small offset shadow, bold display type and occasional pixel-art
+   accents. Every colour is a CSS variable: tenants can re-brand `--brand`,
+   and dark mode is a deliberate night palette, not an inversion.
+   Documentation: docs/CAMPUSOS_UI_SYSTEM.md
    ========================================================================== */
 
 @theme {
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif;
+    'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-display: var(--font-sans);
+  --font-pixel: 'Pixelify Sans', ui-monospace, monospace;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
   --radius-xs: 0.25rem;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --radius-sm: 0.4rem;
+  --radius-md: 0.55rem;
+  --radius-lg: 0.8rem;
   --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+}
+
+/* Colour utilities generated from the variables below:
+   bg-ink, border-ink, text-ink, bg-mint, text-mint-ink, bg-lavender … */
+@theme inline {
+  --color-ink: hsl(var(--ink));
+  --color-cream: hsl(var(--surface-muted));
+  --color-mint: hsl(var(--tone-mint));
+  --color-mint-ink: hsl(var(--tone-mint-ink));
+  --color-coral: hsl(var(--tone-coral));
+  --color-coral-ink: hsl(var(--tone-coral-ink));
+  --color-lavender: hsl(var(--tone-lavender));
+  --color-lavender-ink: hsl(var(--tone-lavender-ink));
+  --color-sun: hsl(var(--tone-sun));
+  --color-sun-ink: hsl(var(--tone-sun-ink));
+  --color-peach: hsl(var(--tone-peach));
+  --color-peach-ink: hsl(var(--tone-peach-ink));
+  --color-sky: hsl(var(--tone-sky));
+  --color-sky-ink: hsl(var(--tone-sky-ink));
+  --color-rose: hsl(var(--tone-rose));
+  --color-rose-ink: hsl(var(--tone-rose-ink));
 }
 
 @layer base {
   :root {
-    /* Neutrals — slate-based, slightly cool */
-    --surface: 0 0% 100%;
-    --surface-muted: 210 20% 98%;
-    --surface-raised: 0 0% 100%;
-    --surface-sunken: 210 20% 96.5%;
-    --surface-inverse: 222 47% 11%;
+    /* Canvas & surfaces — warm cream, never pure white */
+    --surface: 42 100% 98.5%;
+    --surface-muted: 40 64% 95%;
+    --surface-raised: 42 100% 99%;
+    --surface-sunken: 39 52% 90.5%;
+    --surface-inverse: 247 38% 15%;
 
-    --border: 214 20% 90%;
-    --border-strong: 214 16% 82%;
+    /* Lines: hairline for dividers, ink for component outlines */
+    --border: 38 32% 83%;
+    --border-strong: 36 18% 70%;
+    --ink: 247 38% 17%;
 
-    --text: 222 47% 11%;
-    --text-muted: 215 16% 42%;
-    --text-subtle: 215 14% 58%;
-    --text-inverse: 210 20% 98%;
+    --text: 247 38% 13%;
+    --text-muted: 247 12% 36%;
+    --text-subtle: 247 8% 50%;
+    --text-inverse: 42 100% 98%;
 
-    /* Brand — overridden per tenant at runtime */
-    --brand: 243 75% 59%;
-    --brand-hover: 243 70% 52%;
-    --brand-subtle: 243 100% 97%;
-    --brand-border: 243 60% 88%;
-    --brand-text: 243 68% 45%;
+    /* Brand — campus indigo; overridden per tenant at runtime */
+    --brand: 243 75% 58%;
+    --brand-hover: 243 70% 51%;
+    --brand-subtle: 245 92% 95%;
+    --brand-border: 245 60% 84%;
+    --brand-text: 243 68% 46%;
 
     /* Semantic */
-    --success: 158 64% 34%;
-    --success-subtle: 152 76% 96%;
-    --success-border: 152 50% 84%;
+    --success: 156 64% 30%;
+    --success-subtle: 150 58% 91%;
+    --success-border: 150 40% 72%;
+    --warning: 30 88% 38%;
+    --warning-subtle: 45 100% 90%;
+    --warning-border: 42 80% 70%;
+    --danger: 2 72% 46%;
+    --danger-subtle: 4 90% 94%;
+    --danger-border: 4 70% 80%;
+    --info: 212 80% 42%;
+    --info-subtle: 212 90% 94%;
+    --info-border: 212 60% 80%;
 
-    --warning: 32 81% 40%;
-    --warning-subtle: 45 100% 96%;
-    --warning-border: 42 80% 82%;
+    /* Pastel tiles (bg) + their readable ink (icons, text on the tile) */
+    --tone-mint: 150 55% 89%;       --tone-mint-ink: 158 64% 28%;
+    --tone-coral: 4 92% 92%;        --tone-coral-ink: 2 70% 46%;
+    --tone-lavender: 245 90% 94%;   --tone-lavender-ink: 245 62% 50%;
+    --tone-sun: 45 100% 87%;        --tone-sun-ink: 34 90% 34%;
+    --tone-peach: 26 100% 90%;      --tone-peach-ink: 20 85% 42%;
+    --tone-sky: 210 92% 92%;        --tone-sky-ink: 212 78% 40%;
+    --tone-rose: 330 85% 93%;       --tone-rose-ink: 330 62% 44%;
 
-    --danger: 0 72% 45%;
-    --danger-subtle: 0 86% 97%;
-    --danger-border: 0 70% 88%;
+    --focus: 243 75% 58%;
 
-    --info: 205 85% 41%;
-    --info-subtle: 204 94% 96%;
-    --info-border: 204 70% 85%;
-
-    --focus: 243 75% 59%;
-
-    /* Elevation — restrained, never dramatic */
-    --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.04);
-    --shadow-sm: 0 1px 3px 0 rgb(16 24 40 / 0.07), 0 1px 2px -1px rgb(16 24 40 / 0.05);
-    --shadow-md: 0 4px 8px -2px rgb(16 24 40 / 0.08), 0 2px 4px -2px rgb(16 24 40 / 0.04);
-    --shadow-lg: 0 12px 20px -6px rgb(16 24 40 / 0.10), 0 4px 8px -4px rgb(16 24 40 / 0.05);
+    /* Elevation: a crisp offset "pop" for outlined components, soft for overlays */
+    --shadow-pop: 2px 2px 0 0 hsl(var(--ink));
+    --shadow-pop-lg: 3px 3px 0 0 hsl(var(--ink));
+    --shadow-xs: 0 1px 2px 0 rgb(31 27 61 / 0.05);
+    --shadow-sm: 0 1px 3px 0 rgb(31 27 61 / 0.08), 0 1px 2px -1px rgb(31 27 61 / 0.05);
+    --shadow-md: 0 6px 12px -4px rgb(31 27 61 / 0.14);
+    --shadow-lg: 0 16px 28px -10px rgb(31 27 61 / 0.22);
   }
 
+  /* Night campus: deep indigo, cream text, lifted outlines, dusk pastels */
   .dark {
-    --surface: 222 47% 9%;
-    --surface-muted: 222 40% 12%;
-    --surface-raised: 222 40% 13%;
-    --surface-sunken: 222 47% 7%;
-    --surface-inverse: 210 20% 98%;
+    --surface: 248 30% 13%;
+    --surface-muted: 248 32% 9%;
+    --surface-raised: 248 28% 15%;
+    --surface-sunken: 248 32% 7.5%;
+    --surface-inverse: 42 100% 97%;
 
-    --border: 217 25% 20%;
-    --border-strong: 217 20% 28%;
+    --border: 248 20% 22%;
+    --border-strong: 248 16% 32%;
+    --ink: 248 22% 40%;
 
-    --text: 210 20% 96%;
-    --text-muted: 215 18% 68%;
-    --text-subtle: 215 16% 52%;
-    --text-inverse: 222 47% 11%;
+    --text: 42 60% 95%;
+    --text-muted: 245 16% 74%;
+    --text-subtle: 245 12% 58%;
+    --text-inverse: 247 38% 13%;
 
-    --brand: 243 80% 70%;
-    --brand-hover: 243 85% 76%;
-    --brand-subtle: 243 45% 18%;
-    --brand-border: 243 40% 30%;
-    --brand-text: 243 85% 80%;
+    --brand: 244 90% 70%;
+    --brand-hover: 244 92% 76%;
+    --brand-subtle: 245 40% 21%;
+    --brand-border: 245 40% 36%;
+    --brand-text: 245 95% 82%;
 
-    --success: 158 60% 52%;
-    --success-subtle: 158 45% 14%;
-    --success-border: 158 35% 26%;
+    --success: 152 58% 55%;
+    --success-subtle: 158 38% 16%;
+    --success-border: 158 32% 30%;
+    --warning: 42 92% 62%;
+    --warning-subtle: 38 40% 16%;
+    --warning-border: 38 36% 32%;
+    --danger: 4 86% 68%;
+    --danger-subtle: 2 40% 18%;
+    --danger-border: 2 36% 34%;
+    --info: 210 88% 68%;
+    --info-subtle: 212 40% 17%;
+    --info-border: 212 36% 32%;
 
-    --warning: 38 90% 62%;
-    --warning-subtle: 38 45% 14%;
-    --warning-border: 38 40% 28%;
+    --tone-mint: 158 32% 18%;       --tone-mint-ink: 152 60% 66%;
+    --tone-coral: 2 36% 20%;        --tone-coral-ink: 4 90% 74%;
+    --tone-lavender: 245 36% 23%;   --tone-lavender-ink: 245 95% 82%;
+    --tone-sun: 40 40% 18%;         --tone-sun-ink: 44 95% 66%;
+    --tone-peach: 22 38% 19%;       --tone-peach-ink: 26 95% 70%;
+    --tone-sky: 212 38% 19%;        --tone-sky-ink: 210 90% 74%;
+    --tone-rose: 330 32% 20%;       --tone-rose-ink: 330 85% 78%;
 
-    --danger: 0 80% 66%;
-    --danger-subtle: 0 45% 16%;
-    --danger-border: 0 40% 30%;
+    --focus: 244 90% 72%;
 
-    --info: 205 85% 62%;
-    --info-subtle: 205 45% 15%;
-    --info-border: 205 40% 28%;
-
-    --focus: 243 80% 70%;
-
+    --shadow-pop: 2px 2px 0 0 hsl(248 40% 4%);
+    --shadow-pop-lg: 3px 3px 0 0 hsl(248 40% 4%);
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
     --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4);
-    --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.45);
-    --shadow-lg: 0 12px 20px -6px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 6px 12px -4px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 16px 28px -10px rgb(0 0 0 / 0.6);
   }
 
   * {
@@ -129,7 +173,7 @@
     background-color: hsl(var(--surface-muted));
     color: hsl(var(--text));
     font-family: var(--font-sans);
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-feature-settings: 'ss01', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -215,6 +259,23 @@
   .shadow-sm { box-shadow: var(--shadow-sm); }
   .shadow-md { box-shadow: var(--shadow-md); }
   .shadow-lg { box-shadow: var(--shadow-lg); }
+  .shadow-pop { box-shadow: var(--shadow-pop); }
+  .shadow-pop-lg { box-shadow: var(--shadow-pop-lg); }
+
+  /* Outlined component surface: the core CampusOS look. */
+  .campus-outline {
+    border: 1.5px solid hsl(var(--ink));
+    box-shadow: var(--shadow-pop);
+  }
+  .font-pixel { font-family: var(--font-pixel); letter-spacing: 0.01em; }
+  .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+  /* Scaled bitmap art stays crisp. */
+  .pixelated { image-rendering: pixelated; }
+
+  /* Press feedback for outlined buttons/tiles: shadow collapses as it sinks. */
+  .campus-press { transition: transform 0.08s ease, box-shadow 0.08s ease; }
+  .campus-press:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-pop-lg); }
+  .campus-press:active { transform: translate(1px, 1px); box-shadow: 0 0 0 0 hsl(var(--ink)); }
 
   .tabular { font-variant-numeric: tabular-nums; }
 

@@ -98,7 +98,7 @@ export function LoginForm({
 
   return (
     <>
-      <form onSubmit={submit} className="mt-7 space-y-4">
+      <form onSubmit={submit} className="space-y-4">
         {error ? (
           <div
             className="flex gap-2.5 rounded-lg border border-[hsl(var(--danger-border))] bg-danger-subtle p-3"

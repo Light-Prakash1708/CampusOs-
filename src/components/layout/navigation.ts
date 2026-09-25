@@ -17,40 +17,43 @@ export interface NavItem {
 
 export interface NavGroup {
   label?: string;
+  /** 'bottom' groups are pinned above the user card (Profile, Settings). */
+  position?: 'bottom';
   items: NavItem[];
 }
 
+/**
+ * Student navigation (CampusOS 2.0 information architecture).
+ * Modules that are not enabled for the institution are hidden, never shown
+ * as dead links.
+ */
 export const STUDENT_NAV: NavGroup[] = [
   {
     items: [
-      { label: 'Dashboard', href: '/student', icon: 'dashboard' },
-      { label: 'My Schedule', href: '/student/schedule', icon: 'calendar' },
+      { label: 'Home', href: '/student', icon: 'home' },
+      { label: 'Schedule', href: '/student/schedule', icon: 'calendar' },
       { label: 'Attendance', href: '/student/attendance', icon: 'check' },
-    ],
-  },
-  {
-    label: 'Academics',
-    items: [
       { label: 'Assignments', href: '/student/assignments', icon: 'clipboard' },
-      { label: 'Exams & Results', href: '/student/assessments', icon: 'graduation' },
+      { label: 'Events', href: '/student/events', icon: 'ticket', feature: 'events_enabled' },
+      { label: 'Communities', href: '/student/communities', icon: 'users', feature: 'clubs_enabled' },
+      { label: 'Library', href: '/student/library', icon: 'library', feature: 'resource_hub_enabled' },
+      { label: 'Opportunities', href: '/student/opportunities', icon: 'briefcase', feature: 'opportunity_hub_enabled' },
+      { label: 'Career', href: '/student/skills', icon: 'career', feature: 'skill_engine_enabled' },
+      { label: 'Tracker', href: '/student/tracker', icon: 'tracker', feature: 'personal_tracker_enabled' },
       {
-        label: 'Resources',
-        href: '/student/resources',
-        icon: 'book',
-        feature: 'resource_hub_enabled',
-      },
-      {
-        label: 'Skills & Career',
-        href: '/student/skills',
-        icon: 'target',
-        feature: 'skill_engine_enabled',
+        label: 'AI Assistant',
+        href: '/student/assistant',
+        icon: 'sparkles',
+        feature: 'ai_assistant_enabled',
+        permissions: ['ai:use_assistant'],
       },
     ],
   },
   {
     label: 'Campus',
     items: [
-      { label: 'Announcements', href: '/student/announcements', icon: 'megaphone' },
+      { label: 'Notices', href: '/student/announcements', icon: 'megaphone' },
+      { label: 'Exams & Results', href: '/student/assessments', icon: 'graduation' },
       { label: 'Calendar', href: '/student/calendar', icon: 'calendarClock' },
       {
         label: 'Readdressal',
@@ -62,14 +65,10 @@ export const STUDENT_NAV: NavGroup[] = [
     ],
   },
   {
+    position: 'bottom',
     items: [
-      {
-        label: 'AI Assistant',
-        href: '/student/assistant',
-        icon: 'sparkles',
-        feature: 'ai_assistant_enabled',
-        permissions: ['ai:use_assistant'],
-      },
+      { label: 'Profile', href: '/student/profile', icon: 'user' },
+      { label: 'Settings', href: '/student/settings', icon: 'settings' },
     ],
   },
 ];
@@ -248,30 +247,82 @@ export function navForPortal(portal: 'student' | 'faculty' | 'admin'): NavGroup[
   return ADMIN_NAV;
 }
 
-/** Bottom navigation for mobile — five destinations maximum. */
-export const MOBILE_NAV: Record<
-  'student' | 'faculty' | 'admin',
-  { label: string; href: string; icon: NavIconKey }[]
-> = {
+/**
+ * Bottom navigation for mobile — five slots maximum. `kind: 'create'` renders
+ * the central ＋ button that opens the quick-create sheet; `href: '#menu'`
+ * opens the full navigation drawer. Items whose module is disabled fall back
+ * to `fallback` so the bar never shows a dead destination.
+ */
+export interface MobileNavItem {
+  label: string;
+  href: string;
+  icon: NavIconKey;
+  kind?: 'create';
+  feature?: FeatureFlag;
+  fallback?: { label: string; href: string; icon: NavIconKey };
+}
+
+export const MOBILE_NAV: Record<'student' | 'faculty' | 'admin', MobileNavItem[]> = {
   student: [
-    { label: 'Home', href: '/student', icon: 'dashboard' },
-    { label: 'Schedule', href: '/student/schedule', icon: 'calendar' },
-    { label: 'Alerts', href: '/student/announcements', icon: 'bell' },
-    { label: 'AI', href: '/student/assistant', icon: 'sparkles' },
-    { label: 'More', href: '/student/more', icon: 'boxes' },
+    { label: 'Home', href: '/student', icon: 'home' },
+    {
+      label: 'Explore',
+      href: '/student/events',
+      icon: 'compass',
+      feature: 'events_enabled',
+      fallback: { label: 'Schedule', href: '/student/schedule', icon: 'calendar' },
+    },
+    { label: 'Create', href: '#create', icon: 'plus', kind: 'create' },
+    {
+      label: 'Tracker',
+      href: '/student/tracker',
+      icon: 'tracker',
+      feature: 'personal_tracker_enabled',
+      fallback: { label: 'Notices', href: '/student/announcements', icon: 'megaphone' },
+    },
+    { label: 'Profile', href: '/student/profile', icon: 'user' },
   ],
   faculty: [
-    { label: 'Home', href: '/faculty', icon: 'dashboard' },
+    { label: 'Home', href: '/faculty', icon: 'home' },
     { label: 'Schedule', href: '/faculty/schedule', icon: 'calendar' },
     { label: 'Classes', href: '/faculty/classes', icon: 'users' },
-    { label: 'Copilot', href: '/faculty/copilot', icon: 'sparkles' },
-    { label: 'More', href: '/faculty/more', icon: 'boxes' },
+    { label: 'Copilot', href: '/faculty/copilot', icon: 'sparkles', feature: 'teacher_copilot_enabled' },
+    { label: 'Menu', href: '#menu', icon: 'boxes' },
   ],
   admin: [
-    { label: 'Home', href: '/admin', icon: 'dashboard' },
+    { label: 'Home', href: '/admin', icon: 'home' },
     { label: 'Timetable', href: '/admin/timetable', icon: 'calendarClock' },
     { label: 'Notices', href: '/admin/communications', icon: 'megaphone' },
     { label: 'Cases', href: '/admin/readdressal', icon: 'lifebuoy' },
-    { label: 'More', href: '/admin/more', icon: 'boxes' },
+    { label: 'Menu', href: '#menu', icon: 'boxes' },
+  ],
+};
+
+/** Quick-create sheet (mobile ＋). Only actions that really exist are offered. */
+export interface QuickCreateItem {
+  label: string;
+  description: string;
+  href: string;
+  icon: NavIconKey;
+  feature?: FeatureFlag;
+  permissions?: Permission[];
+}
+
+export const QUICK_CREATE: Record<'student' | 'faculty' | 'admin', QuickCreateItem[]> = {
+  student: [
+    { label: 'Create goal', description: 'Something small you want to improve', href: '/student/tracker/goals/new', icon: 'target', feature: 'personal_tracker_enabled' },
+    { label: 'Add task', description: 'A to-do for today', href: '/student/tracker?add=task', icon: 'check', feature: 'personal_tracker_enabled' },
+    { label: 'Ask AI', description: 'Plans, notices, topics', href: '/student/assistant', icon: 'sparkles', feature: 'ai_assistant_enabled', permissions: ['ai:use_assistant'] },
+    { label: 'Explore events', description: 'Fests, hackathons, workshops', href: '/student/events', icon: 'ticket', feature: 'events_enabled' },
+    { label: 'Raise a request', description: 'Complaint or help request', href: '/student/readdressal/new', icon: 'lifebuoy', feature: 'grievance_enabled' },
+  ],
+  faculty: [
+    { label: 'Mark attendance', description: 'For your current class', href: '/faculty/attendance', icon: 'check', permissions: ['attendance:mark'] },
+    { label: 'New assignment', description: 'Create and publish', href: '/faculty/assignments/new', icon: 'clipboard', permissions: ['assignment:create'] },
+    { label: 'Post a notice', description: 'To your classes', href: '/faculty/announcements', icon: 'megaphone' },
+  ],
+  admin: [
+    { label: 'New notice', description: 'Targeted announcement', href: '/admin/communications/new', icon: 'megaphone', permissions: ['announcement:create_official', 'announcement:create_informational'] },
+    { label: 'Invite someone', description: 'Student, faculty or staff', href: '/admin/access', icon: 'users', permissions: ['user:invite'] },
   ],
 };

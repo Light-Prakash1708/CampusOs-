@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { CampusIllustration, CampusSpeech, PixelRobot } from '@/components/campus';
 
 /**
  * Shared frame for the signed-out screens (sign in, register, password reset,
@@ -17,32 +18,36 @@ export function AuthShell({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex min-h-screen bg-surface-muted">
       <main className="flex w-full flex-col justify-center px-4 py-12 sm:px-12 lg:w-[46%] lg:px-16">
         <div className="mx-auto w-full max-w-sm">
           <a href="/login" className="mb-8 flex items-center gap-2.5" aria-label="CampusOS home">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand text-base font-bold text-white">
-              C
-            </span>
+            <PixelRobot size={40} />
             <span>
-              <span className="block text-[15px] font-semibold leading-tight text-default">CampusOS</span>
-              <span className="block text-[11.5px] leading-tight text-subtle">Your college. Your campus. Your progress.</span>
+              <span className="block font-display text-[20px] font-extrabold leading-tight text-brand">CampusOS</span>
+              <span className="block text-[11.5px] font-medium leading-tight text-subtle">Your college. Your campus. Your progress.</span>
             </span>
           </a>
-          <h1 className="text-xl font-semibold tracking-[-0.01em] text-default">{title}</h1>
+          <h1 className="font-display text-[26px] font-extrabold leading-tight text-default">{title}</h1>
           {subtitle ? <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{subtitle}</p> : null}
           <div className="mt-7">{children}</div>
           {footer ? <div className="mt-6 text-center text-[13px] text-muted">{footer}</div> : null}
         </div>
       </main>
-      <aside className="relative hidden flex-1 border-l border-[hsl(var(--border))] bg-surface-sunken lg:block" aria-hidden>
-        <div className="flex h-full flex-col justify-center px-16">
-          <p className="max-w-md text-[22px] font-medium leading-relaxed tracking-[-0.01em] text-default">
-            One place for your classes, notices, attendance, events and progress — without a dozen
-            WhatsApp groups.
+      <aside className="relative hidden flex-1 border-l-[1.5px] border-ink bg-lavender lg:flex" aria-hidden>
+        <div className="m-auto w-full max-w-lg px-12">
+          <div className="overflow-hidden rounded-2xl campus-outline bg-surface">
+            <CampusIllustration name="home-hero" priority sizes="520px" />
+          </div>
+          <div className="mt-6 flex items-center gap-3">
+            <PixelRobot size={52} />
+            <CampusSpeech>Same campus. Bigger opportunities.</CampusSpeech>
+          </div>
+          <p className="mt-5 font-display text-[22px] font-extrabold leading-snug text-default">
+            Classes, notices, attendance, events and your progress — without a dozen WhatsApp groups.
           </p>
-          <p className="mt-5 max-w-md text-[13px] leading-relaxed text-muted">
-            Your institution decides who can join. You decide what others can see.
+          <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
+            Your college decides who can join. You decide what others can see.
           </p>
         </div>
       </aside>

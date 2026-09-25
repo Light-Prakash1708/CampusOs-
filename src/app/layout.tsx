@@ -1,9 +1,13 @@
 import type { Metadata, Viewport } from 'next';
+// Self-hosted fonts (no request to Google at runtime or build time).
+import '@fontsource-variable/plus-jakarta-sans';
+import '@fontsource/pixelify-sans/500.css';
+import '@fontsource/pixelify-sans/600.css';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'CampusOS — The AI Operating System for Academic Institutions',
+    default: 'CampusOS — Your college. Your campus. Your progress.',
     template: '%s · CampusOS',
   },
   description:
@@ -19,8 +23,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0b1220' },
+    { media: '(prefers-color-scheme: light)', color: '#fbf5e9' },
+    { media: '(prefers-color-scheme: dark)', color: '#100e1f' },
   ],
 };
 

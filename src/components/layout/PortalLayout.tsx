@@ -13,7 +13,16 @@ import { requireAuth, type AuthContext } from '@/lib/auth/context';
 import { isEnabled, type FeatureFlag } from '@/lib/features';
 import { humanize } from '@/lib/utils';
 import { AppShell, type ShellBadges } from './AppShell';
-import { navForPortal, MOBILE_NAV, type NavGroup } from './navigation';
+import {
+  navForPortal,
+  MOBILE_NAV,
+  QUICK_CREATE,
+  type NavGroup,
+  type MobileNavItem,
+  type QuickCreateItem,
+} from './navigation';
+import { studentProfiles, programs, sections, institutions } from '@/lib/db/schema';
+import { avatarToneFor } from '@/components/campus/pixel';
 
 /**
  * Server-side portal wrapper.
@@ -39,29 +48,70 @@ export async function PortalLayout({
   if (user.mustChangePassword) redirect('/account/security?required=1');
 
   const nav = filterNav(navForPortal(portal), user);
-  const badges = await loadBadges(user);
+  const [badges, identity] = await Promise.all([loadBadges(user), loadIdentity(user)]);
 
   return (
     <AppShell
       user={{
         fullName: user.fullName,
         displayName: user.displayName,
+        firstName: user.firstName,
         email: user.email,
         avatarUrl: user.avatarUrl,
+        avatarTone: avatarToneFor(user.userId),
         roleLabel: humanize(user.role),
         institutionName: user.institutionName,
+        institutionLabel: identity.institutionLabel,
         institutionLogoUrl: user.institutionLogoUrl,
         portal,
-        subtitle: humanize(user.role),
+        subtitle: identity.subtitle ?? humanize(user.role),
       }}
       nav={nav}
       badges={badges}
-      mobileNav={MOBILE_NAV[portal]}
+      mobileNav={filterMobileNav(MOBILE_NAV[portal], user)}
+      quickCreate={filterQuickCreate(QUICK_CREATE[portal], user)}
       demoMode={process.env.DEMO_MODE === 'true' && process.env.NODE_ENV !== 'production'}
     >
       {children}
     </AppShell>
   );
+}
+
+function allowed(user: AuthContext, feature?: FeatureFlag, permissions?: string[]) {
+  if (feature && !isEnabled(user.featureFlags, feature)) return false;
+  if (permissions && !permissions.some((p) => user.permissions.has(p as never))) return false;
+  return true;
+}
+
+function filterMobileNav(items: MobileNavItem[], user: AuthContext): MobileNavItem[] {
+  return items.map((item) =>
+    allowed(user, item.feature) || !item.fallback ? item : { ...item, ...item.fallback, feature: undefined },
+  ).filter((item) => allowed(user, item.feature));
+}
+
+function filterQuickCreate(items: QuickCreateItem[], user: AuthContext): QuickCreateItem[] {
+  return items.filter((i) => allowed(user, i.feature, i.permissions));
+}
+
+/** "BBA · Year 1 · Section 2" for students; the institution's short label for the top bar. */
+async function loadIdentity(user: AuthContext): Promise<{ subtitle: string | null; institutionLabel: string }> {
+  const [inst] = await db
+    .select({ shortName: institutions.shortName, city: institutions.city })
+    .from(institutions)
+    .where(eq(institutions.id, user.institutionId))
+    .limit(1);
+  const institutionLabel = [inst?.shortName ?? user.institutionName, inst?.city].filter(Boolean).join(', ');
+  if (!user.studentProfileId) return { subtitle: null, institutionLabel };
+  const [row] = await db
+    .select({ program: programs.code, year: studentProfiles.currentYear, section: sections.name })
+    .from(studentProfiles)
+    .innerJoin(programs, eq(programs.id, studentProfiles.programId))
+    .leftJoin(sections, eq(sections.id, studentProfiles.sectionId))
+    .where(eq(studentProfiles.id, user.studentProfileId))
+    .limit(1);
+  if (!row) return { subtitle: null, institutionLabel };
+  const section = row.section ? (/^section/i.test(row.section) ? row.section : `Section ${row.section}`) : null;
+  return { subtitle: [row.program, `Year ${row.year}`, section].filter(Boolean).join(' · '), institutionLabel };
 }
 
 function filterNav(groups: NavGroup[], user: AuthContext): NavGroup[] {

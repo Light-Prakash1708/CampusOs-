@@ -32,7 +32,7 @@ const PUBLIC_PATHS = [
   '/manifest.webmanifest',
 ];
 
-const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/api/auth/', '/api/public/'];
+const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/illustrations', '/api/auth/', '/api/public/'];
 
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;
@@ -120,5 +120,5 @@ function redirectToLogin(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|images).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icons|images|illustrations).*)'],
 };

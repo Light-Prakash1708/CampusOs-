@@ -1,35 +1,46 @@
 import Link from 'next/link';
+import { and, count, eq, isNotNull, isNull, lt } from 'drizzle-orm';
 import {
   AlertTriangle,
-  ArrowRight,
-  BellRing,
-  CalendarClock,
+  BookOpen,
+  Briefcase,
+  CalendarCheck2,
+  CalendarDays,
   CheckSquare,
   ClipboardList,
-  DoorOpen,
-  History,
-  MapPin,
+  FileText,
+  Flame,
   Megaphone,
+  MapPin,
+  Mountain,
+  RefreshCw,
   Sparkles,
   Target,
-  User,
+  Ticket,
+  Users,
 } from 'lucide-react';
-import {
-  Alert,
-  Badge,
-  Button,
-  Card,
-  CardBody,
-  CardFooter,
-  CardHeader,
-  Divider,
-  EmptyState,
-  Progress,
-  Section,
-} from '@/components/ui';
-import { formatDate, formatTime, percent, pluralize, relativeTime } from '@/lib/utils';
+import { db } from '@/lib/db';
+import * as t from '@/lib/db/schema';
 import { isEnabled } from '@/lib/features';
-import { getStudentSkillProfile } from '@/services/skills';
+import { formatDate, pluralize, relativeTime } from '@/lib/utils';
+import {
+  CampusCard,
+  CampusEmptyState,
+  CampusIllustration,
+  CampusNotice,
+  CampusPill,
+  CampusProgressRow,
+  CampusQuickAction,
+  CampusSectionHeader,
+  CampusSpeech,
+  CampusTimeline,
+  PixelAvatar,
+  avatarToneFor,
+  toneForTag,
+  type TimelineItem,
+  type Tone,
+} from '@/components/campus';
+import type { LucideIcon } from 'lucide-react';
 import { requireStudentContext } from './_lib/auth';
 import {
   getAttendanceRows,
@@ -42,654 +53,410 @@ import {
   summariseAttendance,
 } from './_lib/student';
 import { getStudentAssignments } from './_lib/coursework';
-import { getHolidays, getStudentAnnouncements, getStudentChanges } from './_lib/campus';
+import { getCampusEvents, getHolidays, getStudentAnnouncements, getStudentChanges } from './_lib/campus';
 import { findNextClass, occurrencesForDate, type ClassOccurrence } from './_lib/schedule';
-import {
-  addIsoDays,
-  DAY_LABEL,
-  formatIsoDayLabel,
-  isoToDate,
-  minutesUntilLabel,
-  timeToMinutes,
-  zonedNow,
-} from './_lib/time';
-import { AskAiLink, priorityTone, SubjectTag } from './_components/bits';
+import { addIsoDays, DAY_LABEL, isoToDate, timeToMinutes, zonedNow } from './_lib/time';
 
-export const metadata = { title: 'Dashboard' };
+export const metadata = { title: 'Home' };
 export const dynamic = 'force-dynamic';
 
-export default async function StudentDashboard() {
+/**
+ * STUDENT HOME — "a calm information hierarchy".
+ * Every number on this page comes from the student's own records. Where a
+ * record does not exist yet, the page says so rather than inventing a value.
+ */
+export default async function StudentHome() {
   const user = await requireStudentContext();
   const timeZone = await getInstitutionTimezone(user.institutionId);
   const now = zonedNow(timeZone);
 
-  const [term, offerings, attendanceRows, assignments, announcements, changes] = await Promise.all([
+  const [term, offerings, attendanceRows, assignments, announcements, changes, identity, activity] = await Promise.all([
     getCurrentTerm(user.institutionId),
     getEnrolledOfferings(user.institutionId, user.studentProfileId),
     getAttendanceRows(user.institutionId, user.studentProfileId),
     getStudentAssignments(user.institutionId, user.studentProfileId),
     getStudentAnnouncements(user.institutionId, user.userId),
-    getStudentChanges(user.institutionId, user.sectionId, user.userId, 5),
+    getStudentChanges(user.institutionId, user.sectionId, user.userId, 6),
+    loadIdentity(user.studentProfileId),
+    loadCampusActivity(user.institutionId, user.userId),
   ]);
 
   const timetable = term ? await getPublishedTimetable(user.institutionId, term.id) : null;
   const classes =
-    timetable && user.sectionId
-      ? await getWeeklyClasses(user.institutionId, user.sectionId, timetable.versionId)
-      : [];
-
+    timetable && user.sectionId ? await getWeeklyClasses(user.institutionId, user.sectionId, timetable.versionId) : [];
   const horizonEnd = addIsoDays(now.today, 8);
-  const [exceptions, holidays] = await Promise.all([
-    getScheduleExceptions(
-      user.institutionId,
-      offerings.map((o) => o.offeringId),
-      classes.map((c) => c.entryId),
-      now.today,
-      horizonEnd,
-    ),
+  const [exceptions, holidays, events] = await Promise.all([
+    getScheduleExceptions(user.institutionId, offerings.map((o) => o.offeringId), classes.map((c) => c.entryId), now.today, horizonEnd),
     getHolidays(user.institutionId, now.today, horizonEnd),
+    isEnabled(user.featureFlags, 'events_enabled')
+      ? getCampusEvents(user.institutionId, user.userId, now.today, addIsoDays(now.today, 60))
+      : Promise.resolve([]),
   ]);
 
-  const holidayDates = new Set(holidays.map((h) => h.date));
-  const todayHoliday = holidays.find((h) => h.date === now.today) ?? null;
+  const holidayToday = holidays.find((h) => h.date === now.today) ?? null;
+  const todays = holidayToday ? [] : occurrencesForDate(now.today, classes, exceptions);
+  const next = findNextClass(now.today, now.minutes, classes, exceptions, new Set(holidays.map((h) => h.date)));
 
-  const todaysClasses = occurrencesForDate(now.today, classes, exceptions);
-  const remainingToday = todaysClasses.filter((occurrence) => {
-    const end = timeToMinutes(occurrence.endTime);
-    return end !== null && end > now.minutes;
-  });
-
-  const next = findNextClass(now.today, now.minutes, classes, exceptions, holidayDates);
-
+  /* ---------------------------- progress (real) --------------------------- */
   const attendance = summariseAttendance(attendanceRows);
+  const attendancePct = attendance.held > 0 ? attendance.percentageBp / 100 : null;
+  const dueOrDone = assignments.filter((a) => a.bucket !== 'DUE_SOON' || a.submission);
+  const submitted = assignments.filter((a) => a.bucket === 'SUBMITTED' || a.bucket === 'EVALUATED');
+  const assignmentPct = dueOrDone.length > 0 ? (submitted.length / dueOrDone.length) * 100 : null;
+  const activityPct = activity.pastRegistrations > 0 ? (activity.attended / activity.pastRegistrations) * 100 : null;
+
+  /* ------------------------ things needing attention ----------------------- */
   const overdue = assignments.filter((a) => a.bucket === 'OVERDUE');
-  const upcoming = assignments
-    .filter((a) => a.bucket === 'DUE_SOON')
-    .sort((a, b) => (a.dueAt?.getTime() ?? 0) - (b.dueAt?.getTime() ?? 0));
+  const needsAck = announcements.filter((a) => a.requiresAcknowledgement && !a.acknowledgedAt);
+  const attention: { href: string; text: string }[] = [
+    ...attendance.atRisk.slice(0, 2).map((r) => ({
+      href: '/student/attendance',
+      text: `${r.name} attendance is ${(r.percentageBp / 100).toFixed(0)}% — attend the next ${pluralize(r.sessionsToRecover, 'class', 'classes')} to reach ${r.requiredPercentage}%`,
+    })),
+    ...(overdue.length ? [{ href: '/student/assignments', text: `${pluralize(overdue.length, 'assignment')} past due` }] : []),
+    ...(needsAck.length ? [{ href: '/student/announcements', text: `${pluralize(needsAck.length, 'notice')} to acknowledge` }] : []),
+  ];
 
-  const needsAck = announcements.filter(
-    (a) => a.requiresAcknowledgement && !a.acknowledgedAt,
-  );
-  const unread = announcements.filter((a) => !a.readAt);
+  const f = user.featureFlags;
+  const trackerOn = isEnabled(f, 'personal_tracker_enabled');
+  const eventsOn = isEnabled(f, 'events_enabled');
+  const libraryOn = isEnabled(f, 'resource_hub_enabled');
+  const aiOn = isEnabled(f, 'ai_assistant_enabled') && user.permissions.has('ai:use_assistant');
 
-  const skillsEnabled = isEnabled(user.featureFlags, 'skill_engine_enabled');
-  const skillProfile = skillsEnabled
-    ? await getStudentSkillProfile(user.institutionId, user.studentProfileId)
-    : null;
+  const quickActions = [
+    { href: '/student/attendance', icon: CalendarCheck2, label: 'Attendance Planner', tone: 'mint' as Tone, on: true },
+    { href: '/student/assignments', icon: ClipboardList, label: 'Submit Assignment', tone: 'coral' as Tone, on: true },
+    { href: '/student/events', icon: Ticket, label: 'Explore Events', tone: 'lavender' as Tone, on: eventsOn },
+    { href: '/student/tracker', icon: Target, label: 'Track Goals', tone: 'mint' as Tone, on: trackerOn },
+    { href: '/student/assistant', icon: Sparkles, label: 'Ask AI', tone: 'lavender' as Tone, on: aiOn },
+    isEnabled(f, 'opportunity_hub_enabled')
+      ? { href: '/student/opportunities', icon: Briefcase, label: 'Discover Opportunities', tone: 'sun' as Tone, on: true }
+      : { href: '/student/skills', icon: Mountain, label: 'Career & Skills', tone: 'sun' as Tone, on: isEnabled(f, 'skill_engine_enabled') },
+    { href: '/student/assessments', icon: FileText, label: 'Exams & Results', tone: 'sky' as Tone, on: true },
+  ]
+    .filter((a) => a.on)
+    .slice(0, 6);
 
-  const attentionCount =
-    attendance.atRisk.length + overdue.length + needsAck.length;
+  /* ------------------------------ notices ---------------------------------- */
+  type Item = { key: string; icon: LucideIcon; tone: Tone; title: string; meta: string; href: string; at: number; unread: boolean };
+  const noticeItems: Item[] = [
+    ...changes.map((c) => ({
+      key: `c-${c.id}`,
+      icon: RefreshCw,
+      tone: 'peach' as Tone,
+      title: c.title,
+      meta: `${c.summary} · ${relativeTime(c.createdAt)}`,
+      href: '/student/announcements?tab=changes',
+      at: c.createdAt.getTime(),
+      unread: false,
+    })),
+    ...announcements.slice(0, 8).map((a) => ({
+      key: `a-${a.id}`,
+      icon: a.priority === 'CRITICAL' ? AlertTriangle : Megaphone,
+      tone: (a.priority === 'CRITICAL' ? 'coral' : a.category === 'EVENT' ? 'lavender' : 'sky') as Tone,
+      title: a.title,
+      meta: `${a.authorName ?? a.departmentName ?? 'Notice'} · ${relativeTime(a.publishedAt)}`,
+      href: `/student/announcements#${a.id}`,
+      at: a.publishedAt?.getTime() ?? 0,
+      unread: !a.readAt,
+    })),
+  ]
+    .sort((a, b) => b.at - a.at)
+    .slice(0, 4);
+
+  const upcomingEvents = events.filter((e) => e.status === 'SCHEDULED').slice(0, 3);
 
   return (
-    <>
-      {/* ------------------------------ Greeting ----------------------------- */}
-      <div className="mb-5">
-        <p className="text-[12.5px] font-medium text-subtle">
-          {greeting(now.minutes)} · {DAY_LABEL[now.day]}, {formatDate(isoToDate(now.today))}
-        </p>
-        <h1 className="mt-0.5 text-xl font-semibold tracking-[-0.01em] text-default">
-          {user.firstName}
-        </h1>
-        <p className="mt-1 text-[13.5px] text-muted">
-          {term ? `${term.name} · Semester ${term.semesterNumber}` : 'No active term'}
-          {' · '}
-          {pluralize(offerings.length, 'subject')}
-          {attentionCount > 0
-            ? ` · ${pluralize(attentionCount, 'thing')} need${attentionCount === 1 ? 's' : ''} your attention`
-            : ' · nothing needs your attention right now'}
-        </p>
-      </div>
+    <div className="space-y-5">
+      {/* ------------------------------ greeting ------------------------------ */}
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="font-display text-[28px] font-extrabold leading-tight text-default sm:text-[32px]">
+            {greeting(now.minutes)}, {user.firstName}! <span aria-hidden>{greetingEmoji(now.minutes)}</span>
+          </h1>
+          <p className="mt-1 text-[14.5px] font-medium text-muted">Same campus. Bigger opportunities.</p>
+          <p className="mt-1 text-[12.5px] font-semibold text-subtle">
+            {[identity, DAY_LABEL[now.day], formatDate(isoToDate(now.today))].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <div className="hidden items-center gap-3 md:flex" aria-hidden>
+          <PixelAvatar tone={avatarToneFor(user.userId)} size={52} />
+          <CampusSpeech>“{dailyLine(now.today)}”</CampusSpeech>
+        </div>
+      </header>
 
-      {/* -------------------------- Needs attention -------------------------- */}
-      {attentionCount > 0 ? (
-        <Section title="Needs your attention">
-          <div className="space-y-2.5">
-            {attendance.atRisk.length > 0 ? (
-              <Alert
-                tone="danger"
-                icon={AlertTriangle}
-                title={`${pluralize(attendance.atRisk.length, 'subject')} below the attendance requirement`}
-                action={
-                  <Button asChild size="sm" variant="secondary">
-                    <Link href="/student/attendance">Review</Link>
-                  </Button>
-                }
-              >
-                {attendance.atRisk
-                  .slice(0, 3)
-                  .map((r) => `${r.code} at ${percent(r.percentageBp)}`)
-                  .join(' · ')}
-                {attendance.atRisk.length > 3 ? ` · +${attendance.atRisk.length - 3} more` : ''}
-              </Alert>
-            ) : null}
-
-            {overdue.length > 0 ? (
-              <Alert
-                tone="warning"
-                icon={ClipboardList}
-                title={`${pluralize(overdue.length, 'assignment')} past the due date`}
-                action={
-                  <Button asChild size="sm" variant="secondary">
-                    <Link href="/student/assignments">Open</Link>
-                  </Button>
-                }
-              >
-                {overdue
-                  .slice(0, 2)
-                  .map((a) => `${a.subjectCode} — ${a.title}`)
-                  .join(' · ')}
-                {overdue.length > 2 ? ` · +${overdue.length - 2} more` : ''}
-              </Alert>
-            ) : null}
-
-            {needsAck.length > 0 ? (
-              <Alert
-                tone="info"
-                icon={BellRing}
-                title={`${pluralize(needsAck.length, 'notice')} waiting for your acknowledgement`}
-                action={
-                  <Button asChild size="sm" variant="secondary">
-                    <Link href="/student/announcements">Read</Link>
-                  </Button>
-                }
-              >
-                {needsAck[0]?.title}
-                {needsAck[0]?.acknowledgementDeadline
-                  ? ` — respond by ${formatDate(needsAck[0].acknowledgementDeadline)}`
-                  : ''}
-              </Alert>
-            ) : null}
-          </div>
-        </Section>
+      {attention.length > 0 ? (
+        <CampusCard tone="sun" className="px-4 py-3" role="status" aria-label="Needs your attention">
+          <ul className="space-y-1">
+            {attention.map((a, i) => (
+              <li key={i}>
+                <Link href={a.href} className="flex items-start gap-2 text-[13px] font-semibold text-default hover:underline">
+                  <AlertTriangle size={15} className="mt-0.5 shrink-0 text-sun-ink" aria-hidden />
+                  {a.text}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </CampusCard>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        {/* ------------------------------ Left column ---------------------- */}
-        <div className="space-y-5 lg:col-span-2">
-          {/* Next class */}
-          <Card>
-            <CardHeader
-              title="Next class"
-              icon={CalendarClock}
-              action={
-                <Button asChild size="sm" variant="ghost" iconRight={ArrowRight}>
-                  <Link href="/student/schedule">Full timetable</Link>
-                </Button>
-              }
-            />
-            <CardBody className="p-0">
-              {!timetable ? (
-                <EmptyState
-                  icon={CalendarClock}
-                  title="No published timetable"
-                  description="Your section's timetable has not been published for this term yet. It will appear here as soon as the administration publishes it."
-                />
-              ) : next ? (
-                <NextClassPanel
-                  occurrence={next.occurrence}
-                  isToday={next.isToday}
-                  nowMinutes={now.minutes}
-                  todayIso={now.today}
-                />
-              ) : (
-                <EmptyState
-                  icon={CalendarClock}
-                  title="No classes scheduled in the next week"
-                  description={
-                    todayHoliday
-                      ? `${todayHoliday.name} today, and nothing is scheduled for the days after it.`
-                      : 'Nothing is on your timetable for the coming week.'
-                  }
-                />
-              )}
-            </CardBody>
-
-            {timetable && todaysClasses.length > 0 ? (
-              <CardFooter className="p-0">
-                <div className="px-5 py-3">
-                  <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-subtle">
-                    {remainingToday.length > 0
-                      ? `Rest of today · ${pluralize(remainingToday.length, 'class', 'classes')}`
-                      : 'Today · all classes finished'}
-                  </p>
-                  <ul className="space-y-1.5">
-                    {(remainingToday.length > 0 ? remainingToday : todaysClasses).map((c) => (
-                      <li
-                        key={c.key}
-                        className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]"
-                      >
-                        <span className="tabular w-[68px] shrink-0 text-muted">
-                          {formatTime(c.startTime)}
-                        </span>
-                        <span
-                          className={
-                            c.status === 'CANCELLED'
-                              ? 'font-medium text-subtle line-through'
-                              : 'font-medium text-default'
-                          }
-                        >
-                          {c.subjectName}
-                        </span>
-                        {c.roomCode ? (
-                          <span className="text-[12.5px] text-subtle">Room {c.roomCode}</span>
-                        ) : null}
-                        {c.status !== 'SCHEDULED' ? (
-                          <Badge tone={c.status === 'CANCELLED' ? 'danger' : 'warning'}>
-                            {c.status.replace(/_/g, ' ').toLowerCase()}
-                          </Badge>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </CardFooter>
-            ) : null}
-          </Card>
-
-          {/* Assignments */}
-          <Card>
-            <CardHeader
-              title="Assignments"
-              description={
-                assignments.length > 0
-                  ? `${overdue.length} overdue · ${upcoming.length} still to hand in`
-                  : undefined
-              }
-              icon={ClipboardList}
-              action={
-                <Button asChild size="sm" variant="ghost" iconRight={ArrowRight}>
-                  <Link href="/student/assignments">All</Link>
-                </Button>
-              }
-            />
-            <CardBody className="p-0">
-              {overdue.length === 0 && upcoming.length === 0 ? (
-                <EmptyState
-                  icon={ClipboardList}
-                  title="Nothing to hand in"
-                  description="Every assignment you have been set is either submitted or already evaluated."
-                />
-              ) : (
-                <ul className="divide-y divide-[hsl(var(--border))]">
-                  {[...overdue, ...upcoming].slice(0, 5).map((a) => (
-                    <li key={a.id} className="flex items-start gap-3 px-5 py-3">
-                      <span className="min-w-0 flex-1">
-                        <SubjectTag code={a.subjectCode} />
-                        <span className="mt-1 block truncate text-[13.5px] font-medium text-default">
-                          {a.title}
-                        </span>
-                        <span className="mt-0.5 block text-[12.5px] text-muted">
-                          {a.dueAt
-                            ? `Due ${formatDate(a.dueAt)} · ${relativeTime(a.dueAt)}`
-                            : 'No due date set'}
-                          {a.originalDueAt && a.dueAt
-                            ? ` · moved from ${formatDate(a.originalDueAt)}`
-                            : ''}
-                        </span>
-                      </span>
-                      <Badge tone={a.bucket === 'OVERDUE' ? 'danger' : 'neutral'}>
-                        {a.bucket === 'OVERDUE' ? 'Overdue' : `${a.maxScore} marks`}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardBody>
-          </Card>
-
-          {/* Attendance */}
-          <Card>
-            <CardHeader
-              title="Attendance"
-              description={
-                attendance.held > 0
-                  ? `${attendance.attended} of ${attendance.held} classes attended this term`
-                  : undefined
-              }
-              icon={CheckSquare}
-              action={
-                <Button asChild size="sm" variant="ghost" iconRight={ArrowRight}>
-                  <Link href="/student/attendance">Details</Link>
-                </Button>
-              }
-            />
-            <CardBody>
-              {attendance.held === 0 ? (
-                <EmptyState
-                  icon={CheckSquare}
-                  title="No attendance recorded yet"
-                  description="Once your faculty start submitting attendance for this term, your percentage appears here."
-                />
-              ) : (
-                <>
-                  <div className="flex items-baseline gap-3">
-                    <span className="tabular text-3xl font-semibold tracking-[-0.02em] text-default">
-                      {percent(attendance.percentageBp)}
-                    </span>
-                    <span className="text-[12.5px] text-muted">overall, all subjects</span>
-                  </div>
-                  <Progress
-                    className="mt-3"
-                    value={attendance.percentageBp / 100}
-                    tone={attendance.percentageBp >= 7500 ? 'success' : 'danger'}
-                  />
-
-                  {attendance.atRisk.length > 0 ? (
-                    <>
-                      <Divider className="my-4" />
-                      <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-subtle">
-                        Below requirement
-                      </p>
-                      <ul className="space-y-2">
-                        {attendance.atRisk.map((r) => (
-                          <li key={r.offeringId} className="flex items-center gap-3">
-                            <span className="min-w-0 flex-1">
-                              <SubjectTag code={r.code} name={r.name} />
-                              <span className="mt-0.5 block text-[12.5px] text-muted">
-                                {r.attendedSessions}/{r.heldSessions} attended ·{' '}
-                                {r.absenceHeadroom > 0
-                                  ? `${pluralize(r.absenceHeadroom, 'absence')} left`
-                                  : Number.isFinite(r.sessionsToRecover)
-                                    ? `attend the next ${pluralize(r.sessionsToRecover, 'class', 'classes')} to reach ${r.requiredPercentage}%`
-                                    : 'cannot reach the requirement this term'}
-                              </span>
-                            </span>
-                            <Badge tone="danger" className="tabular">
-                              {percent(r.percentageBp)}
-                            </Badge>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : null}
-                </>
-              )}
-            </CardBody>
-          </Card>
-        </div>
-
-        {/* ----------------------------- Right column ---------------------- */}
-        <div className="space-y-5">
-          {/* Notices */}
-          <Card>
-            <CardHeader
-              title="Notices"
-              description={
-                unread.length > 0 ? `${unread.length} unread` : 'You are up to date'
-              }
-              icon={Megaphone}
-              action={
-                <Button asChild size="sm" variant="ghost" iconRight={ArrowRight}>
-                  <Link href="/student/announcements">All</Link>
-                </Button>
-              }
-            />
-            <CardBody className="p-0">
-              {announcements.length === 0 ? (
-                <EmptyState
-                  icon={Megaphone}
-                  title="No notices yet"
-                  description="Notices addressed to your programme, section or the whole institution will appear here."
-                />
-              ) : (
-                <ul className="divide-y divide-[hsl(var(--border))]">
-                  {[...needsAck, ...announcements.filter((a) => !needsAck.includes(a))]
-                    .slice(0, 4)
-                    .map((a) => (
-                      <li key={a.id} className="px-5 py-3">
-                        <Link
-                          href={`/student/announcements#${a.reference}`}
-                          className="group block"
-                        >
-                          <span className="flex items-center gap-2">
-                            <Badge tone={priorityTone(a.priority)}>
-                              {a.priority.toLowerCase()}
-                            </Badge>
-                            {a.requiresAcknowledgement && !a.acknowledgedAt ? (
-                              <Badge tone="warning" dot>
-                                action needed
-                              </Badge>
-                            ) : !a.readAt ? (
-                              <Badge tone="brand" dot>
-                                unread
-                              </Badge>
-                            ) : null}
-                          </span>
-                          <span className="mt-1.5 block text-[13.5px] font-medium leading-snug text-default group-hover:text-brand">
-                            {a.title}
-                          </span>
-                          <span className="mt-0.5 block text-[12px] text-subtle">
-                            {a.publishedAt ? relativeTime(a.publishedAt) : 'Not published'}
-                            {a.authorName ? ` · ${a.authorName}` : ''}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                </ul>
-              )}
-            </CardBody>
-          </Card>
-
-          {/* What changed */}
-          <Card>
-            <CardHeader
-              title="What changed"
-              description="Recent changes affecting your section"
-              icon={History}
-            />
-            <CardBody className="p-0">
-              {changes.length === 0 ? (
-                <EmptyState
-                  icon={History}
-                  title="Nothing has changed"
-                  description="Room moves, cancellations and deadline changes that affect you are listed here with the reason."
-                />
-              ) : (
-                <ul className="divide-y divide-[hsl(var(--border))]">
-                  {changes.map((c) => (
-                    <li key={c.id} className="px-5 py-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="min-w-0 text-[13.5px] font-medium leading-snug text-default">
-                          {c.title}
-                        </p>
-                        {c.isTargeted ? (
-                          <Badge tone="brand" className="shrink-0">
-                            your section
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 text-[12.5px] text-muted">{c.summary}</p>
-                      {c.reason ? (
-                        <p className="mt-1 text-[12px] text-subtle">Reason: {c.reason}</p>
-                      ) : null}
-                      <p className="mt-1 text-[11.5px] text-subtle">
-                        {c.effectiveFrom
-                          ? `Effective ${formatDate(c.effectiveFrom)} · `
-                          : ''}
-                        recorded {relativeTime(c.createdAt)}
-                        {c.changedByName ? ` by ${c.changedByName}` : ''}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardBody>
-          </Card>
-
-          {/* Skills */}
-          {skillsEnabled ? (
-            <Card>
-              <CardHeader
-                title="Career readiness"
-                icon={Target}
-                action={
-                  <Button asChild size="sm" variant="ghost" iconRight={ArrowRight}>
-                    <Link href="/student/skills">Open</Link>
-                  </Button>
+      {/* -------------------- schedule · campus · progress -------------------- */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <CampusCard as="section" className="p-4 sm:p-5" aria-labelledby="today-h">
+          <CampusSectionHeader id="today-h" title="Today’s Schedule" href="/student/schedule" />
+          <div className="mt-4">
+            {holidayToday ? (
+              <CampusEmptyState sprite="student" title={`No classes — ${holidayToday.name}`} description="Enjoy the day off." />
+            ) : todays.length === 0 ? (
+              <CampusEmptyState
+                sprite="student"
+                title="No classes today"
+                description={
+                  next
+                    ? `Next: ${next.occurrence.subjectName} on ${DAY_LABEL[next.occurrence.day]} at ${next.occurrence.startTime.slice(0, 5)}.`
+                    : timetable
+                      ? 'Nothing scheduled in the next week.'
+                      : 'Your timetable has not been published yet.'
                 }
               />
-              <CardBody>
-                {skillProfile?.careerGoal ? (
-                  <>
-                    <p className="text-[13px] text-muted">
-                      Target role
-                      <span className="ml-1.5 font-medium text-default">
-                        {skillProfile.careerGoal.title}
-                      </span>
-                    </p>
-                    <div className="mt-3 flex items-baseline gap-2">
-                      <span className="tabular text-3xl font-semibold tracking-[-0.02em] text-default">
-                        {skillProfile.careerGoal.readiness}%
-                      </span>
-                      <span className="text-[12.5px] text-muted">ready</span>
-                    </div>
-                    <Progress
-                      className="mt-2.5"
-                      value={skillProfile.careerGoal.readiness}
-                      tone={
-                        skillProfile.careerGoal.readiness >= 75
-                          ? 'success'
-                          : skillProfile.careerGoal.readiness >= 50
-                            ? 'warning'
-                            : 'danger'
-                      }
-                    />
-                    <p className="mt-2 text-[12.5px] text-muted">
-                      {skillProfile.careerGoal.metRequirements} of{' '}
-                      {skillProfile.careerGoal.totalRequirements} requirements met, from{' '}
-                      {pluralize(skillProfile.overallEvidenceCount, 'piece')} of evidence.
-                    </p>
-                    {skillProfile.careerGoal.gaps.filter((g) => g.gap > 0).length > 0 ? (
-                      <p className="mt-2 text-[12.5px] text-subtle">
-                        Biggest gap:{' '}
-                        <span className="text-default">
-                          {skillProfile.careerGoal.gaps[0]?.skill}
-                        </span>{' '}
-                        ({skillProfile.careerGoal.gaps[0]?.current} →{' '}
-                        {skillProfile.careerGoal.gaps[0]?.required})
-                      </p>
-                    ) : null}
-                  </>
-                ) : (
-                  <EmptyState
-                    icon={Target}
-                    title="No career goal set"
-                    description="Pick a target role to see how your evidenced skills compare against what it requires."
-                    action={
-                      <Button asChild size="sm" variant="secondary">
-                        <Link href="/student/skills">Open skills</Link>
-                      </Button>
-                    }
-                  />
-                )}
-              </CardBody>
-            </Card>
-          ) : null}
+            ) : (
+              <CampusTimeline items={toTimeline(todays, now.minutes)} />
+            )}
+          </div>
+        </CampusCard>
 
-          {/* Assistant */}
-          {isEnabled(user.featureFlags, 'ai_assistant_enabled') &&
-          user.permissions.has('ai:use_assistant') ? (
-            <Card>
-              <CardBody>
-                <p className="flex items-center gap-2 text-[13.5px] font-semibold text-default">
-                  <Sparkles size={15} className="text-brand" aria-hidden />
-                  Ask about your own records
-                </p>
-                <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
-                  The assistant answers from your timetable, attendance and notices, and cites the
-                  records it used.
-                </p>
-                <div className="mt-3 flex flex-col gap-1.5">
-                  <AskAiLink question="How many classes can I miss and still stay above 75%?" />
-                  <AskAiLink question="What is due this week?" />
-                  <AskAiLink question="Why did my Financial Management class move rooms?" />
-                </div>
-              </CardBody>
-            </Card>
+        <CampusCard as="section" className="relative hidden overflow-hidden md:order-last md:block xl:order-none" aria-label="Campus quick links">
+          <CampusIllustration name="home-hero" priority sizes="(min-width: 1280px) 460px, (min-width: 768px) 50vw, 100vw" className="h-full object-cover" />
+          {/* The signposts in the illustration are real links. */}
+          <nav aria-label="Campus shortcuts" className="absolute inset-y-0 right-[4%] w-[36%]">
+            {HOTSPOTS.filter((h) => h.when(f, aiOn)).map((h) => (
+              <Link
+                key={h.href}
+                href={h.href}
+                aria-label={h.label}
+                title={h.label}
+                className="absolute left-0 right-0 rounded-md focus-visible:outline-[3px] focus-visible:outline-offset-1 hover:bg-white/15"
+                style={{ top: `${h.top}%`, height: '10%' }}
+              />
+            ))}
+          </nav>
+        </CampusCard>
+
+        <CampusCard as="section" className="flex flex-col p-4 sm:p-5" aria-labelledby="progress-h">
+          <CampusSectionHeader id="progress-h" title="My Progress" href={trackerOn ? '/student/tracker' : '/student/attendance'} />
+          <div className="mt-4 space-y-4">
+            <CampusProgressRow icon={CalendarDays} label="Attendance" value={attendancePct} tone="mint" href="/student/attendance" emptyText="No classes marked yet" />
+            <CampusProgressRow icon={ClipboardList} label="Assignments" value={assignmentPct} tone="lavender" href="/student/assignments" emptyText="No assignments due yet" detail={`${submitted.length} of ${dueOrDone.length} submitted`} />
+            {trackerOn ? (
+              <CampusProgressRow icon={Target} label="Goals" value={null} tone="peach" href="/student/tracker" emptyText="No goals yet — start with one small thing" />
+            ) : null}
+            {eventsOn ? (
+              <CampusProgressRow icon={Users} label="Campus Activity" value={activityPct} tone="coral" href="/student/events" emptyText="Attend an event to see this" detail={`${activity.attended} of ${activity.pastRegistrations} events attended`} />
+            ) : null}
+          </div>
+          {isEnabled(f, 'gamification_enabled') ? (
+            <Link href="/student/tracker" className="mt-auto flex items-center gap-2 rounded-xl border-[1.5px] border-ink bg-surface px-3 py-2.5 pt-2.5 shadow-pop">
+              <Flame size={18} className="text-peach-ink" aria-hidden />
+              <span className="text-[13px] font-bold text-default">Earn XP from verified activity</span>
+            </Link>
           ) : null}
-        </div>
+        </CampusCard>
       </div>
-    </>
-  );
-}
 
-/* ------------------------------------------------------------------------- */
+      {/* ---------------------------- quick actions --------------------------- */}
+      <section aria-label="Quick actions" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {quickActions.map((a) => (
+          <CampusQuickAction key={a.href} href={a.href} icon={a.icon} label={a.label} tone={a.tone} />
+        ))}
+      </section>
 
-function NextClassPanel({
-  occurrence,
-  isToday,
-  nowMinutes,
-  todayIso,
-}: {
-  occurrence: ClassOccurrence;
-  isToday: boolean;
-  nowMinutes: number;
-  todayIso: string;
-}) {
-  const start = timeToMinutes(occurrence.startTime) ?? 0;
-  const end = timeToMinutes(occurrence.endTime) ?? 0;
-  const inProgress = isToday && start <= nowMinutes && end > nowMinutes;
-
-  return (
-    <div className="p-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={inProgress ? 'success' : 'brand'} dot>
-          {inProgress
-            ? 'in progress'
-            : isToday
-              ? minutesUntilLabel(start - nowMinutes)
-              : occurrence.dateIso === addIsoDays(todayIso, 1)
-                ? 'tomorrow'
-                : formatIsoDayLabel(occurrence.dateIso)}
-        </Badge>
-        {occurrence.status !== 'SCHEDULED' ? (
-          <Badge tone={occurrence.status === 'EXTRA_CLASS' ? 'info' : 'warning'}>
-            {occurrence.status.replace(/_/g, ' ').toLowerCase()}
-          </Badge>
+      {/* ------------------------- events · notices -------------------------- */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        {eventsOn ? (
+          <CampusCard as="section" className="p-4 sm:p-5" aria-labelledby="events-h">
+            <CampusSectionHeader id="events-h" title="Upcoming Events" href="/student/events" />
+            {upcomingEvents.length === 0 ? (
+              <CampusEmptyState sprite="student" title="No events coming up yet" description="When your college schedules events, they appear here." />
+            ) : (
+              <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+                {upcomingEvents.map((e) => {
+                  const tag = eventTag(e.title, e.description);
+                  return (
+                    <li key={e.id}>
+                      <Link href={`/student/events/${e.id}`} className="group block overflow-hidden rounded-xl border-[1.5px] border-ink bg-surface-raised shadow-pop campus-press">
+                        <EventArt title={e.title} tone={toneForTag(tag)} />
+                        <div className="p-3">
+                          <p className="line-clamp-2 text-[13px] font-extrabold leading-snug text-default">{e.title}</p>
+                          <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-muted">
+                            <MapPin size={11} aria-hidden /> {e.roomCode ?? e.venueText ?? 'On campus'}
+                          </p>
+                          <p className="text-[11.5px] font-semibold text-subtle">{formatDate(e.startsAt)}</p>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            <CampusPill tone={toneForTag(tag)}>{tag}</CampusPill>
+                            {e.isRegistered ? <CampusPill tone="mint">Registered ✓</CampusPill> : null}
+                          </div>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CampusCard>
         ) : null}
+
+        <CampusCard as="section" className="p-4 sm:p-5" aria-labelledby="notices-h">
+          <CampusSectionHeader id="notices-h" title="Notices & Updates" href="/student/announcements" linkLabel="See All" />
+          {noticeItems.length === 0 ? (
+            <CampusEmptyState sprite="robot" title="All caught up" description="New notices and schedule changes will show up here." />
+          ) : (
+            <div className="mt-3 divide-y divide-[hsl(var(--border))]">
+              {noticeItems.map((n) => (
+                <CampusNotice key={n.key} icon={n.icon} tone={n.tone} title={n.title} meta={n.meta} href={n.href} unread={n.unread} />
+              ))}
+            </div>
+          )}
+        </CampusCard>
       </div>
 
-      <p className="mt-2.5 text-lg font-semibold tracking-[-0.01em] text-default">
-        {occurrence.subjectName}
-      </p>
-      <p className="text-[12.5px] text-subtle">{occurrence.subjectCode}</p>
-
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px]">
-        <span className="inline-flex items-center gap-1.5 text-muted">
-          <CalendarClock size={14} className="text-subtle" aria-hidden />
-          <span className="tabular text-default">
-            {formatTime(occurrence.startTime)} – {formatTime(occurrence.endTime)}
-          </span>
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-muted">
-          <DoorOpen size={14} className="text-subtle" aria-hidden />
-          <span className="text-default">
-            {occurrence.roomCode ? `Room ${occurrence.roomCode}` : 'Room not assigned'}
-          </span>
-          {occurrence.roomBuilding ? (
-            <span className="inline-flex items-center gap-1 text-subtle">
-              <MapPin size={12} aria-hidden />
-              {occurrence.roomBuilding}
-            </span>
-          ) : null}
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-muted">
-          <User size={14} className="text-subtle" aria-hidden />
-          <span className="text-default">{occurrence.facultyName ?? 'Faculty not assigned'}</span>
-        </span>
-      </div>
-
-      {occurrence.exceptionReason ? (
-        <p className="mt-3 rounded-md bg-warning-subtle px-3 py-2 text-[12.5px] text-default">
-          {occurrence.exceptionReason}
+      {libraryOn ? (
+        <p className="text-center text-[12px] text-subtle">
+          <BookOpen size={12} className="mr-1 inline" aria-hidden />
+          Looking for notes or PYQs? <Link href="/student/library" className="font-bold text-brand hover:underline">Visit the library</Link>
         </p>
       ) : null}
     </div>
   );
 }
 
+/* ------------------------------ helpers ---------------------------------- */
+
+const HOTSPOTS: { label: string; href: string; top: number; when: (f: Record<string, boolean>, ai: boolean) => boolean }[] = [
+  { label: 'Attend class — open your attendance planner', href: '/student/attendance', top: 22, when: () => true },
+  { label: 'Explore events', href: '/student/events', top: 35, when: (f) => isEnabled(f, 'events_enabled') },
+  { label: 'Complete tasks — open assignments', href: '/student/assignments', top: 48, when: () => true },
+  { label: 'Visit library', href: '/student/library', top: 61, when: (f) => isEnabled(f, 'resource_hub_enabled') },
+  { label: 'Ask AI assistant', href: '/student/assistant', top: 75, when: (_f, ai) => ai },
+];
+
+function toTimeline(items: ClassOccurrence[], nowMinutes: number): TimelineItem[] {
+  let nextMarked = false;
+  return items.map((o) => {
+    const start = timeToMinutes(o.startTime) ?? 0;
+    const end = timeToMinutes(o.endTime) ?? 0;
+    let status: TimelineItem['status'] = 'upcoming';
+    if (o.status === 'CANCELLED') status = 'cancelled';
+    else if (nowMinutes >= start && nowMinutes < end) status = 'ongoing';
+    else if (end <= nowMinutes) status = 'done';
+    else if (!nextMarked) {
+      status = 'next';
+      nextMarked = true;
+    }
+    const note =
+      o.status === 'CANCELLED' ? 'Cancelled'
+        : o.status === 'ROOM_CHANGED' ? 'Room changed'
+          : o.status === 'FACULTY_SUBSTITUTED' ? 'Substitute teacher'
+            : o.status === 'ONLINE' ? 'Online'
+              : o.status === 'EXTRA_CLASS' ? 'Extra class'
+                : o.status === 'TIME_CHANGED' ? 'New time' : null;
+    return {
+      key: o.key,
+      start: o.startTime.slice(0, 5),
+      end: o.endTime.slice(0, 5),
+      title: o.subjectName,
+      meta: [o.roomCode, o.facultyName].filter(Boolean).join(' · ') || null,
+      status,
+      note,
+    };
+  });
+}
+
+async function loadIdentity(studentProfileId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ program: t.programs.name, year: t.studentProfiles.currentYear, section: t.sections.name })
+    .from(t.studentProfiles)
+    .innerJoin(t.programs, eq(t.programs.id, t.studentProfiles.programId))
+    .leftJoin(t.sections, eq(t.sections.id, t.studentProfiles.sectionId))
+    .where(eq(t.studentProfiles.id, studentProfileId))
+    .limit(1);
+  if (!row) return null;
+  return [row.program, `Year ${row.year}`, row.section ? `Section ${row.section}` : null].filter(Boolean).join(' · ');
+}
+
+/** Event registrations whose event has ended, and how many were attended. */
+async function loadCampusActivity(institutionId: string, userId: string) {
+  const base = and(
+    eq(t.eventRegistrations.institutionId, institutionId),
+    eq(t.eventRegistrations.userId, userId),
+    isNull(t.eventRegistrations.cancelledAt),
+    lt(t.events.endsAt, new Date()),
+  );
+  const [past] = await db
+    .select({ n: count() })
+    .from(t.eventRegistrations)
+    .innerJoin(t.events, eq(t.events.id, t.eventRegistrations.eventId))
+    .where(base);
+  const [attended] = await db
+    .select({ n: count() })
+    .from(t.eventRegistrations)
+    .innerJoin(t.events, eq(t.events.id, t.eventRegistrations.eventId))
+    .where(and(base, isNotNull(t.eventRegistrations.attendedAt)));
+  return { pastRegistrations: past?.n ?? 0, attended: attended?.n ?? 0 };
+}
+
 function greeting(minutes: number): string {
-  if (minutes < 12 * 60) return 'Good morning';
-  if (minutes < 17 * 60) return 'Good afternoon';
-  return 'Good evening';
+  if (minutes < 12 * 60) return 'Good Morning';
+  if (minutes < 17 * 60) return 'Good Afternoon';
+  return 'Good Evening';
+}
+function greetingEmoji(minutes: number): string {
+  if (minutes < 12 * 60) return '☀️';
+  if (minutes < 17 * 60) return '🌤️';
+  return '🌙';
+}
+
+const LINES = [
+  'Today’s a good day to be 1% better.',
+  'Small steps every day.',
+  'Discipline now, freedom later.',
+  'One class at a time.',
+  'Show up. That’s half of it.',
+  'Curiosity is a superpower.',
+  'Future you says thanks.',
+];
+function dailyLine(iso: string): string {
+  const d = Number(iso.replace(/-/g, '')) % LINES.length;
+  return LINES[d]!;
+}
+
+function eventTag(title: string, description: string | null): string {
+  const s = `${title} ${description ?? ''}`.toLowerCase();
+  if (/hackathon/.test(s)) return 'Hackathon';
+  if (/workshop/.test(s)) return 'Workshop';
+  if (/seminar|talk|lecture|guest/.test(s)) return 'Seminar';
+  if (/fest|cultural|music|dance/.test(s)) return 'Cultural';
+  if (/placement|career|intern|recruit/.test(s)) return 'Career';
+  if (/sport|football|cricket|tournament/.test(s)) return 'Sports';
+  if (/competition|contest|case|quiz|debate/.test(s)) return 'Competition';
+  return 'Campus';
+}
+
+/** Placeholder cover until Events 2.0 adds organiser-uploaded covers: tone + pixel skyline. */
+function EventArt({ title, tone }: { title: string; tone: Tone }) {
+  const bg: Record<Tone, string> = {
+    lavender: '#5B52DB', rose: '#C8457E', coral: '#D9533E', peach: '#E07B2E', mint: '#2F9E6B', sky: '#2F7FD6', sun: '#D69A12', plain: '#5B52DB',
+  };
+  let h = 0;
+  for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
+  const bars = Array.from({ length: 10 }, (_, i) => 6 + ((h >> (i * 3)) & 7) * 2);
+  return (
+    <svg viewBox="0 0 40 20" className="block h-20 w-full border-b-[1.5px] border-ink" preserveAspectRatio="none" shapeRendering="crispEdges" aria-hidden>
+      <rect width="40" height="20" fill={bg[tone]} />
+      <rect y="0" width="40" height="7" fill="#fff" opacity="0.12" />
+      {bars.map((bh, i) => (
+        <rect key={i} x={i * 4} y={20 - bh} width="3" height={bh} fill="#1F1B3D" opacity="0.55" />
+      ))}
+      {bars.map((bh, i) => (i % 2 === 0 ? <rect key={`w${i}`} x={i * 4 + 1} y={20 - bh + 2} width="1" height="1" fill="#FFD84A" /> : null))}
+    </svg>
+  );
 }

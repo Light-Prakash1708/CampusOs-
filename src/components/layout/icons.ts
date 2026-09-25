@@ -3,7 +3,8 @@ import {
   LayoutDashboard, CalendarDays, GraduationCap, ClipboardList, BookOpen, Sparkles,
   Megaphone, LifeBuoy, Users, Building2, CalendarClock, Gauge, BarChart3, Settings,
   FileText, ScrollText, Boxes, UserCog, DoorOpen, Target, CheckSquare, Upload,
-  ShieldCheck, Bell, History,
+  ShieldCheck, Bell, History, House, Ticket, Briefcase, Library, UserRound, Compass,
+  Mountain, Flame, Inbox, Plus,
 } from 'lucide-react';
 
 /**
@@ -39,6 +40,16 @@ export const NAV_ICONS = {
   shield: ShieldCheck,
   bell: Bell,
   history: History,
+  home: House,
+  ticket: Ticket,
+  briefcase: Briefcase,
+  library: Library,
+  user: UserRound,
+  compass: Compass,
+  career: Mountain,
+  tracker: Flame,
+  inbox: Inbox,
+  plus: Plus,
 } satisfies Record<string, LucideIcon>;
 
 export type NavIconKey = keyof typeof NAV_ICONS;

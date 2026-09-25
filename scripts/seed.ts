@@ -1,7 +1,7 @@
 /**
  * CampusOS — demo institution seed
  * ---------------------------------------------------------------------------
- * Creates "CampusOS Demo University": five departments, five programmes, eight
+ * Creates "Kolkata Business Institute" (fictional demo college): five departments, five programmes, eight
  * sections, ~336 students, 24 faculty, a real solver-generated timetable, five
  * weeks of attendance, live assignments, announcements with acknowledgement
  * state, open grievance cases (including one about to breach SLA), skill
@@ -111,14 +111,14 @@ async function main() {
     .insert(s.institutions)
     .values({
       slug: DEMO_SLUG,
-      name: 'CampusOS Demo University',
-      shortName: 'CDU',
+      name: 'Kolkata Business Institute',
+      shortName: 'KBI',
       primaryColor: '#4F46E5',
       timezone: 'Asia/Kolkata',
-      contactEmail: 'office@demo.campusos.local',
-      contactPhone: '+91 80 4000 1000',
-      city: 'Bengaluru',
-      state: 'Karnataka',
+      contactEmail: 'office@kbi.demo.campusos.local',
+      contactPhone: '+91 33 4000 1000',
+      city: 'Kolkata',
+      state: 'West Bengal',
       subscriptionTier: 'PROFESSIONAL',
       featureFlags: { ...defaultFlags(), anonymous_grievance_enabled: true },
       registrationPolicy: { mode: 'ADMIN_APPROVAL' },
@@ -135,7 +135,7 @@ async function main() {
       institutionId: inst,
       name: 'Main Campus',
       code: 'MAIN',
-      city: 'Bengaluru',
+      city: 'Kolkata',
       isPrimary: true,
     })
     .returning();

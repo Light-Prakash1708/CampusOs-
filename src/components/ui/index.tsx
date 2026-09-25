@@ -15,22 +15,23 @@ import { Loader2, type LucideIcon } from 'lucide-react';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'subtle' | 'link';
 type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
+// Primary/secondary/danger carry the CampusOS ink outline + offset "pop".
 const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand text-white hover:bg-[hsl(var(--brand-hover))] shadow-xs disabled:bg-[hsl(var(--brand))]',
+    'bg-brand text-white border-[1.5px] border-ink shadow-pop campus-press hover:bg-[hsl(var(--brand-hover))] disabled:bg-[hsl(var(--brand))]',
   secondary:
-    'bg-surface border border-[hsl(var(--border-strong))] text-default hover:bg-surface-sunken shadow-xs',
+    'bg-surface border-[1.5px] border-ink text-default shadow-pop campus-press hover:bg-surface-sunken',
   ghost: 'text-muted hover:bg-surface-sunken hover:text-default',
-  danger: 'bg-danger text-white hover:brightness-110 shadow-xs',
+  danger: 'bg-danger text-white border-[1.5px] border-ink shadow-pop campus-press hover:brightness-110',
   subtle: 'bg-surface-sunken text-default hover:bg-[hsl(var(--border))]',
   link: 'text-brand underline-offset-4 hover:underline',
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3 text-[13px] gap-1.5 rounded-md',
-  md: 'h-9 px-3.5 text-sm gap-2 rounded-md',
-  lg: 'h-11 px-5 text-[15px] gap-2 rounded-lg',
-  icon: 'h-9 w-9 rounded-md',
+  sm: 'h-8 px-3 text-[13px] gap-1.5 rounded-lg',
+  md: 'h-10 px-4 text-sm gap-2 rounded-lg',
+  lg: 'h-12 px-5 text-[15px] gap-2 rounded-xl',
+  icon: 'h-10 w-10 rounded-lg',
 };
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -64,7 +65,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
     <Comp
       ref={ref}
       className={cn(
-        'inline-flex items-center justify-center font-medium whitespace-nowrap transition-colors',
+        'inline-flex items-center justify-center font-semibold whitespace-nowrap transition-colors',
         'disabled:pointer-events-none disabled:opacity-50',
         buttonVariants[variant],
         buttonSizes[size],
@@ -100,7 +101,7 @@ export function Card({
   return (
     <div
       className={cn(
-        'bg-surface-raised border border-[hsl(var(--border))] rounded-xl shadow-xs',
+        'bg-surface-raised campus-outline rounded-2xl',
         className,
       )}
       {...props}
@@ -134,7 +135,7 @@ export function CardHeader({
     >
       <div className="min-w-0">
         {title ? (
-          <h2 className="text-[15px] font-semibold text-default flex items-center gap-2">
+          <h2 className="font-display text-[16px] font-bold text-default flex items-center gap-2">
             {Icon ? <Icon size={16} className="text-subtle shrink-0" aria-hidden /> : null}
             {title}
           </h2>
@@ -163,7 +164,7 @@ export function CardFooter({
   return (
     <div
       className={cn(
-        'px-5 py-3 border-t border-[hsl(var(--border))] bg-surface-muted rounded-b-xl',
+        'px-5 py-3 border-t border-[hsl(var(--border))] bg-surface-muted rounded-b-2xl',
         className,
       )}
     >
@@ -184,12 +185,12 @@ export type BadgeTone =
   | 'outline';
 
 const badgeTones: Record<BadgeTone, string> = {
-  neutral: 'bg-surface-sunken text-muted border-[hsl(var(--border))]',
-  brand: 'bg-brand-subtle text-brand border-[hsl(var(--brand-border))]',
-  success: 'bg-success-subtle text-success border-[hsl(var(--success-border))]',
-  warning: 'bg-warning-subtle text-warning border-[hsl(var(--warning-border))]',
-  danger: 'bg-danger-subtle text-danger border-[hsl(var(--danger-border))]',
-  info: 'bg-info-subtle text-info border-[hsl(var(--info-border))]',
+  neutral: 'bg-surface-sunken text-muted border-transparent',
+  brand: 'bg-lavender text-lavender-ink border-transparent',
+  success: 'bg-mint text-mint-ink border-transparent',
+  warning: 'bg-sun text-sun-ink border-transparent',
+  danger: 'bg-coral text-coral-ink border-transparent',
+  info: 'bg-sky text-sky-ink border-transparent',
   outline: 'bg-transparent text-muted border-[hsl(var(--border-strong))]',
 };
 
@@ -209,7 +210,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11.5px] font-medium leading-5 whitespace-nowrap',
+        'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11.5px] font-semibold leading-5 whitespace-nowrap',
         badgeTones[tone],
         className,
       )}
@@ -229,9 +230,9 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
       <input
         ref={ref}
         className={cn(
-          'h-9 w-full rounded-md border border-[hsl(var(--border-strong))] bg-surface px-3 text-sm',
+          'h-10 w-full rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-sm',
           'text-default placeholder:text-[hsl(var(--text-subtle))]',
-          'transition-shadow focus:border-[hsl(var(--brand))] focus:ring-2 focus:ring-[hsl(var(--brand))]/15',
+          'transition-shadow focus:border-ink focus:ring-2 focus:ring-[hsl(var(--brand))]/20',
           'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-subtle',
           'aria-[invalid=true]:border-[hsl(var(--danger))] aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-[hsl(var(--danger))]/15',
           className,
@@ -250,9 +251,9 @@ export const Textarea = React.forwardRef<
     <textarea
       ref={ref}
       className={cn(
-        'w-full rounded-md border border-[hsl(var(--border-strong))] bg-surface px-3 py-2 text-sm leading-relaxed',
+        'w-full rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 py-2 text-sm leading-relaxed',
         'text-default placeholder:text-[hsl(var(--text-subtle))]',
-        'transition-shadow focus:border-[hsl(var(--brand))] focus:ring-2 focus:ring-[hsl(var(--brand))]/15',
+        'transition-shadow focus:border-ink focus:ring-2 focus:ring-[hsl(var(--brand))]/20',
         'disabled:cursor-not-allowed disabled:bg-surface-sunken',
         className,
       )}
@@ -269,8 +270,8 @@ export const Select = React.forwardRef<
     <select
       ref={ref}
       className={cn(
-        'h-9 w-full rounded-md border border-[hsl(var(--border-strong))] bg-surface px-2.5 text-sm text-default',
-        'transition-shadow focus:border-[hsl(var(--brand))] focus:ring-2 focus:ring-[hsl(var(--brand))]/15',
+        'h-10 w-full rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-2.5 text-sm text-default',
+        'transition-shadow focus:border-ink focus:ring-2 focus:ring-[hsl(var(--brand))]/20',
         'disabled:cursor-not-allowed disabled:bg-surface-sunken',
         className,
       )}
@@ -336,11 +337,11 @@ export function EmptyState({
   return (
     <div className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
       {Icon ? (
-        <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-surface-sunken">
-          <Icon size={20} className="text-subtle" aria-hidden />
+        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl border-[1.5px] border-ink bg-lavender shadow-pop">
+          <Icon size={20} className="text-lavender-ink" aria-hidden />
         </div>
       ) : null}
-      <p className="text-sm font-medium text-default">{title}</p>
+      <p className="font-display text-[15px] font-bold text-default">{title}</p>
       {description ? (
         <p className="mt-1 max-w-sm text-[13px] leading-relaxed text-muted">{description}</p>
       ) : null}
@@ -363,7 +364,7 @@ export function ErrorState({
   reference?: string;
 }) {
   return (
-    <div className="rounded-lg border border-[hsl(var(--danger-border))] bg-danger-subtle p-4">
+    <div className="rounded-xl border-[1.5px] border-ink bg-coral p-4 shadow-pop">
       <p className="text-sm font-semibold text-danger">{title}</p>
       <p className="mt-1 text-[13px] leading-relaxed text-default">{message}</p>
       {hint ? <p className="mt-1.5 text-[12.5px] text-muted">{hint}</p> : null}
@@ -407,9 +408,9 @@ export function PageHeader({
       {breadcrumb ? <div className="mb-1.5">{breadcrumb}</div> : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-[-0.01em] text-default">{title}</h1>
+          <h1 className="font-display text-[26px] font-extrabold leading-tight text-default sm:text-[28px]">{title}</h1>
           {description ? (
-            <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{description}</p>
+            <p className="mt-1 text-[14px] leading-relaxed text-muted">{description}</p>
           ) : null}
         </div>
         {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
@@ -436,9 +437,7 @@ export function Section({
       {title ? (
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-subtle">
-              {title}
-            </h2>
+            <h2 className="font-display text-[17px] font-bold text-default">{title}</h2>
             {description ? <p className="mt-0.5 text-[13px] text-muted">{description}</p> : null}
           </div>
           {action}
@@ -544,7 +543,7 @@ export function Avatar({
     <span
       aria-hidden
       className={cn(
-        'inline-flex shrink-0 items-center justify-center rounded-full bg-brand-subtle font-semibold text-brand',
+        'inline-flex shrink-0 items-center justify-center rounded-full border-[1.5px] border-ink bg-lavender font-bold text-lavender-ink',
         className,
       )}
       style={{ width: size, height: size, fontSize: Math.max(10, size * 0.36) }}
@@ -582,12 +581,12 @@ export function Stat({
   };
 
   return (
-    <div className="rounded-xl border border-[hsl(var(--border))] bg-surface-raised p-4 shadow-xs">
+    <div className="rounded-2xl campus-outline bg-surface-raised p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[12.5px] font-medium text-muted">{label}</p>
         {Icon ? <Icon size={15} className="text-subtle shrink-0" aria-hidden /> : null}
       </div>
-      <p className={cn('mt-1.5 text-2xl font-semibold tabular tracking-[-0.02em]', toneText[tone])}>
+      <p className={cn('mt-1.5 font-display text-[26px] font-extrabold tabular', toneText[tone])}>
         {value}
       </p>
       {sublabel || trend ? (
@@ -629,15 +628,15 @@ export function Alert({
   className?: string;
 }) {
   const tones = {
-    info: 'bg-info-subtle border-[hsl(var(--info-border))] text-info',
-    success: 'bg-success-subtle border-[hsl(var(--success-border))] text-success',
-    warning: 'bg-warning-subtle border-[hsl(var(--warning-border))] text-warning',
-    danger: 'bg-danger-subtle border-[hsl(var(--danger-border))] text-danger',
-    brand: 'bg-brand-subtle border-[hsl(var(--brand-border))] text-brand',
+    info: 'bg-sky text-sky-ink',
+    success: 'bg-mint text-mint-ink',
+    warning: 'bg-sun text-sun-ink',
+    danger: 'bg-coral text-coral-ink',
+    brand: 'bg-lavender text-lavender-ink',
   };
 
   return (
-    <div className={cn('rounded-lg border p-3.5', tones[tone], className)} role="status">
+    <div className={cn('rounded-xl border-[1.5px] border-ink p-3.5', tones[tone], className)} role="status">
       <div className="flex gap-2.5">
         {Icon ? <Icon size={16} className="mt-0.5 shrink-0" aria-hidden /> : null}
         <div className="min-w-0 flex-1">
@@ -665,22 +664,25 @@ export function Progress({
 }: {
   value: number;
   max?: number;
-  tone?: 'brand' | 'success' | 'warning' | 'danger';
+  tone?: 'brand' | 'success' | 'warning' | 'danger' | 'peach' | 'rose' | 'sky';
   className?: string;
   showLabel?: boolean;
 }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   const bg = {
     brand: 'bg-brand',
-    success: 'bg-success',
-    warning: 'bg-warning',
-    danger: 'bg-danger',
+    success: 'bg-mint-ink',
+    warning: 'bg-sun-ink',
+    danger: 'bg-coral-ink',
+    peach: 'bg-peach-ink',
+    rose: 'bg-rose-ink',
+    sky: 'bg-sky-ink',
   }[tone];
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <div
-        className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken"
+        className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken"
         role="progressbar"
         aria-valuenow={Math.round(pct)}
         aria-valuemin={0}
