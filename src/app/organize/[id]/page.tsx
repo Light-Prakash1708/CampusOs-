@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Pencil } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/context';
 import { isEnabled } from '@/lib/features';
 import { formatDateTime, relativeTime } from '@/lib/utils';
 import { CampusCard, CampusPill, CampusSectionHeader } from '@/components/campus';
 import { formatEventDates } from '@/components/campus/events';
 import { getManagedEvent } from '@/services/events/organizer';
-import { AttendeeDecision, CertificatesAction, CheckInPanel, UpdateComposer } from './OrganizerTools';
+import { AttendeeDecision, CancelEventAction, CertificatesAction, CheckInPanel, UpdateComposer } from './OrganizerTools';
 
 export const metadata = { title: 'Manage event' };
 export const dynamic = 'force-dynamic';
@@ -16,10 +16,11 @@ const REG_TONE: Record<string, 'mint' | 'sun' | 'sky' | 'coral' | 'lavender'> = 
   REGISTERED: 'mint', WAITLISTED: 'sun', PENDING_APPROVAL: 'sky', REJECTED: 'coral', CANCELLED: 'lavender',
 };
 
-export default async function ManageEventPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ManageEventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ announced?: string }> }) {
   const user = await requirePermission('event:create');
   if (!isEnabled(user.featureFlags, 'events_enabled')) notFound();
   const { id } = await params;
+  const { announced } = await searchParams;
   let m;
   try {
     m = await getManagedEvent(user, id);
@@ -30,6 +31,7 @@ export default async function ManageEventPage({ params }: { params: Promise<{ id
   const live = e.status === 'SCHEDULED' || e.status === 'COMPLETED';
   const conversion = e.capacity ? Math.round((m.stats.registered / e.capacity) * 100) : null;
   const active = m.registrations.filter((r) => r.status !== 'CANCELLED');
+  const editable = e.status !== 'CANCELLED' && e.endsAt >= new Date();
 
   return (
     <div className="space-y-5">
@@ -50,12 +52,35 @@ export default async function ManageEventPage({ params }: { params: Promise<{ id
             <p className="mt-2 text-[13px] font-bold text-coral-ink">Moderator note: {e.moderationNote}</p>
           ) : null}
         </div>
-        {live && user.portal === 'student' ? (
-          <Link href={`/student/events/${e.id}`} className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand hover:underline">
-            View as a student <ExternalLink size={13} aria-hidden />
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {live && user.portal === 'student' ? (
+            <Link href={`/student/events/${e.id}`} className="inline-flex min-h-[44px] items-center gap-1.5 px-2 text-[13px] font-bold text-brand hover:underline">
+              View as a student <ExternalLink size={13} aria-hidden />
+            </Link>
+          ) : null}
+          {editable ? (
+            <>
+              <Link
+                href={`/organize/${e.id}/edit`}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-surface px-3.5 text-[13px] font-bold shadow-pop campus-press"
+              >
+                <Pencil size={14} aria-hidden /> Edit
+              </Link>
+              <CancelEventAction eventId={e.id} live={e.status === 'SCHEDULED'} />
+            </>
+          ) : null}
+        </div>
       </header>
+      {e.status === 'CANCELLED' ? (
+        <p role="status" className="rounded-xl border-[1.5px] border-ink bg-coral p-3 text-[13.5px] font-bold text-coral-ink">
+          This event is cancelled. Attendees were notified.
+        </p>
+      ) : null}
+      {announced ? (
+        <p role="status" className="rounded-xl border-[1.5px] border-ink bg-mint p-3 text-[13.5px] font-bold text-mint-ink">
+          Saved. The time or venue change was announced to everyone registered and following.
+        </p>
+      ) : null}
 
       <section aria-label="Registration stats" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {(

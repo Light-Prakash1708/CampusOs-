@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Award,
   CalendarDays,
+  CalendarPlus,
   Globe2,
   Mail,
   MapPin,
@@ -110,6 +111,15 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               value={e.capacity ? `${detail.registeredCount} / ${e.capacity} registered` : e.registrationRequired ? `${detail.registeredCount} registered` : 'Open entry'}
             />
           </dl>
+          {e.endsAt > new Date() && e.status !== 'CANCELLED' ? (
+            <a
+              href={`/api/events/${e.id}/ics`}
+              download
+              className="mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[13px] font-bold text-default hover:border-ink"
+            >
+              <CalendarPlus size={15} aria-hidden /> Add to calendar
+            </a>
+          ) : null}
           {e.registrationDeadline && !closed ? (
             <p className="mt-3 text-[12.5px] font-semibold text-coral-ink">Registration closes {relativeTime(e.registrationDeadline)}.</p>
           ) : null}

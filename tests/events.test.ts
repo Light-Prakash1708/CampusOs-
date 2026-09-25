@@ -18,7 +18,8 @@ import {
   setSaved,
   verifyCertificate,
 } from '@/services/events';
-import { checkIn, createEvent, listManagedEvents, issueCertificates, moderateEvent, postEventUpdate } from '@/services/events/organizer';
+import { cancelEvent, checkIn, createEvent, listManagedEvents, issueCertificates, moderateEvent, postEventUpdate, updateEvent } from '@/services/events/organizer';
+import { buildIcs, escapeIcsText, foldIcsLine } from '@/lib/ics';
 import { createTenant, createUser, ctxFor, dropTenant, meta, type TestTenant } from './helpers';
 
 /* --------------------------------- pure ----------------------------------- */
@@ -106,6 +107,28 @@ afterAll(async () => {
   await dropTenant(B.id);
   await pool.end();
 });
+
+type EventInputT = Parameters<typeof createEvent>[1];
+
+function eventInput(over: Partial<EventInputT> = {}): EventInputT {
+  const start = new Date(Date.now() + 5 * 86_400_000);
+  return {
+    title: `Test Event ${Math.random().toString(36).slice(2, 8)}`,
+    category: 'WORKSHOP',
+    visibility: 'INSTITUTION',
+    mode: 'OFFLINE',
+    startsAt: start,
+    endsAt: new Date(start.getTime() + 3 * 3600_000),
+    registrationRequired: true,
+    registrationMode: 'INSTANT',
+    waitlistEnabled: true,
+    priceInr: 0,
+    certificateOffered: true,
+    teamSizeMin: 1,
+    teamSizeMax: 1,
+    ...over,
+  } as EventInputT;
+}
 
 async function newEvent(tenant: TestTenant, over: Partial<Parameters<typeof createEvent>[1]> = {}) {
   const admin = await ctxFor((await createUser(tenant, { role: 'ADMIN' })).id);
@@ -313,5 +336,115 @@ describe('"my events" filters (regression)', () => {
     await registerForEvent(me, approval.id);
     await db.update(t.eventRegistrations).set({ status: 'REJECTED' }).where(and(eq(t.eventRegistrations.eventId, approval.id), eq(t.eventRegistrations.userId, me.userId)));
     expect((await listEvents(me, { mine: 'registered', when: 'upcoming' })).map((e) => e.id)).not.toContain(approval.id);
+  });
+});
+
+describe('calendar file (.ics)', () => {
+  it('escapes text, folds long lines and writes UTC times', () => {
+    expect(escapeIcsText('Hall A, Block 2; bring ID\\n')).toBe('Hall A\\, Block 2\\; bring ID\\\\n');
+    const long = `DESCRIPTION:${'অ'.repeat(40)}`; // 3-byte characters
+    const folded = foldIcsLine(long);
+    for (const line of folded.split('\r\n')) expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
+    expect(folded.replace(/\r\n /g, '')).toBe(long);
+    const ics = buildIcs(
+      { uid: 'x@campusos', title: 'Fest', startsAt: new Date('2026-10-01T04:30:00Z'), endsAt: new Date('2026-10-01T08:00:00Z'), cancelled: true },
+      new Date('2026-09-26T00:00:00Z'),
+    );
+    expect(ics).toContain('DTSTART:20261001T043000Z');
+    expect(ics).toContain('STATUS:CANCELLED');
+    expect(ics.endsWith('\r\n')).toBe(true);
+  });
+});
+
+describe('editing and cancelling events', () => {
+  it('announces a time or venue change to registrants and followers, once', async () => {
+    const input = eventInput({ capacity: 20, venueText: 'Seminar Hall' });
+    const created = await createEvent((await ctxFor((await createUser(A, { role: 'ADMIN' })).id)), input, meta());
+    const [row] = await db.select({ organizerId: t.events.organizerId }).from(t.events).where(eq(t.events.id, created.id));
+    const admin = await ctxFor(row!.organizerId!);
+    const student = await ctxFor((await createUser(A)).id);
+    await registerForEvent(student, created.id);
+
+    // A description-only edit announces nothing.
+    const quiet = await updateEvent(admin, created.id, { ...input, description: 'Bring a laptop.' }, meta());
+    expect(quiet.announced).toEqual([]);
+
+    const moved = await updateEvent(admin, created.id, { ...input, venueText: 'Main Auditorium' }, meta());
+    expect(moved.announced).toEqual(['VENUE_CHANGED']);
+    const notes = await db.select().from(t.notifications).where(and(eq(t.notifications.userId, student.userId), eq(t.notifications.sourceId, created.id)));
+    expect(notes.filter((n) => n.title.includes('New venue'))).toHaveLength(1);
+    expect(notes.find((n) => n.title.includes('New venue'))!.priority).toBe('IMPORTANT');
+
+    const later = new Date(input.startsAt.getTime() + 3600_000);
+    const retimed = await updateEvent(admin, created.id, { ...input, venueText: 'Main Auditorium', startsAt: later, endsAt: new Date(later.getTime() + 3600_000) }, meta());
+    expect(retimed.announced).toEqual(['TIME_CHANGED']);
+    const updates = await db.select().from(t.eventUpdates).where(eq(t.eventUpdates.eventId, created.id));
+    expect(updates.map((u) => u.kind).sort()).toEqual(['TIME_CHANGED', 'VENUE_CHANGED']);
+  });
+
+  it('refuses a capacity below the registered count, and promotes the waitlist when seats are added', async () => {
+    const input = eventInput({ capacity: 1 });
+    const admin = await ctxFor((await createUser(A, { role: 'ADMIN' })).id);
+    const { id } = await createEvent(admin, input, meta());
+    const [first, second, third] = await Promise.all([1, 2, 3].map(async () => ctxFor((await createUser(A)).id)));
+    await registerForEvent(first!, id);
+    await registerForEvent(second!, id);
+    await registerForEvent(third!, id);
+    await expect(updateEvent(admin, id, { ...input, capacity: 0 as unknown as number }, meta())).rejects.toThrow();
+
+    const r = await updateEvent(admin, id, { ...input, capacity: 2 }, meta());
+    expect(r.promoted).toBe(1);
+    const regs = await db.select().from(t.eventRegistrations).where(eq(t.eventRegistrations.eventId, id));
+    const byUser = new Map(regs.map((x) => [x.userId, x.status]));
+    expect(byUser.get(second!.userId)).toBe('REGISTERED'); // first in the queue
+    expect(byUser.get(third!.userId)).toBe('WAITLISTED');
+  });
+
+  it('sends a live event back for verification when a non-moderator opens it to all colleges', async () => {
+    const admin = await ctxFor((await createUser(A, { role: 'ADMIN' })).id);
+    const organiser = await ctxFor((await createUser(A, { role: 'FACULTY' })).id);
+    const input = eventInput();
+    const { id } = await createEvent(organiser, input, meta());
+    await moderateEvent(admin, id, { action: 'APPROVE' }, meta());
+    const r = await updateEvent(organiser, id, { ...input, visibility: 'PUBLIC' }, meta());
+    expect(r.status).toBe('PENDING_APPROVAL');
+    const outsider = await ctxFor((await createUser(B)).id);
+    await expect(getEvent(outsider, id)).rejects.toThrow();
+  });
+
+  it('only the organiser or a moderator of the host college can edit or cancel', async () => {
+    const ev = await newEvent(A);
+    const otherStudent = await ctxFor((await createUser(A)).id);
+    const otherCollegeAdmin = await ctxFor((await createUser(B, { role: 'ADMIN' })).id);
+    await expect(updateEvent(otherStudent, ev.id, eventInput(), meta())).rejects.toThrow();
+    await expect(cancelEvent(otherCollegeAdmin, ev.id, 'Not mine', meta())).rejects.toThrow();
+  });
+
+  it('cancels once, tells registrants, and blocks further edits', async () => {
+    const ev = await newEvent(A);
+    const student = await ctxFor((await createUser(A)).id);
+    await registerForEvent(student, ev.id);
+    const r = await cancelEvent(ev.admin, ev.id, 'Venue unavailable due to rain', meta());
+    expect(r.notified).toBe(1);
+    const [n] = await db.select().from(t.notifications).where(and(eq(t.notifications.userId, student.userId), eq(t.notifications.title, `Cancelled: ${(await db.select({ title: t.events.title }).from(t.events).where(eq(t.events.id, ev.id)))[0]!.title}`)));
+    expect(n?.body).toBe('Venue unavailable due to rain');
+    await expect(cancelEvent(ev.admin, ev.id, 'Again please', meta())).rejects.toThrow(/already cancelled/);
+    await expect(updateEvent(ev.admin, ev.id, eventInput(), meta())).rejects.toThrow(/cancelled/);
+    const [audit] = await db.select().from(t.auditLogs).where(and(eq(t.auditLogs.entityId, ev.id), eq(t.auditLogs.action, 'EVENT_CANCELLED')));
+    expect(audit).toBeTruthy();
+  });
+
+  it('filters by area and host college, within visibility', async () => {
+    const tag = `Area${Math.random().toString(36).slice(2, 7)}`;
+    const mine = await newEvent(A, { area: tag, city: 'Kolkata' });
+    const theirs = await newEvent(B, { area: tag, city: 'Kolkata', visibility: 'PUBLIC' });
+    const hidden = await newEvent(B, { area: tag, city: 'Kolkata', visibility: 'INSTITUTION' });
+    const viewer = await ctxFor((await createUser(A)).id);
+    const inArea = (await listEvents(viewer, { area: tag.toLowerCase() })).map((e) => e.id);
+    expect(inArea).toEqual(expect.arrayContaining([mine.id, theirs.id]));
+    expect(inArea).not.toContain(hidden.id);
+    const hostB = (await listEvents(viewer, { area: tag, college: B.id })).map((e) => e.id);
+    expect(hostB).toEqual([theirs.id]);
+    expect(await listEvents(viewer, { area: tag, college: 'not-a-uuid' })).toHaveLength(2);
   });
 });

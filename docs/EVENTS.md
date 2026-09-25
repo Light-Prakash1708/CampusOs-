@@ -85,6 +85,42 @@ Moderators use **Admin → Events**:
 Every moderation action is written to the audit log (`EVENT_APPROVED`,
 `EVENT_REJECTED`, `EVENT_SUSPENDED`, and so on).
 
+## Editing and cancelling
+
+`PATCH /api/events/:id` (same body as create) edits an event. Only the organiser,
+or a holder of `event:approve` at the host college, can edit. Guard rails:
+
+- Cancelled or ended events can't be edited (409).
+- Capacity can't go below the number already registered (409). The check runs
+  inside a transaction that locks the event row, so it can't race a sign-up.
+- Raising capacity (or removing the limit) moves people off the waitlist in
+  sign-up order, and each one is notified that a place opened up.
+- A non-moderator editing a returned (`DRAFT`) event resubmits it for approval.
+  Opening a live college-only event to all colleges sends it back to
+  `PENDING_APPROVAL` with verification `PENDING`, so other colleges never see
+  an unverified cross-college event.
+- A changed time or venue on a live event is announced automatically to
+  registrants and followers as an **important** update (`TIME_CHANGED` or
+  `VENUE_CHANGED`), and appears in the event's updates list. Edits that change
+  neither are silent.
+- Audit: `EVENT_EDITED`, with before and after values.
+
+`POST /api/events/:id/cancel` with `{ reason }` (5+ characters) cancels. A live
+event notifies everyone registered or following, with the reason, and records a
+`CANCELLED` update. Audit: `EVENT_CANCELLED`. A cancelled event cannot be
+edited or re-opened.
+
+In the UI: **Edit** and **Cancel event** sit on `/organize/[id]`; cancelling
+asks for a reason and a second confirmation.
+
+## Calendar export
+
+`GET /api/events/:id/ics` returns an RFC 5545 calendar file for any event the
+caller can see (the same visibility check as the event page). Times are in UTC;
+text is escaped and long lines folded. The online joining link is included only
+for registered attendees. `SEQUENCE` follows the last edit, so re-importing
+after a change replaces the old entry. Built with no dependency (`src/lib/ics.ts`).
+
 ## Updates
 
 `POST /api/events/:id/updates` accepts `kind`, `title`, `body` and `audience`.
@@ -98,8 +134,11 @@ Every moderation action is written to the audit log (`EVENT_APPROVED`,
 
 | Method and path | Purpose |
 |---|---|
-| `GET /api/events` | List, with filters: `tab`, `q`, `city`, `when`, `mode`, `free`, `certificate`, `mine`, `radiusKm`, `sort` |
+| `GET /api/events` | List, with filters: `tab`, `q`, `city`, `area`, `college`, `when`, `mode`, `free`, `certificate`, `mine`, `radiusKm`, `sort` |
 | `POST /api/events` | Create (validated with zod) |
+| `GET`, `PATCH /api/events/:id` | Read (visibility rules) or edit (organiser/moderator) |
+| `POST /api/events/:id/cancel` | Cancel with a reason |
+| `GET /api/events/:id/ics` | Calendar file |
 | `POST`, `DELETE /api/events/:id/register` | Register or cancel |
 | `POST`, `DELETE /api/events/:id/save` | Save or unsave |
 | `POST /api/events/:id/report` | Report an event (20 per day) |
@@ -115,14 +154,16 @@ Every moderation action is written to the audit log (`EVENT_APPROVED`,
 
 | Path | Screen |
 |---|---|
-| `/student/events` | Discovery: tabs, search, filters, sort, "My events" |
+| `/student/events` | Discovery: tabs, search, filters (city, area and host college built from events you can see), sort, "My events" |
 | `/student/events/[id]` | Event detail |
 | `/student/events/[id]/pass` | QR pass |
 | `/student/certificates` | Certificate wallet |
 | `/student/certificates/[id]` | Certificate, printable |
 | `/organize` | Organiser console: your events |
 | `/organize/new` | Create an event |
-| `/organize/[id]` | Manage an event: stats, attendees, check-in, updates, certificates |
+| `/organize/[id]` | Manage an event: stats, attendees, check-in, updates, certificates, edit, cancel |
+| `/organize/[id]/edit` | Edit an event |
+| `/events`, `/events/[id]` | Stable share links: students go to discovery or the event page; organisers and moderators to their console |
 | `/admin/events` | Admin: at-a-glance numbers, moderation queue, reports, all events |
 | `/verify/[code]` | Public certificate check |
 

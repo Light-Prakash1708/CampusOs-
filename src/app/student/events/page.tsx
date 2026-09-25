@@ -10,7 +10,7 @@ import {
 } from '@/components/campus';
 import { CampusEventCard } from '@/components/campus/events';
 import { RegisterControl, SaveToggle } from '@/components/campus/EventActions';
-import { DISCOVERY_TABS, EVENT_CATEGORIES, listEvents, myEventCounts, type EventFilters } from '@/services/events';
+import { DISCOVERY_TABS, EVENT_CATEGORIES, eventFilterOptions, listEvents, myEventCounts, type EventFilters } from '@/services/events';
 import { requireStudentContext } from '../_lib/auth';
 
 export const metadata = { title: 'Events' };
@@ -28,6 +28,8 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     tab: sp.tab ?? 'all',
     q: sp.q,
     city: sp.city,
+    area: sp.area,
+    college: sp.college,
     when: (sp.when as EventFilters['when']) ?? 'upcoming',
     mode: sp.mode as EventFilters['mode'],
     free: sp.free === '1',
@@ -36,15 +38,15 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
     radiusKm: sp.radius ? Number(sp.radius) : undefined,
     sort: (sp.sort as EventFilters['sort']) ?? 'relevance',
   };
-  const [events, counts] = await Promise.all([listEvents(user, filters), myEventCounts(user)]);
+  const [events, counts, options] = await Promise.all([listEvents(user, filters), myEventCounts(user), eventFilterOptions(user)]);
 
   const qs = (patch: SP) => {
     const next = new URLSearchParams(Object.entries({ ...sp, ...patch }).filter(([, v]) => v) as [string, string][]);
     const s = next.toString();
     return s ? `/student/events?${s}` : '/student/events';
   };
-  const cityLabel = sp.city ?? 'Kolkata';
-  const activeFilters = ['when', 'mode', 'free', 'certificate', 'mine', 'radius', 'q'].filter((k) => sp[k] && !(k === 'when' && sp[k] === 'upcoming')).length;
+  const cityLabel = sp.area ?? sp.city ?? user.institutionName;
+  const activeFilters = ['when', 'city', 'area', 'college', 'mode', 'free', 'certificate', 'mine', 'radius', 'q'].filter((k) => sp[k] && !(k === 'when' && sp[k] === 'upcoming')).length;
 
   return (
     <div className="space-y-5">
@@ -56,10 +58,10 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           className="min-w-0 flex-1"
         />
         <div className="flex items-center gap-2">
-          <Link href="/student/events?mine=registered" className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[12.5px] font-bold text-default hover:border-ink">
+          <Link href="/student/events?mine=registered" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[12.5px] font-bold text-default hover:border-ink">
             <Ticket size={14} aria-hidden /> My events <span className="tabular text-subtle">{(counts.REGISTERED ?? 0) + (counts.WAITLISTED ?? 0) + (counts.PENDING_APPROVAL ?? 0)}</span>
           </Link>
-          <Link href="/student/certificates" className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[12.5px] font-bold text-default hover:border-ink">
+          <Link href="/student/certificates" className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[12.5px] font-bold text-default hover:border-ink">
             <Award size={14} aria-hidden /> Certificates
           </Link>
         </div>
@@ -84,12 +86,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
               name="q"
               defaultValue={sp.q}
               placeholder="Search events, competitions, internships…"
-              className="h-10 w-full rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface pl-9 pr-3 text-[13px] text-default placeholder:text-subtle focus:border-ink sm:w-72"
+              className="h-11 w-full rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface pl-9 pr-3 text-[13px] text-default placeholder:text-subtle focus:border-ink sm:w-72"
             />
           </label>
           <label className="flex items-center gap-1.5">
             <span className="sr-only">Sort</span>
-            <select name="sort" defaultValue={filters.sort} className="h-10 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-2.5 text-[13px] font-semibold text-default">
+            <select name="sort" defaultValue={filters.sort} className="h-11 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-2.5 text-[13px] font-semibold text-default">
               <option value="relevance">Sort: Relevance</option>
               <option value="date">Sort: Date</option>
             </select>
@@ -102,15 +104,21 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           </summary>
           <div className="grid gap-3 border-t border-[hsl(var(--border))] p-3 sm:grid-cols-2 lg:grid-cols-4">
             <Filter label="When" name="when" value={sp.when ?? 'upcoming'} options={[['upcoming', 'Any upcoming'], ['today', 'Today'], ['weekend', 'This weekend'], ['week', 'Next 7 days'], ['month', 'Next 30 days'], ['past', 'Past events']]} />
-            <Filter label="Location" name="city" value={sp.city ?? ''} options={[['', 'Anywhere'], ['Kolkata', 'Kolkata'], ['Howrah', 'Howrah']]} />
+            <Filter label="City" name="city" value={sp.city ?? ''} options={[['', 'Anywhere'], ...options.cities.map((c) => [c, c] as [string, string])]} />
+            {options.areas.length ? (
+              <Filter label="Area" name="area" value={sp.area ?? ''} options={[['', 'Any area'], ...options.areas.map((a) => [a, a] as [string, string])]} />
+            ) : null}
+            {crossCollege && options.colleges.length > 1 ? (
+              <Filter label="Hosted by" name="college" value={sp.college ?? ''} options={[['', 'Any college'], ...options.colleges.map((c) => [c.id, c.name] as [string, string])]} />
+            ) : null}
             <Filter label="Distance from campus" name="radius" value={sp.radius ?? ''} options={[['', 'Any distance'], ['5', 'Within 5 km'], ['15', 'Within 15 km'], ['30', 'Within 30 km']]} />
             <Filter label="Format" name="mode" value={sp.mode ?? ''} options={[['', 'Online & offline'], ['OFFLINE', 'Offline'], ['ONLINE', 'Online'], ['HYBRID', 'Hybrid']]} />
             <Filter label="Show" name="mine" value={sp.mine ?? ''} options={[['', 'All events'], ['college', 'My college only'], ['registered', 'Registered'], ['saved', 'Saved']]} />
             <Check name="free" label="Free only" checked={sp.free === '1'} />
             <Check name="certificate" label="Gives a certificate" checked={sp.certificate === '1'} />
             <div className="flex items-end gap-2">
-              <button type="submit" className="min-h-[40px] flex-1 rounded-xl border-[1.5px] border-ink bg-brand px-4 text-[13px] font-extrabold text-white shadow-pop campus-press">Apply</button>
-              <Link href="/student/events" className="min-h-[40px] rounded-xl px-3 py-2.5 text-[13px] font-semibold text-muted hover:text-default">Reset</Link>
+              <button type="submit" className="min-h-[44px] flex-1 rounded-xl border-[1.5px] border-ink bg-brand px-4 text-[13px] font-extrabold text-white shadow-pop campus-press">Apply</button>
+              <Link href="/student/events" className="min-h-[44px] rounded-xl px-3 py-2.5 text-[13px] font-semibold text-muted hover:text-default">Reset</Link>
             </div>
           </div>
         </details>
@@ -129,7 +137,7 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
             title={filters.mine === 'saved' ? 'Nothing saved yet' : filters.mine === 'registered' ? 'You haven’t registered for anything yet' : 'No events nearby yet'}
             description={filters.mine ? 'Bookmark events to follow their updates.' : 'Try another category, widen the distance, or look at online events.'}
             action={
-              <Link href="/student/events?mode=ONLINE" className="inline-flex min-h-[40px] items-center rounded-xl border-[1.5px] border-ink bg-brand px-4 text-[13px] font-extrabold text-white shadow-pop">
+              <Link href="/student/events?mode=ONLINE" className="inline-flex min-h-[44px] items-center rounded-xl border-[1.5px] border-ink bg-brand px-4 text-[13px] font-extrabold text-white shadow-pop">
                 Explore online events
               </Link>
             }
@@ -177,7 +185,7 @@ function Filter({ label, name, value, options }: { label: string; name: string; 
   return (
     <label className="block">
       <span className="mb-1 block text-[12px] font-bold text-muted">{label}</span>
-      <select name={name} defaultValue={value} className="h-10 w-full rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-2.5 text-[13px] text-default">
+      <select name={name} defaultValue={value} className="h-11 w-full rounded-lg border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-2.5 text-[13px] text-default">
         {options.map(([v, l]) => (
           <option key={v} value={v}>{l}</option>
         ))}
@@ -188,7 +196,7 @@ function Filter({ label, name, value, options }: { label: string; name: string; 
 
 function Check({ name, label, checked }: { name: string; label: string; checked: boolean }) {
   return (
-    <label className="flex min-h-[40px] items-center gap-2 self-end text-[13px] font-semibold text-default">
+    <label className="flex min-h-[44px] items-center gap-2 self-end text-[13px] font-semibold text-default">
       <input type="checkbox" name={name} value="1" defaultChecked={checked} className="h-4 w-4 accent-[hsl(var(--brand))]" />
       {label}
     </label>

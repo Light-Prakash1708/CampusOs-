@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import { AppError, ConflictError, ForbiddenError, NotFoundError } from '@/lib/api';
 import type { AuthContext } from '@/lib/auth/context';
+import { DISPLAY_TIME_ZONE } from '@/lib/utils';
 import { recordAudit } from '@/services/audit';
 import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { canManageEvent } from './index';
@@ -469,4 +470,226 @@ export async function postEventUpdate(
     .returning({ id: t.eventUpdates.id });
   await recordAudit(ctx, { action: 'EVENT_UPDATE_POSTED', entityType: 'event', entityId: e.id, after: { kind: input.kind, recipients: count }, ...meta });
   return { id: row!.id, recipients: count };
+}
+
+/* ------------------------------ edit & cancel ------------------------------ */
+
+const sameTime = (a: Date | null | undefined, b: Date | null | undefined) => (a?.getTime() ?? null) === (b?.getTime() ?? null);
+
+/**
+ * Edit an event (organiser or moderator). Guard rails:
+ *   · past or cancelled events can't be edited;
+ *   · capacity can't drop below the number already registered;
+ *   · a non-moderator editing a returned (DRAFT) event resubmits it; widening
+ *     a live event to PUBLIC sends it back for approval;
+ *   · a changed time or venue is announced automatically to registrants and
+ *     followers as an IMPORTANT update — nobody turns up at the old place.
+ */
+export async function updateEvent(ctx: AuthContext, eventId: string, input: EventInput, meta: Meta) {
+  const e = await loadManaged(ctx, eventId);
+  if (e.status === 'CANCELLED') throw new ConflictError('This event was cancelled and can no longer be edited.');
+  if (e.endsAt < new Date()) throw new ConflictError('This event has already ended.');
+  if (input.endsAt <= input.startsAt) throw new AppError('The event must end after it starts.', 422, 'BAD_TIMES');
+  if (input.registrationDeadline && input.registrationDeadline > input.endsAt) {
+    throw new AppError('Registration must close before the event ends.', 422, 'BAD_DEADLINE');
+  }
+  const moderator = ctx.permissions.has('event:approve');
+  let status = e.status;
+  let verification = e.verification;
+  if (!moderator && e.status === 'DRAFT') status = 'PENDING_APPROVAL';
+  if (!moderator && e.status === 'SCHEDULED' && e.visibility !== 'PUBLIC' && input.visibility === 'PUBLIC') {
+    status = 'PENDING_APPROVAL';
+    verification = 'PENDING';
+  }
+
+  // Same default as creation: an in-person event without a city keeps its current one.
+  const city = input.city ?? (input.mode === 'ONLINE' ? null : (e.city ?? null));
+  const timeChanged = !sameTime(e.startsAt, input.startsAt) || !sameTime(e.endsAt, input.endsAt);
+  const venueChanged =
+    e.mode !== input.mode ||
+    (e.venueText ?? null) !== (input.venueText ?? null) ||
+    (e.area ?? null) !== (input.area ?? null) ||
+    (e.city ?? null) !== city ||
+    (e.onlineUrl ?? null) !== (input.onlineUrl ?? null);
+
+  // One transaction, with the event row locked: registrations take the same
+  // lock, so the capacity check can't race a sign-up.
+  const promoted = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT id FROM events WHERE id = ${e.id} FOR UPDATE`);
+    const [{ n: registered }] = (
+      await tx.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM event_registrations WHERE event_id = ${e.id} AND status = 'REGISTERED'`)
+    ).rows as [{ n: number }];
+    if (input.capacity != null && input.capacity < registered) {
+      throw new ConflictError(`${registered} people are already registered — capacity can’t be lower than that.`);
+    }
+    await tx
+      .update(t.events)
+      .set({
+        title: input.title.trim(),
+        description: input.description ?? null,
+        category: input.category,
+        visibility: input.visibility,
+        organizerName: input.organizerName?.trim() || e.organizerName,
+        mode: input.mode,
+        venueText: input.venueText ?? null,
+        city,
+        area: input.area ?? null,
+        onlineUrl: input.onlineUrl ?? null,
+        startsAt: input.startsAt,
+        endsAt: input.endsAt,
+        capacity: input.capacity ?? null,
+        registrationRequired: input.registrationRequired,
+        registrationDeadline: input.registrationDeadline ?? null,
+        registrationMode: input.registrationMode,
+        waitlistEnabled: input.waitlistEnabled,
+        priceInr: input.priceInr,
+        certificateOffered: input.certificateOffered,
+        teamSizeMin: input.teamSizeMin,
+        teamSizeMax: input.teamSizeMax,
+        eligibility: input.eligibility ?? null,
+        rules: input.rules ?? null,
+        prizes: input.prizes ?? null,
+        agenda: input.agenda ?? [],
+        faqs: input.faqs ?? [],
+        tags: input.tags ?? [],
+        contactEmail: input.contactEmail ?? null,
+        coverUrl: input.coverUrl ?? e.coverUrl,
+        status,
+        verification,
+        updatedAt: new Date(),
+      })
+      .where(eq(t.events.id, e.id));
+
+    // More seats (or no limit any more): move people off the waitlist, in order.
+    if (status !== 'SCHEDULED')
+      return [] as {
+        id: string;
+        userId: string;
+        attendeeInstitutionId: string | null;
+      }[];
+    const free = input.capacity == null ? null : input.capacity - registered;
+    if (free !== null && free <= 0) return [];
+    const next = await tx
+      .select({
+        id: t.eventRegistrations.id,
+        userId: t.eventRegistrations.userId,
+        attendeeInstitutionId: t.eventRegistrations.attendeeInstitutionId,
+      })
+      .from(t.eventRegistrations)
+      .where(and(eq(t.eventRegistrations.eventId, e.id), eq(t.eventRegistrations.status, 'WAITLISTED')))
+      .orderBy(asc(t.eventRegistrations.registeredAt))
+      .limit(free ?? 10_000);
+    if (next.length) {
+      await tx
+        .update(t.eventRegistrations)
+        .set({ status: 'REGISTERED' })
+        .where(
+          inArray(
+            t.eventRegistrations.id,
+            next.map((r) => r.id),
+          ),
+        );
+      await tx.insert(t.notifications).values(
+        next.map((r) => ({
+          institutionId: r.attendeeInstitutionId ?? e.institutionId,
+          userId: r.userId,
+          title: `A place opened up — you're in: ${input.title.trim()}`,
+          body: 'You moved off the waitlist. Your pass is ready.',
+          priority: 'IMPORTANT' as const,
+          category: 'EVENT' as const,
+          actionUrl: `/student/events/${e.id}`,
+          groupKey: `event:${e.id}`,
+          sourceType: 'event',
+          sourceId: e.id,
+        })),
+      );
+    }
+    return next;
+  });
+
+  const announced: string[] = [];
+  if (e.status === 'SCHEDULED' && status === 'SCHEDULED' && (timeChanged || venueChanged)) {
+    const where = input.mode === 'ONLINE' ? 'Online' : [input.venueText, input.area, city].filter(Boolean).join(', ');
+    const when = new Intl.DateTimeFormat('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: DISPLAY_TIME_ZONE,
+    }).format(input.startsAt);
+    const kind = timeChanged ? 'TIME_CHANGED' : 'VENUE_CHANGED';
+    const title = timeChanged && venueChanged ? `New time and place: ${when} · ${where}` : timeChanged ? `New time: ${when}` : `New venue: ${where}`;
+    const priority = updatePriority(kind);
+    const count = await notifyAudience(
+      { id: e.id, institutionId: e.institutionId, title: input.title },
+      { title: `${input.title}: ${title}`, priority },
+      'FOLLOWERS',
+    );
+    await db.insert(t.eventUpdates).values({
+      institutionId: e.institutionId,
+      eventId: e.id,
+      authorId: ctx.userId,
+      kind,
+      title,
+      body: null,
+      priority,
+      audience: 'FOLLOWERS',
+      recipientCount: count,
+    });
+    announced.push(kind);
+  }
+
+  await recordAudit(ctx, {
+    action: 'EVENT_EDITED',
+    entityType: 'event',
+    entityId: e.id,
+    before: {
+      status: e.status,
+      startsAt: e.startsAt.toISOString(),
+      venue: e.venueText,
+      visibility: e.visibility,
+      capacity: e.capacity,
+    },
+    after: {
+      status,
+      startsAt: input.startsAt.toISOString(),
+      venue: input.venueText ?? null,
+      visibility: input.visibility,
+      capacity: input.capacity ?? null,
+      announced,
+      promoted: promoted.length,
+    },
+    ...meta,
+  });
+  return { id: e.id, status, announced, promoted: promoted.length };
+}
+
+/** Cancel an event and tell everyone registered, waitlisted or following. */
+export async function cancelEvent(ctx: AuthContext, eventId: string, reason: string, meta: Meta) {
+  const e = await loadManaged(ctx, eventId);
+  if (e.status === 'CANCELLED') throw new ConflictError('This event is already cancelled.');
+  if (e.endsAt < new Date()) throw new ConflictError('This event has already ended.');
+  await db.update(t.events).set({ status: 'CANCELLED', moderationNote: reason, updatedAt: new Date() }).where(eq(t.events.id, e.id));
+  let count = 0;
+  if (e.status === 'SCHEDULED') {
+    count = await notifyAudience(e, { title: `Cancelled: ${e.title}`, body: reason, priority: 'IMPORTANT' }, 'FOLLOWERS');
+    await db.insert(t.eventUpdates).values({
+      institutionId: e.institutionId,
+      eventId: e.id,
+      authorId: ctx.userId,
+      kind: 'CANCELLED',
+      title: 'This event has been cancelled',
+      body: reason,
+      priority: 'IMPORTANT',
+      audience: 'FOLLOWERS',
+      recipientCount: count,
+    });
+  }
+  await recordAudit(ctx, {
+    action: 'EVENT_CANCELLED',
+    entityType: 'event',
+    entityId: e.id,
+    before: { status: e.status },
+    after: { status: 'CANCELLED', reason, notified: count },
+    ...meta,
+  });
+  return { id: e.id, notified: count };
 }

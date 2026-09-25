@@ -10,25 +10,69 @@ function toIso(local: string): string | null {
   const d = new Date(local);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
+/** ISO instant → value for <input type="datetime-local"> in the browser's timezone. */
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Existing event values for edit mode (instants as ISO strings). */
+export interface EventFormInitial {
+  title: string; category: string; description: string | null; visibility: string; organizerName: string | null; mode: string;
+  venueText: string | null; city: string | null; area: string | null; onlineUrl: string | null; startsAt: string; endsAt: string;
+  capacity: number | null; registrationRequired: boolean; registrationDeadline: string | null; registrationMode: string;
+  waitlistEnabled: boolean; priceInr: number; certificateOffered: boolean; teamSizeMin: number; teamSizeMax: number;
+  eligibility: string | null; rules: string | null; prizes: string | null; tags: string[]; contactEmail: string | null;
+  agenda: { time: string; title: string }[]; faqs: { q: string; a: string }[];
+}
+
 function lines(value: string): string[][] {
   return value.split('\n').map((l) => l.split('|').map((x) => x.trim())).filter((p) => p[0]);
 }
 
-export function EventForm({ categories, canPublic }: { categories: { value: string; label: string }[]; canPublic: boolean }) {
+export function EventForm({
+  categories,
+  canPublic,
+  initial,
+  eventId,
+}: {
+  categories: { value: string; label: string }[];
+  canPublic: boolean;
+  /** Edit mode: the event's current values. */
+  initial?: EventFormInitial;
+  eventId?: string;
+}) {
   const router = useRouter();
-  const api = useApi<{ id: string; status: string }>();
-  const [f, setF] = React.useState({
-    title: '', category: 'WORKSHOP', description: '', visibility: 'INSTITUTION', organizerName: '', mode: 'OFFLINE',
-    venueText: '', city: 'Kolkata', area: '', onlineUrl: '', startsAt: '', endsAt: '', capacity: '', registrationRequired: true,
-    registrationDeadline: '', registrationMode: 'INSTANT', waitlistEnabled: true, priceInr: '0', certificateOffered: false,
-    teamSizeMin: '1', teamSizeMax: '1', eligibility: '', rules: '', prizes: '', tags: '', contactEmail: '', agenda: '', faqs: '',
-  });
+  const api = useApi<{ id: string; status: string; announced?: string[] }>();
+  const [f, setF] = React.useState(() =>
+    initial
+      ? {
+          title: initial.title, category: initial.category, description: initial.description ?? '', visibility: initial.visibility,
+          organizerName: initial.organizerName ?? '', mode: initial.mode, venueText: initial.venueText ?? '', city: initial.city ?? '',
+          area: initial.area ?? '', onlineUrl: initial.onlineUrl ?? '', startsAt: toLocalInput(initial.startsAt), endsAt: toLocalInput(initial.endsAt),
+          capacity: initial.capacity ? String(initial.capacity) : '', registrationRequired: initial.registrationRequired,
+          registrationDeadline: toLocalInput(initial.registrationDeadline), registrationMode: initial.registrationMode,
+          waitlistEnabled: initial.waitlistEnabled, priceInr: String(initial.priceInr), certificateOffered: initial.certificateOffered,
+          teamSizeMin: String(initial.teamSizeMin), teamSizeMax: String(initial.teamSizeMax), eligibility: initial.eligibility ?? '',
+          rules: initial.rules ?? '', prizes: initial.prizes ?? '', tags: initial.tags.join(', '), contactEmail: initial.contactEmail ?? '',
+          agenda: initial.agenda.map((a) => `${a.time} | ${a.title}`).join('\n'), faqs: initial.faqs.map((q) => `${q.q} | ${q.a}`).join('\n'),
+        }
+      : {
+          title: '', category: 'WORKSHOP', description: '', visibility: 'INSTITUTION', organizerName: '', mode: 'OFFLINE',
+          venueText: '', city: 'Kolkata', area: '', onlineUrl: '', startsAt: '', endsAt: '', capacity: '', registrationRequired: true,
+          registrationDeadline: '', registrationMode: 'INSTANT', waitlistEnabled: true, priceInr: '0', certificateOffered: false,
+          teamSizeMin: '1', teamSizeMax: '1', eligibility: '', rules: '', prizes: '', tags: '', contactEmail: '', agenda: '', faqs: '',
+        },
+  );
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setF({ ...f, [k]: e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value });
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const data = await api.call('/api/events', {
+    const data = await api.call(eventId ? `/api/events/${eventId}` : '/api/events', {
       title: f.title, category: f.category, description: f.description || null, visibility: f.visibility,
       organizerName: f.organizerName || null, mode: f.mode, venueText: f.venueText || null, city: f.city || null, area: f.area || null,
       onlineUrl: f.onlineUrl || null, startsAt: toIso(f.startsAt), endsAt: toIso(f.endsAt),
@@ -39,8 +83,11 @@ export function EventForm({ categories, canPublic }: { categories: { value: stri
       tags: f.tags.split(',').map((x) => x.trim()).filter(Boolean).slice(0, 8), contactEmail: f.contactEmail || null,
       agenda: lines(f.agenda).map(([time, title]) => ({ time: time!, title: title ?? '' })),
       faqs: lines(f.faqs).map(([q, a]) => ({ q: q!, a: a ?? '' })),
-    });
-    if (data) router.push(`/organize/${data.id}`);
+    }, eventId ? 'PATCH' : 'POST');
+    if (data) {
+      router.push(`/organize/${data.id}${data.announced?.length ? '?announced=1' : ''}`);
+      router.refresh();
+    }
   }
 
   const err = api.fieldError;
@@ -106,7 +153,7 @@ export function EventForm({ categories, canPublic }: { categories: { value: stri
       </Section>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
-        <Button type="submit" variant="primary" size="lg" loading={api.loading} disabled={!f.title || !f.startsAt || !f.endsAt}>Create event</Button>
+        <Button type="submit" variant="primary" size="lg" loading={api.loading} disabled={!f.title || !f.startsAt || !f.endsAt}>{eventId ? 'Save changes' : 'Create event'}</Button>
       </div>
     </form>
   );

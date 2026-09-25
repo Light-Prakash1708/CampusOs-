@@ -267,3 +267,49 @@ export function AttendeeDecision({ eventId, registrationId }: { eventId: string;
     </span>
   );
 }
+
+/**
+ * Cancel an event. Needs a reason (shown to attendees), and a second click to
+ * confirm — registered and following students are notified.
+ */
+export function CancelEventAction({ eventId, live }: { eventId: string; live: boolean }) {
+  const router = useRouter();
+  const api = useApi<{ id: string; status: string }>();
+  const [open, setOpen] = React.useState(false);
+  const [reason, setReason] = React.useState('');
+  if (!open) {
+    return (
+      <Button variant="secondary" onClick={() => setOpen(true)} className="min-h-[44px]">
+        <XCircle size={15} aria-hidden /> Cancel event
+      </Button>
+    );
+  }
+  return (
+    <CampusCard className="w-full space-y-3 p-4 sm:max-w-md">
+      <Field label="Why is it cancelled?" hint={live ? 'Everyone registered or following gets this message.' : 'Kept with the event record.'}>
+        <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} maxLength={500} />
+      </Field>
+      <ErrorBox error={api.error} />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="danger"
+          loading={api.loading}
+          disabled={reason.trim().length < 5}
+          onClick={async () => {
+            const res = await api.call(`/api/events/${eventId}/cancel`, { reason: reason.trim() });
+            if (res) {
+              setOpen(false);
+              router.refresh();
+            }
+          }}
+          className="min-h-[44px]"
+        >
+          Confirm cancellation
+        </Button>
+        <Button variant="ghost" onClick={() => setOpen(false)} className="min-h-[44px]">
+          Keep the event
+        </Button>
+      </div>
+    </CampusCard>
+  );
+}

@@ -56,10 +56,41 @@ const registeredCountSql = sql<number>`(
   SELECT count(*)::int FROM event_registrations r
    WHERE r.event_id = "events"."id" AND r.status = 'REGISTERED')`;
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Location and host-college choices for the filter bar, built from events this
+ * viewer can actually see (upcoming or live) — never a hardcoded list.
+ */
+export async function eventFilterOptions(ctx: Ctx, now = new Date()) {
+  const base = and(visibleTo(ctx), gte(t.events.endsAt, now));
+  const [places, colleges] = await Promise.all([
+    db
+      .selectDistinct({ city: t.events.city, area: t.events.area })
+      .from(t.events)
+      .innerJoin(t.institutions, eq(t.institutions.id, t.events.institutionId))
+      .where(and(base, isNotNull(t.events.city)))
+      .limit(200),
+    db
+      .selectDistinct({ id: t.institutions.id, name: t.institutions.name })
+      .from(t.events)
+      .innerJoin(t.institutions, eq(t.institutions.id, t.events.institutionId))
+      .where(base)
+      .limit(100),
+  ]);
+  const cities = [...new Set(places.map((p) => p.city!).filter(Boolean))].sort();
+  const areas = [...new Set(places.map((p) => p.area).filter((a): a is string => !!a))].sort();
+  return { cities, areas, colleges: colleges.sort((a, b) => a.name.localeCompare(b.name)) };
+}
+
 export interface EventFilters {
   tab?: string;
   q?: string;
   city?: string;
+  /** Neighbourhood, e.g. "Salt Lake", "New Town" (matched case-insensitively). */
+  area?: string;
+  /** Host college (an institution id). Visibility rules still apply. */
+  college?: string;
   mode?: 'OFFLINE' | 'ONLINE' | 'HYBRID';
   free?: boolean;
   certificate?: boolean;
@@ -119,6 +150,8 @@ export async function listEvents(ctx: Ctx, filters: EventFilters = {}, now = new
   if (filters.city) {
     conds.push(or(ilike(t.events.city, filters.city), eq(t.events.mode, 'ONLINE'))!);
   }
+  if (filters.area?.trim()) conds.push(ilike(t.events.area, filters.area.trim().replace(/[%_\\]/g, (m) => `\\${m}`)));
+  if (filters.college && UUID_RE.test(filters.college)) conds.push(eq(t.events.institutionId, filters.college));
   if (filters.mode) conds.push(eq(t.events.mode, filters.mode));
   if (filters.free) conds.push(eq(t.events.priceInr, 0));
   if (filters.certificate) conds.push(eq(t.events.certificateOffered, true));
