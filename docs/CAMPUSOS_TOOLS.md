@@ -31,12 +31,12 @@ does **today**. Optionally it also has:
 | Attendance Tracker | available | `/student/attendance` |
 | Timetable Viewer | available | `/student/schedule` |
 | Events | available (`events_enabled`) | `/student/events` |
-| Subject-wise View | available | `/student/attendance#subjects` |
+| Subject-wise View | available | `/student/attendance?view=subjects` |
 | Notes & Resources | available (`resource_hub_enabled`) | `/student/resources` |
 | AI Assistant | available (`ai_assistant_enabled`, `ai:use_assistant`) | `/student/assistant` |
 | Certificates | available (`events_enabled`) | `/student/certificates` |
 | Host an Event | available (`event:create`) | `/organize/new` |
-| Bunk Calculator | planned | Phase 2 |
+| Attendance Planner (Bunk Calculator) | available (`attendance_planner_enabled`) | `/tools/attendance-planner` |
 | Smart Reminders, Room Finder | planned | Phase 3 |
 | Internships & Jobs | planned (`opportunity_hub_enabled`) | Phase 5 |
 | PYQs, Document Storage | planned | Phase 6 |
@@ -59,8 +59,7 @@ the next week").
 
 When some subjects are already below their minimum, the banner says the
 headroom applies only to subjects still above it. It also shows how many
-subjects need recovery first. The full calculator (targets and simulations)
-is Phase 2; the banner shows its status pill.
+subjects need recovery first. The banner's primary action opens the Attendance Planner.
 
 ## Personal ordering
 

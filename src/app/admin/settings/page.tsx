@@ -3,7 +3,8 @@ import { Settings as SettingsIcon, ShieldCheck, Sparkles } from 'lucide-react';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import { can, requirePermission } from '@/lib/auth/context';
-import { FeatureToggle, RegistrationPolicyForm } from './SettingsEditors';
+import { AttendancePolicyForm, FeatureToggle, RegistrationPolicyForm } from './SettingsEditors';
+import { parseAttendancePolicy } from '@/services/attendance/policy';
 import { Alert, Badge, Card, CardBody, CardHeader, PageHeader, Section, Table, Td, Th } from '@/components/ui';
 import { FEATURE_FLAGS, isEnabled, plannedLabel, type FeatureFlag } from '@/lib/features';
 import { humanize } from '@/lib/utils';
@@ -93,6 +94,20 @@ export default async function SettingsPage() {
           </Table>
         </Card>
       </Section>
+
+      {can(user, 'attendance:configure') ? (
+        <Section title="Attendance rules">
+          <Card>
+            <CardHeader
+              title="Minimums and warnings"
+              description="Used by students’ Attendance Tracker and Planner, the advisor and shortage warnings. Each class keeps its own minimum unless you apply the default."
+            />
+            <CardBody>
+              <AttendancePolicyForm initial={parseAttendancePolicy(institution?.attendancePolicy)} />
+            </CardBody>
+          </Card>
+        </Section>
+      ) : null}
 
       <Section title="Registration">
         <Card>

@@ -59,6 +59,12 @@ export const FEATURE_FLAGS = {
     defaultValue: true,
     tier: 'STARTER',
   },
+  attendance_planner_enabled: {
+    label: 'Attendance Planner',
+    description: 'Students plan attendance against targets: safe absences, classes needed to recover, what-if simulations. Read-only; never changes official records.',
+    defaultValue: true,
+    tier: 'STARTER',
+  },
   resource_hub_enabled: {
     label: 'Academic Resource Hub',
     description: 'Shared teaching material with tagging and search.',

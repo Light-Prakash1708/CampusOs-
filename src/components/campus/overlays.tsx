@@ -306,11 +306,16 @@ export function CampusSlider({
       />
       {ticks?.length ? (
         <div className="relative mt-1 h-4 text-[11px] font-semibold text-subtle" aria-hidden>
-          {ticks.map((t) => (
-            <span key={t} className="absolute -translate-x-1/2" style={{ left: `${((t - min) / (max - min)) * 100}%` }}>
-              {format(t)}
-            </span>
-          ))}
+          {ticks.map((t) => {
+            const at = ((t - min) / (max - min)) * 100;
+            // End labels align inward so they never overflow the track.
+            const shift = at <= 0 ? 'translate-x-0' : at >= 100 ? '-translate-x-full' : '-translate-x-1/2';
+            return (
+              <span key={t} className={cn('absolute', shift)} style={{ left: `${at}%` }}>
+                {format(t)}
+              </span>
+            );
+          })}
         </div>
       ) : null}
     </div>

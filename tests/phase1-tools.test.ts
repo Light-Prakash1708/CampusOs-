@@ -88,7 +88,7 @@ describe('tool registry', () => {
     expect(resolveTool(byKey('attendance'), student)?.status).toBe('AVAILABLE');
     const jobs = resolveTool(byKey('opportunities'), { ...student, featureFlags: { opportunity_hub_enabled: true } });
     expect(jobs).toMatchObject({ status: 'PLANNED', statusLabel: 'Coming in Phase 5', href: undefined });
-    expect(resolveTool(byKey('bunk-calculator'), student)).toMatchObject({ status: 'PLANNED', statusLabel: 'Coming in Phase 2' });
+    expect(resolveTool(byKey('cgpa'), student)).toMatchObject({ status: 'PLANNED', statusLabel: 'Coming in Phase 8' });
     expect(resolveTool(byKey('events'), { ...student, featureFlags: { events_enabled: false } })).toMatchObject({
       status: 'DISABLED',
       statusLabel: 'Off at your college',
@@ -111,8 +111,8 @@ describe('tool registry', () => {
   });
 
   it('planned tools can never be ranked up by usage', () => {
-    const tools = toolsFor(student, { 'bunk-calculator': 500 });
-    expect(tools.find((x) => x.key === 'bunk-calculator')!.openCount).toBe(0);
+    const tools = toolsFor(student, { cgpa: 500 });
+    expect(tools.find((x) => x.key === 'cgpa')!.openCount).toBe(0);
   });
 
   it('“most used” needs at least two opens and only lists available tools', () => {
@@ -161,7 +161,7 @@ describe('tool usage', () => {
     await recordToolOpen(s1, 'events');
     await recordToolOpen(s1, 'events');
     expect(await recordToolOpen(s1, 'events')).toEqual({ key: 'events', openCount: 3 });
-    await expect(recordToolOpen(s1, 'bunk-calculator')).rejects.toMatchObject({ status: 409 });
+    await expect(recordToolOpen(s1, 'cgpa')).rejects.toMatchObject({ status: 409 });
     await expect(recordToolOpen(s1, 'not-a-tool')).rejects.toMatchObject({ status: 404 });
 
     expect((await listToolsFor(s1))[0]).toMatchObject({ key: 'events', openCount: 3 });

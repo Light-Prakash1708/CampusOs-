@@ -60,6 +60,20 @@ export const institutions = pgTable(
       .$type<{ mode: 'DISABLED' | 'EMAIL_DOMAIN' | 'ADMIN_APPROVAL'; allowedDomains?: string[] }>()
       .notNull()
       .default({ mode: 'DISABLED' }),
+    /**
+     * Attendance rules the college controls (Student OS Phase 2). Parsed with
+     * defaults by services/attendance/policy.ts — an empty object is valid:
+     *   defaultMinimumPct    minimum applied to classes (per-class values in
+     *                        course_offerings.min_attendance_percentage stay
+     *                        authoritative; the admin can apply this to all)
+     *   warningMarginPct     percentage points above the minimum that count as
+     *                        "close to the line" (risk state WATCH)
+     *   aggregateMinimumPct  optional minimum across all subjects combined
+     */
+    attendancePolicy: jsonb('attendance_policy')
+      .$type<{ defaultMinimumPct?: number; warningMarginPct?: number; aggregateMinimumPct?: number | null }>()
+      .notNull()
+      .default({}),
     /** Shown in public college discovery (registration picker, event discovery). */
     isListed: boolean('is_listed').notNull().default(false),
     /** Setup wizard progress; the institution is not "live" until completed. */

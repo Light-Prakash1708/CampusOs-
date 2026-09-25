@@ -88,3 +88,74 @@ export function RegistrationPolicyForm({
     </form>
   );
 }
+
+/**
+ * Attendance rules (attendance:configure). "Apply to current classes" also
+ * resets every current-term class to the default minimum and recomputes all
+ * affected students' summaries — so it asks for confirmation first.
+ */
+export function AttendancePolicyForm({
+  initial,
+}: {
+  initial: { defaultMinimumPct: number; warningMarginPct: number; aggregateMinimumPct: number | null };
+}) {
+  const router = useRouter();
+  const api = useApi<{ classesUpdated: number }>();
+  const [min, setMin] = React.useState(String(initial.defaultMinimumPct));
+  const [margin, setMargin] = React.useState(String(initial.warningMarginPct));
+  const [aggregate, setAggregate] = React.useState(initial.aggregateMinimumPct === null ? '' : String(initial.aggregateMinimumPct));
+  const [apply, setApply] = React.useState(false);
+  const [done, setDone] = React.useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setDone(null);
+    const data = await api.call(
+      '/api/admin/settings/attendance',
+      {
+        defaultMinimumPct: Number(min),
+        warningMarginPct: Number(margin),
+        aggregateMinimumPct: aggregate.trim() === '' ? null : Number(aggregate),
+        applyToCurrentTerm: apply,
+      },
+      'PUT',
+    );
+    if (data) {
+      setDone(apply ? `Saved. ${data.classesUpdated} current classes now use ${min}%, and students’ figures were recomputed.` : 'Saved.');
+      setApply(false);
+      router.refresh();
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="space-y-4" noValidate>
+      <ErrorBox error={api.error} />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Field label="Default minimum (%)" htmlFor="att-min" hint="Your college’s standard requirement per subject.">
+          <Input id="att-min" type="number" min={1} max={100} step={0.5} value={min} onChange={(e) => setMin(e.target.value)} />
+        </Field>
+        <Field label="“Close to the line” margin (points)" htmlFor="att-margin" hint="Students within this many points of a minimum are warned.">
+          <Input id="att-margin" type="number" min={0} max={25} step={0.5} value={margin} onChange={(e) => setMargin(e.target.value)} />
+        </Field>
+        <Field label="Overall minimum (%)" htmlFor="att-agg" hint="Optional: also require this across all subjects. Leave empty if not.">
+          <Input id="att-agg" type="number" min={1} max={100} step={0.5} value={aggregate} onChange={(e) => setAggregate(e.target.value)} placeholder="Not required" />
+        </Field>
+      </div>
+      <label className="flex items-start gap-2.5 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] p-3 text-[13px]">
+        <input type="checkbox" checked={apply} onChange={(e) => setApply(e.target.checked)} className="mt-0.5 h-5 w-5" />
+        <span>
+          <span className="font-bold text-default">Also apply the default minimum to every class this term</span>
+          <span className="block text-muted">Replaces each current class’s own minimum and recomputes every student’s attendance status. Recorded attendance is not changed. This is audited.</span>
+        </span>
+      </label>
+      {done ? (
+        <p className="text-[13px] font-semibold text-mint-ink" role="status">
+          {done}
+        </p>
+      ) : null}
+      <Button type="submit" variant="primary" loading={api.loading}>
+        Save attendance rules
+      </Button>
+    </form>
+  );
+}

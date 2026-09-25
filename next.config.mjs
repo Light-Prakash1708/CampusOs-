@@ -33,7 +33,10 @@ const nextConfig = {
       source: `/${portal}/readdressal`,
       destination: `/${portal}/redressal`,
       permanent: true,
-    })));
+    }))).concat([
+      // Familiar name for the Attendance Planner.
+      { source: '/tools/bunk-calculator', destination: '/tools/attendance-planner', permanent: true },
+    ]);
   },
 
   async headers() {

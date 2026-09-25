@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
+import { uuidArray } from '@/lib/db/sql-helpers';
 import { CheckSquare, ClipboardList, Users } from 'lucide-react';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
@@ -143,7 +144,7 @@ export default async function ClassRosterPage({
         .where(
           and(
             eq(t.submissions.institutionId, user.institutionId),
-            sql`${t.submissions.assignmentId} = ANY(${assignmentIds}::uuid[])`,
+            sql`${t.submissions.assignmentId} = ANY(${uuidArray(assignmentIds)})`,
           ),
         )
     : [];

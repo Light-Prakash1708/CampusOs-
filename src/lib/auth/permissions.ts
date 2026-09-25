@@ -43,6 +43,8 @@ export const PERMISSIONS = [
   'attendance:view_all',
   'attendance:correct',
   'attendance:approve_correction',
+  /** Set the college's attendance rules (default minimum, warning margin, overall minimum). */
+  'attendance:configure',
 
   // --- Assignments & assessments ---
   'assignment:create',
@@ -242,6 +244,7 @@ const ADMIN_PERMISSIONS: Permission[] = [
   'timetable:approve_change',
   'attendance:view_all',
   'attendance:approve_correction',
+  'attendance:configure',
   'assignment:view_all',
   'assessment:manage',
   'assessment:publish_results',

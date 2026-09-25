@@ -232,13 +232,13 @@ async function loadNextClass(user: Awaited<ReturnType<typeof requireStudentConte
 }
 
 /**
- * The reference's "Know exactly how many classes you can skip" banner. The
- * full calculator (targets, simulations) is Phase 2; today the banner shows
- * the student's real standing and the stored absence headroom — the number
- * of classes that can be missed while every subject stays at its minimum.
+ * The reference's "student favourite" banner, framed as planning: the
+ * student's real standing and absence headroom (classes that can be missed
+ * while every subject stays at its minimum), with the Attendance Planner as
+ * the call to action.
  */
 function AttendanceBanner({ data, tools }: { data: AttendanceSummary | undefined; tools: Map<string, ResolvedTool> }) {
-  const calc = tools.get('bunk-calculator');
+  const planner = tools.get('attendance-planner');
   const attendance = tools.get('attendance');
   return (
     <section aria-labelledby="bunk-h" className="rounded-2xl border-[1.5px] border-ink bg-sun p-4 shadow-pop sm:p-5">
@@ -248,22 +248,31 @@ function AttendanceBanner({ data, tools }: { data: AttendanceSummary | undefined
             <Sparkles size={11} aria-hidden /> Student favourite
           </span>
           <h2 id="bunk-h" className="mt-2 font-display text-[22px] font-extrabold leading-tight text-default sm:text-[26px]">
-            Know exactly how many classes you can skip.
+            Know exactly how many classes you can safely miss.
           </h2>
           <p className="mt-1 max-w-2xl text-[13.5px] text-sun-ink">
             Your headroom is worked out from the classes your faculty have marked and each subject’s minimum attendance — no guessing.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
+            {planner?.status === 'AVAILABLE' && planner.href ? (
+              <ToolOpenLink
+                tool="attendance-planner"
+                href={planner.href}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-ink px-4 text-[13.5px] font-bold text-white shadow-pop campus-press"
+              >
+                Open Attendance Planner <ArrowRight size={15} aria-hidden />
+              </ToolOpenLink>
+            ) : null}
             {attendance?.href ? (
               <ToolOpenLink
                 tool="attendance"
-                href={`${attendance.href}#subjects`}
-                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-ink px-4 text-[13.5px] font-bold text-white shadow-pop campus-press"
+                href="/student/attendance?view=subjects#subjects"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-surface px-4 text-[13.5px] font-bold text-default shadow-pop campus-press"
               >
                 See subject headroom <ArrowRight size={15} aria-hidden />
               </ToolOpenLink>
             ) : null}
-            {calc?.statusLabel ? <CampusComingSoon label={`Full Bunk Calculator: ${calc.statusLabel.replace('Coming in ', '')}`} /> : null}
+            {planner?.status === 'DISABLED' ? <CampusComingSoon label="Planner is off at your college" /> : null}
           </div>
         </div>
         <div className="flex items-center gap-4 rounded-2xl border-[1.5px] border-ink bg-surface p-3.5 shadow-pop">

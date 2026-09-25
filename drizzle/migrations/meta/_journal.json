@@ -36,6 +36,13 @@
       "when": 1790357105030,
       "tag": "0004_tools_hub",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790359021512,
+      "tag": "0005_attendance_planner",
+      "breakpoints": true
     }
   ]
 }
