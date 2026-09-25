@@ -30,7 +30,7 @@ import {
 import { minutesToHuman } from '@/lib/utils';
 import { useMutation } from '../_components/useMutation';
 import { MutationError } from '../_components/MutationError';
-import { asPlanContent, type LessonPlanContent } from './planTypes';
+import { asPlanContent, COPILOT_DURATIONS, type LessonPlanContent } from './planTypes';
 
 export interface CopilotOffering {
   id: string;
@@ -50,7 +50,6 @@ type PlanState =
       published: boolean;
     };
 
-export const COPILOT_DURATIONS = [30, 45, 55, 60, 90, 120];
 const DURATIONS = COPILOT_DURATIONS;
 
 export function CopilotWorkbench({

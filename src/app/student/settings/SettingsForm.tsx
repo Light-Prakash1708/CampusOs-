@@ -38,7 +38,10 @@ export function SettingsForm({
   channels,
   initialPreferences,
   initialSettings,
+  endpoint = '/api/account/settings/notifications',
 }: {
+  /** Role-neutral: saves the signed-in person's own settings. */
+  endpoint?: string;
   categories: string[];
   channels: ChannelOption[];
   initialPreferences: PreferenceState[];
@@ -74,7 +77,7 @@ export function SettingsForm({
     setSaved(false);
 
     try {
-      const response = await fetch('/api/student/settings/notifications', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

@@ -20,7 +20,8 @@ import { formatDate, minutesToHuman, pluralize } from '@/lib/utils';
 import { getCurrentTerm, getMyOfferings } from '../_lib/faculty';
 import { NoFacultyProfile } from '../_components/NoFacultyProfile';
 import { baselineManualMinutes } from '@/app/api/faculty/_lib/estimates';
-import { COPILOT_DURATIONS, CopilotWorkbench } from './CopilotWorkbench';
+import { CopilotWorkbench } from './CopilotWorkbench';
+import { COPILOT_DURATIONS } from './planTypes';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Teaching copilot · CampusOS' };
@@ -160,7 +161,7 @@ export default async function CopilotPage() {
               Every plan is stored as unreviewed AI output until you publish it, and the label on
               screen reflects that state. Publishing is a record that <em>you</em> approved the
               content — see{' '}
-              <Link href="/faculty/settings" className="text-brand hover:underline">
+              <Link href="/faculty/settings#ai" className="text-brand hover:underline">
                 settings
               </Link>{' '}
               for how AI is configured at this institution.

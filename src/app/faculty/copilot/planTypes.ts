@@ -62,3 +62,11 @@ export function asPlanContent(value: unknown): LessonPlanContent {
     _note: typeof raw._note === 'string' ? raw._note : undefined,
   };
 }
+
+/**
+ * Lesson lengths offered by the copilot, in minutes. Lives here (not in the
+ * 'use client' workbench) so the server page receives the real array — a
+ * server component importing a value from a client module gets only a
+ * client reference, which crashed this page in production builds.
+ */
+export const COPILOT_DURATIONS = [30, 45, 55, 60, 90, 120];

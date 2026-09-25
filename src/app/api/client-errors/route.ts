@@ -19,6 +19,8 @@ export const POST = publicRoute(async (request) => {
   await enforceRateLimit(keyFor('client-error', clientIp(request.headers)), { limit: 30, windowSec: 600 }, 'Too many error reports.');
   const body = await parseBody(request, Body);
   const route = body.route?.split('?')[0];
-  reportError(new Error(`client: ${body.message}`), { where: 'client', digest: body.digest, route });
+  const error = new Error(`client: ${body.message}`);
+  error.stack = undefined; // this server's own stack says nothing about the browser crash
+  reportError(error, { where: 'client', digest: body.digest, route });
   return ok({ received: true });
 });

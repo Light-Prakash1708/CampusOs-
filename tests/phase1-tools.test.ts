@@ -71,6 +71,17 @@ describe('routes behind navigation', () => {
     }
   });
 
+  it('every link the app shell builds per portal points at a real page', () => {
+    // AppShell composes these from the portal name (avatar, bell, AI, inbox).
+    const shell: Record<'student' | 'faculty' | 'admin', string[]> = {
+      student: ['/student/profile', '/student/notifications', '/student/assistant', '/student/announcements'],
+      faculty: ['/faculty/profile', '/faculty/notifications', '/faculty/copilot', '/faculty/announcements'],
+      admin: ['/admin/profile', '/admin/notifications', '/admin/assistant', '/admin/communications'],
+    };
+    for (const hrefs of Object.values(shell)) for (const h of hrefs) expect(pageExists(h), h).toBe(true);
+    for (const h of ['/account/security', '/account/privacy']) expect(pageExists(h), h).toBe(true);
+  });
+
   it('the Tools hub itself exists and is in the student sidebar', () => {
     expect(pageExists('/tools')).toBe(true);
     expect(STUDENT_NAV.flatMap((g) => g.items).some((i) => i.href === '/tools')).toBe(true);

@@ -132,6 +132,13 @@ export const FACULTY_NAV: NavGroup[] = [
       },
     ],
   },
+  {
+    position: 'bottom',
+    items: [
+      { label: 'Profile', href: '/faculty/profile', icon: 'user' },
+      { label: 'Settings', href: '/faculty/settings', icon: 'settings' },
+    ],
+  },
 ];
 
 export const ADMIN_NAV: NavGroup[] = [
