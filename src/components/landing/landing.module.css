@@ -1,0 +1,216 @@
+/*
+ * Landing page only. Every colour is a CampusOS brand constant (see
+ * src/components/brand/mark.ts) so the public page looks the same whatever
+ * theme a visitor's device prefers. Nothing here is used by the app.
+ */
+.root {
+  --lp-night: #120f2b;
+  --lp-night-2: #1b1740;
+  --lp-night-3: #262057;
+  --lp-ink: #1e1b4b;
+  --lp-lav: #a78bfa;
+  --lp-lav-soft: #ede9fe;
+  --lp-yellow: #fbbf24;
+  --lp-yellow-soft: #fef3c7;
+  --lp-pink: #f472b6;
+  --lp-coral: #fb7185;
+  --lp-coral-soft: #ffe4e6;
+  --lp-green: #22c55e;
+  --lp-green-soft: #dcfce7;
+  --lp-blue: #60a5fa;
+  --lp-blue-soft: #dbeafe;
+  --lp-cream: #fdf7e9;
+  --lp-paper: #fffbf2;
+  --lp-muted: #5b5877;
+  background: var(--lp-cream);
+  color: var(--lp-ink);
+  overflow-x: clip;
+}
+
+/* In the components layer so Tailwind utilities (e.g. a bg-* colour) can override them. */
+@layer components {
+  /* The app-like surface used inside product previews. */
+  .card {
+    background: var(--lp-paper);
+    border: 1.5px solid var(--lp-ink);
+    border-radius: 14px;
+    box-shadow: 3px 3px 0 0 var(--lp-ink);
+  }
+
+  /* Hand-written note, taped to the page. */
+  .note {
+    font-family: var(--font-pixel);
+    background: var(--lp-yellow);
+    color: var(--lp-ink);
+    border: 1.5px solid var(--lp-ink);
+    box-shadow: 3px 3px 0 0 var(--lp-ink);
+    line-height: 1.05;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+}
+
+.pixelText {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.04em;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+
+/* A thin starfield for dark sections: a handful of static pixels. */
+.stars {
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, rgb(253 247 233 / 0.7) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 28% 62%, rgb(253 247 233 / 0.45) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 46% 12%, rgb(253 247 233 / 0.55) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 64% 38%, rgb(253 247 233 / 0.4) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 82% 20%, rgb(253 247 233 / 0.6) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 92% 56%, rgb(253 247 233 / 0.35) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 6% 76%, rgb(253 247 233 / 0.35) 50%, transparent 51%);
+}
+
+/* Squiggle under "One place." */
+.underline {
+  position: relative;
+  display: inline-block;
+}
+.underline svg {
+  position: absolute;
+  left: -2%;
+  bottom: -0.16em;
+  width: 104%;
+  height: 0.22em;
+  overflow: visible;
+}
+
+/* ------------------------------ navigation ------------------------------ */
+.nav {
+  transition: background-color 200ms ease, box-shadow 200ms ease, padding 200ms ease, border-color 200ms ease;
+  border: 1px solid transparent;
+}
+.navScrolled {
+  background: rgb(18 15 43 / 0.86);
+  border-color: rgb(167 139 250 / 0.22);
+  box-shadow: 0 10px 30px -18px rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(10px);
+}
+
+/* ------------------------------ motion ---------------------------------- */
+@media (scripting: enabled) {
+  .reveal:not([data-shown]) {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+.reveal {
+  transition: opacity 520ms ease-out, transform 520ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--delay, 0ms);
+}
+
+.float {
+  animation: lpFloat 7s ease-in-out infinite;
+}
+.floatSlow {
+  animation: lpFloat 9s ease-in-out -3s infinite;
+}
+@keyframes lpFloat {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -6px; }
+}
+
+/* Pointer parallax: the container sets --px/--py in [-1, 1]. */
+.depth1 { transform: translate3d(calc(var(--px, 0) * 6px), calc(var(--py, 0) * 5px), 0); transition: transform 300ms ease-out; }
+.depth2 { transform: translate3d(calc(var(--px, 0) * -12px), calc(var(--py, 0) * -9px), 0); transition: transform 300ms ease-out; }
+.depth3 { transform: translate3d(calc(var(--px, 0) * 18px), calc(var(--py, 0) * 14px), 0); transition: transform 300ms ease-out; }
+
+/* Attendance ring draws once when revealed. */
+.ring {
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--len);
+  transition: stroke-dashoffset 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) 250ms;
+}
+[data-shown] .ring,
+.ringStatic {
+  stroke-dashoffset: var(--offset);
+}
+@media (scripting: none) {
+  .ring { stroke-dashoffset: var(--offset); }
+}
+
+/* Lift on hover for interactive cards. */
+.lift {
+  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 220ms ease;
+}
+.lift:hover,
+.lift:focus-visible {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 6px 8px 0 0 var(--lp-ink);
+}
+.lift .nudge {
+  transition: transform 220ms ease;
+}
+.lift:hover .nudge,
+.lift:focus-visible .nudge {
+  transform: translate(3px, -3px);
+}
+.lift .arrow {
+  transition: transform 220ms ease;
+}
+.lift:hover .arrow,
+.lift:focus-visible .arrow {
+  transform: translateX(3px);
+}
+.lift .zoom {
+  transition: transform 400ms ease;
+}
+.lift:hover .zoom,
+.lift:focus-visible .zoom {
+  transform: scale(1.04);
+}
+
+/* Problem section: sources straighten a little when hovered. */
+.chip {
+  transition: transform 220ms ease, box-shadow 220ms ease;
+  transform: rotate(var(--rot, 0deg));
+}
+.chip:hover {
+  transform: rotate(0deg) translateY(-4px);
+  box-shadow: 5px 6px 0 0 var(--lp-ink);
+}
+.dash {
+  stroke-dasharray: 5 7;
+  animation: lpDash 18s linear infinite;
+}
+@keyframes lpDash {
+  to { stroke-dashoffset: -240; }
+}
+
+/* Horizontal scrollers on phones. */
+.scroller {
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.scroller::-webkit-scrollbar { display: none; }
+.scroller > * { scroll-snap-align: start; }
+
+.focusRing:focus-visible {
+  outline: 3px solid var(--lp-yellow);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal:not([data-shown]) { opacity: 0; transform: none; }
+  .reveal { transition: opacity 300ms ease-out; transform: none; }
+  .float, .floatSlow, .dash { animation: none; }
+  .depth1, .depth2, .depth3 { transform: none; transition: none; }
+  .ring { transition: none; stroke-dashoffset: var(--offset); }
+  .lift, .lift .nudge, .lift .arrow, .lift .zoom, .chip { transition: none; }
+  .lift:hover, .lift:focus-visible { transform: none; }
+  .lift:hover .nudge, .lift:hover .arrow, .lift:hover .zoom { transform: none; }
+  .chip:hover { transform: rotate(var(--rot, 0deg)); }
+}
