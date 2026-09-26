@@ -5,6 +5,7 @@ import * as t from '@/lib/db/schema';
 import { acceptInvite, authenticate, inviteUser, revokeInvite, setUserAccess } from '@/services/auth/accounts';
 import { createInstitution, getSetupProgress, isPlatformOperator, markSetupComplete, type NewInstitutionInput } from '@/services/institutions';
 import { setProviders } from '@/services/notifications/providers';
+import { createDepartment, createProgram, createSection } from '@/services/academic-structure';
 import { createTenant, createUser, ctxFor, dropTenant, meta, TEST_PASSWORD, type TestTenant } from './helpers';
 
 /**
@@ -162,5 +163,26 @@ describe('invitations and access', () => {
     await expect(setUserAccess(student, teacher.id, 'SUSPEND', meta())).rejects.toMatchObject({ status: 403 });
     const rows = await db.select().from(t.auditLogs).where(and(eq(t.auditLogs.entityId, teacher.id), eq(t.auditLogs.action, 'USER_DEACTIVATED')));
     expect(rows).toHaveLength(1);
+  });
+});
+
+describe('academic structure from the admin UI', () => {
+  it('builds department → programme → section inside the admin’s own college only', async () => {
+    const admin = await ctxFor((await createUser(other, { role: 'SUPER_ADMIN' })).id);
+    const code = `M${Date.now().toString(36).toUpperCase()}`;
+    const dept = await createDepartment(admin, { name: 'Management School', code }, meta());
+    const prog = await createProgram(admin, { departmentId: dept.id, name: 'BBA', code: `${code}-BBA`, level: 'UG', durationYears: 3 }, meta());
+    const sec = await createSection(admin, { programId: prog.id, year: 1, name: 'Section A', code: `${code}-1A` }, meta());
+    const [row] = await db.select().from(t.sections).where(eq(t.sections.id, sec.id));
+    expect(row).toMatchObject({ institutionId: other.id, programId: prog.id, year: 1, semester: 1 });
+
+    await expect(createDepartment(admin, { name: 'Again', code }, meta())).rejects.toMatchObject({ status: 409 });
+    await expect(createSection(admin, { programId: prog.id, year: 5, name: 'X', code: 'X-5' }, meta())).rejects.toMatchObject({ code: 'BAD_YEAR' });
+
+    const foreignAdmin = await ctxFor((await createUser(hq, { role: 'SUPER_ADMIN' })).id);
+    await expect(createProgram(foreignAdmin, { departmentId: dept.id, name: 'Nope', code: 'NOPE', level: 'UG', durationYears: 3 }, meta())).rejects.toMatchObject({ code: 'BAD_DEPARTMENT' });
+    await expect(createSection(foreignAdmin, { programId: prog.id, year: 1, name: 'Nope', code: 'NOPE-1' }, meta())).rejects.toMatchObject({ code: 'BAD_PROGRAM' });
+    const teacher = await ctxFor((await createUser(other, { role: 'FACULTY' })).id);
+    await expect(createDepartment(teacher, { name: 'X', code: 'XX' }, meta())).rejects.toMatchObject({ status: 403 });
   });
 });

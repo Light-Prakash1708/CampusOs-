@@ -2,9 +2,10 @@ import { and, asc, count, eq, isNull } from 'drizzle-orm';
 import { Building2 } from 'lucide-react';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
-import { requirePermission } from '@/lib/auth/context';
+import { can, requirePermission } from '@/lib/auth/context';
 import { Badge, Card, CardBody, CardHeader, EmptyState, PageHeader, Section, Table, Td, Th } from '@/components/ui';
 import { pluralize } from '@/lib/utils';
+import { AddStructure } from './AddStructure';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Academic structure · CampusOS' };
@@ -83,6 +84,19 @@ export default async function StructurePage() {
         title="Academic structure"
         description="The hierarchy that drives targeting, timetabling and reporting."
       />
+
+      {can(user, 'academic:manage_structure') ? (
+        <Section title="Add to your structure">
+          <Card>
+            <CardBody>
+              <AddStructure
+                departments={departments.map((d) => ({ id: d.id, name: `${d.name} (${d.code})` }))}
+                programs={programs.map((p) => ({ id: p.id, name: `${p.name} (${p.code})`, durationYears: p.durationYears }))}
+              />
+            </CardBody>
+          </Card>
+        </Section>
+      ) : null}
 
       <Section title="Campuses">
         <Card>
