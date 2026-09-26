@@ -82,6 +82,7 @@ fix. That list appears in the deploy log, and the release never takes traffic.
 | `EMAIL_PROVIDER`, `PUSH_PROVIDER`, `SMS_PROVIDER`, `WHATSAPP_PROVIDER`, `ERROR_REPORTER`, `OPPORTUNITY_FEED_PROVIDER` | `none` | Integrations off; the product says the feature isn't available rather than failing |
 | `LOG_LEVEL`, `NEXT_TELEMETRY_DISABLED` | `info`, `1` | |
 | `SELF_REGISTRATION_ENABLED` | `true` | Students can create their own account without a college (a private workspace); `false` keeps sign-up to college invitations and registration policies |
+| `PLATFORM_OPERATOR_EMAILS` | (enter manually) | Comma-separated emails of CampusOS operators; each must also be an active `SUPER_ADMIN`. They create institutions at `/admin/institutions`. See `docs/INSTITUTION_ONBOARDING.md`. |
 
 ### Secrets you enter manually (all optional)
 
@@ -113,7 +114,8 @@ and password combination is not correct" until someone exists:
 
 - **Students** can create their own account at `/register` when
   `SELF_REGISTRATION_ENABLED=true`.
-- **A college** is created with `npm run provision` (see step 6 above). Its
+- **A college** is created by a platform operator at `/admin/institutions`
+  (or with `npm run provision`, e.g. for the first operator's own institution). Its
   administrator then invites staff and students, or opens registration.
 
 ## Database and migrations

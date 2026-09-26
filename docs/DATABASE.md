@@ -160,6 +160,8 @@ anything.
 | `0008_opportunities` | `opportunities` (source COLLEGE/STUDENT/FEED; unique feed item per college; CHECKs on kind, status, work mode and http(s) link), `opportunity_tracking` (one private status per student per listing). See `CAREER.md`. |
 | `0009_audit_indexes` | Indexes for file downloads (`resources.file_url`), certificates by event, the library desk and reservation queue, and saved-resource lookups. Plain `CREATE INDEX` (tables are small at this stage; use `CONCURRENTLY` by hand on a large live database). |
 | `0010_institution_kind` | `institutions.kind` (`COLLEGE` default, or `PERSONAL` for a self-registered student's private workspace) with a CHECK constraint. Additive; existing rows become `COLLEGE`. See `AUTH.md`. |
+| `0011_institution_profile` | `institutions.institution_type`, `institutions.website` (nullable, additive). |
+| `0012_membership_requests` | `membership_requests`: a personal student's request to join a college (status, placement, roll number, private ID file, signals, decision). CHECKs on status, reason and note length; partial unique index = one open request per student; queue index. See `INSTITUTION_ONBOARDING.md`. |
 
 **Baselining v1 databases.** Databases created by v1 with `db:push` have no
 migration history. The runner detects that (tables present, history empty),
