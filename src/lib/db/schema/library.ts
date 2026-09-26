@@ -72,6 +72,8 @@ export const libraryLoans = pgTable(
   (t) => [
     index('library_loans_user_idx').on(t.userId, t.returnedAt),
     index('library_loans_book_idx').on(t.bookId, t.returnedAt),
+    // The desk: open loans for a college, soonest due first.
+    index('library_loans_desk_idx').on(t.institutionId, t.returnedAt, t.dueAt),
     // One open loan of the same title per person.
     uniqueIndex('library_loans_open_uq').on(t.bookId, t.userId).where(sql`returned_at IS NULL`),
   ],
@@ -100,6 +102,7 @@ export const libraryReservations = pgTable(
   (t) => [
     index('library_reservations_book_idx').on(t.bookId, t.status, t.createdAt),
     index('library_reservations_user_idx').on(t.userId, t.status),
+    index('library_reservations_inst_idx').on(t.institutionId, t.status),
     uniqueIndex('library_reservations_open_uq').on(t.bookId, t.userId).where(sql`status IN ('WAITING', 'READY')`),
   ],
 );
@@ -120,5 +123,5 @@ export const resourceSaves = pgTable(
       .references(() => resources.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('resource_saves_uq').on(t.userId, t.resourceId)],
+  (t) => [uniqueIndex('resource_saves_uq').on(t.userId, t.resourceId), index('resource_saves_resource_idx').on(t.resourceId)],
 );

@@ -1,3 +1,4 @@
+import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { z } from 'zod';
 import { ok, parseBody, withAuth } from '@/lib/api';
 import { metaFrom } from '@/lib/http';
@@ -10,6 +11,7 @@ const Body = z.object({
 });
 
 export const POST = withAuth(['event:create', 'event:approve'], async (request, { user, params }) => {
+  await enforceRateLimit(keyFor('event:certificates', user.userId), { limit: 30, windowSec: 3600 }, 'Too many requests. Please wait a little and try again.');
   requireEvents(user);
   return ok(await issueCertificates(user, parseId(params.id), await parseBody(request, Body), metaFrom(request)));
 });

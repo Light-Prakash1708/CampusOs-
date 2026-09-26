@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
-import { AppError, NotFoundError, ok, parseBody, withAuth } from '@/lib/api';
+import { AppError, NotFoundError, ok, parseBody, withAuth, idParam } from '@/lib/api';
 import { getRequestMetadata } from '@/lib/auth/context';
 import { recordAudit } from '@/services/audit';
 import { assertOfferingBelongsToFaculty } from '../../../_lib/attendance';
@@ -40,7 +40,7 @@ const Body = z.discriminatedUnion('source', [
 
 export const POST = withAuth('assignment:evaluate', async (request, { user, params }) => {
   const input = await parseBody(request, Body);
-  const id = params.id;
+  const id = idParam(params.id, 'That submission');
   if (!id) throw new NotFoundError('Submission');
 
   const [row] = await db

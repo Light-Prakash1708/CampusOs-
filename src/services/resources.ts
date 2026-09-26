@@ -81,3 +81,39 @@ export async function setResourceSaved(ctx: AuthContext, resourceId: string, sav
   }
   return { saved };
 }
+
+/**
+ * Which resources a person may see, by role. Students: the student rule above.
+ * Staff: their own material; plus published material that is institution-wide,
+ * for their department, or shared with a section they teach. Holders of
+ * resource:view_institution see all published, non-private material; holders
+ * of resource:manage_all see everything at their college.
+ */
+export function resourceVisibilityFor(ctx: AuthContext): SQL {
+  if (ctx.portal === 'student') return studentResourceVisibility(ctx);
+  const base = and(eq(t.resources.institutionId, ctx.institutionId), isNull(t.resources.deletedAt))!;
+  if (ctx.permissions.has('resource:manage_all')) return base;
+  const own = eq(t.resources.ownerId, ctx.userId);
+  const published = eq(t.resources.status, 'PUBLISHED');
+  if (ctx.permissions.has('resource:view_institution')) {
+    return and(base, or(own, and(published, sql`${t.resources.visibility} <> 'PRIVATE'`)))!;
+  }
+  const visible: SQL[] = [eq(t.resources.visibility, 'INSTITUTION')];
+  if (ctx.departmentId) visible.push(and(eq(t.resources.visibility, 'DEPARTMENT'), eq(t.resources.departmentId, ctx.departmentId))!);
+  if (ctx.facultyProfileId) {
+    visible.push(
+      and(
+        eq(t.resources.visibility, 'SECTION'),
+        inArray(
+          t.resources.id,
+          db
+            .select({ id: t.resourceShares.resourceId })
+            .from(t.resourceShares)
+            .innerJoin(t.courseOfferings, eq(t.courseOfferings.sectionId, t.resourceShares.sectionId))
+            .where(or(eq(t.courseOfferings.facultyId, ctx.facultyProfileId), eq(t.courseOfferings.secondaryFacultyId, ctx.facultyProfileId))),
+        ),
+      )!,
+    );
+  }
+  return and(base, or(own, and(published, or(...visible))))!;
+}

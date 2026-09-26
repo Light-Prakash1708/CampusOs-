@@ -245,7 +245,7 @@ export function CampusTopbar({
 
         <button
           onClick={onOpenSearch}
-          className="ml-auto hidden h-10 max-w-[440px] flex-1 items-center gap-2 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[13px] text-subtle transition-colors hover:border-ink sm:flex lg:ml-0"
+          className="ml-auto hidden h-10 min-w-0 max-w-[440px] flex-1 items-center gap-2 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[13px] text-subtle transition-colors hover:border-ink sm:flex lg:ml-0"
           aria-label="Search classes, events, tools, people"
         >
           <Search size={15} aria-hidden />
@@ -286,7 +286,7 @@ export function CampusTopbar({
           </TopIcon>
           <ThemeToggle />
           <span
-            className="ml-1 hidden items-center gap-1.5 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-2.5 py-1.5 text-[12px] font-bold text-default md:inline-flex"
+            className="ml-1 hidden items-center gap-1.5 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-2.5 py-1.5 text-[12px] font-bold text-default xl:inline-flex"
             title={user.institutionName}
           >
             <Building2 size={14} className="text-brand" aria-hidden />

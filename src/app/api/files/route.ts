@@ -9,7 +9,11 @@ export const runtime = 'nodejs';
 
 /** multipart/form-data: `file` + `purpose`. Returns the stored file's id and URL. */
 export const POST = withAuth('file:upload', async (request, { user }) => {
-  const declared = Number(request.headers.get('content-length') ?? 0);
+  // Browsers always send Content-Length for form uploads; refusing bodies without
+  // one stops a chunked upload from slipping past the size check below.
+  const declaredHeader = request.headers.get('content-length');
+  if (!declaredHeader) throw new AppError('Upload size unknown. Send the file with a Content-Length.', 411, 'LENGTH_REQUIRED');
+  const declared = Number(declaredHeader);
   // Refuse obviously oversized bodies before buffering them (multipart overhead allowance: 64 KB).
   if (declared > maxUploadBytes() + 64 * 1024) {
     throw new AppError(`The file is larger than the ${Math.round(maxUploadBytes() / 1024 / 1024)} MB limit.`, 413, 'TOO_LARGE');

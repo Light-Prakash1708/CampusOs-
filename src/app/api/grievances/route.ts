@@ -1,3 +1,4 @@
+import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { z } from 'zod';
 import { and, eq, desc, inArray, or, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
@@ -17,6 +18,7 @@ const CreateBody = z.object({
 });
 
 export const POST = withAuth('grievance:raise', async (request, { user }) => {
+  await enforceRateLimit(keyFor('grievance:raise', user.userId), { limit: 20, windowSec: 86400 }, 'Too many requests. Please wait a little and try again.');
   const input = await parseBody(request, CreateBody);
   const result = await createGrievance(user, input);
   return ok(result, { status: 201 });

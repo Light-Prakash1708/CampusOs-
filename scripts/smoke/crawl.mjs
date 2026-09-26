@@ -22,7 +22,7 @@ let errs = [];
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message.slice(0, 160)));
 page.on('console', (m) => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
 for (const route of ROUTES) {
-  for (const vw of [[1440, 900], [390, 844]]) {
+  for (const vw of [[1440, 900], [768, 1024], [390, 844]]) {
     errs = [];
     await page.setViewportSize({ width: vw[0], height: vw[1] });
     let resp;
@@ -30,9 +30,9 @@ for (const route of ROUTES) {
     const final = new URL(page.url()).pathname;
     const status = resp?.status();
     if (status >= 400) problems.push(`${route} @${vw[0]}: HTTP ${status}`);
-    if (vw[0] === 390) {
+    if (vw[0] < 1440) {
       const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-      if (over > 1) problems.push(`${route} @390: horizontal overflow ${over}px`);
+      if (over > 1) problems.push(`${route} @${vw[0]}: horizontal overflow ${over}px`);
     } else {
       const hrefs = await page.$$eval('a[href^="/"]', (as) => as.map((a) => a.getAttribute('href')));
       hrefs.forEach((h) => linkSet.add(h.split('#')[0]));

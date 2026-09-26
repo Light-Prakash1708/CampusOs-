@@ -259,6 +259,12 @@ export async function createAnnouncement(
     throw new ForbiddenError('You are not permitted to publish notices.');
   }
 
+  // CRITICAL overrides everyone's notification preferences and quiet hours, so it
+  // is reserved for people who may publish official notices or broadcasts.
+  if (input.priority === 'CRITICAL' && !canPublishOfficial && !user.permissions.has('announcement:emergency_broadcast')) {
+    throw new ForbiddenError('Only official notices can be marked critical.');
+  }
+
   const needsApproval = input.kind === 'OFFICIAL' && !canPublishOfficial;
   const scheduled = input.publishAt && input.publishAt > new Date();
 
@@ -324,32 +330,7 @@ export async function createAnnouncement(
     );
 
     if (status === 'PUBLISHED') {
-      const recipientRows = audience.userIds.map((userId) => ({
-        institutionId: user.institutionId,
-        announcementId: id,
-        userId,
-      }));
-      for (let i = 0; i < recipientRows.length; i += 500) {
-        await tx.insert(t.announcementRecipients).values(recipientRows.slice(i, i + 500));
-      }
-
-      const notificationRows = audience.userIds.map((userId) => ({
-        institutionId: user.institutionId,
-        userId,
-        title: input.title,
-        body: input.summary ?? input.body.slice(0, 160),
-        priority: input.priority as never,
-        category: input.category as never,
-        actionUrl: `/announcements/${id}`,
-        groupKey: `announcement-${input.category.toLowerCase()}`,
-        sourceType: 'announcement',
-        sourceId: id,
-        // Critical and emergency notices bypass user preferences by design.
-        isMandatory: input.priority === 'CRITICAL' || !!input.isEmergencyBroadcast,
-      }));
-      for (let i = 0; i < notificationRows.length; i += 500) {
-        await tx.insert(t.notifications).values(notificationRows.slice(i, i + 500));
-      }
+      await deliverAnnouncement(tx, { id, institutionId: user.institutionId, title: input.title, summary: input.summary ?? input.body.slice(0, 160), priority: input.priority, category: input.category, isEmergencyBroadcast: !!input.isEmergencyBroadcast }, audience.userIds);
     }
 
     return id;
@@ -375,6 +356,86 @@ export async function createAnnouncement(
     recipients: audience.userIds.length,
     status,
   };
+}
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Recipient rows + one notification each. Idempotent per recipient. */
+async function deliverAnnouncement(
+  tx: Tx,
+  a: { id: string; institutionId: string; title: string; summary: string; priority: string; category: string; isEmergencyBroadcast: boolean },
+  userIds: string[],
+) {
+  for (let i = 0; i < userIds.length; i += 500) {
+    const chunk = userIds.slice(i, i + 500);
+    const fresh = await tx
+      .insert(t.announcementRecipients)
+      .values(chunk.map((userId) => ({ institutionId: a.institutionId, announcementId: a.id, userId })))
+      .onConflictDoNothing()
+      .returning({ userId: t.announcementRecipients.userId });
+    if (!fresh.length) continue;
+    await tx.insert(t.notifications).values(
+      fresh.map(({ userId }) => ({
+        institutionId: a.institutionId,
+        userId,
+        title: a.title,
+        body: a.summary,
+        priority: a.priority as never,
+        category: a.category as never,
+        actionUrl: `/announcements/${a.id}`,
+        groupKey: `announcement-${a.category.toLowerCase()}`,
+        sourceType: 'announcement',
+        sourceId: a.id,
+        // Critical and emergency notices bypass user preferences by design.
+        isMandatory: a.priority === 'CRITICAL' || a.isEmergencyBroadcast,
+      })),
+    );
+  }
+}
+
+/**
+ * Publish a notice that was created earlier (scheduled, or awaiting approval):
+ * resolve its stored audience NOW, so people who joined since are included,
+ * then deliver. Returns the number of recipients; 0 if it was not publishable.
+ */
+export async function publishAnnouncement(announcementId: string, institutionId: string): Promise<number> {
+  return db.transaction(async (tx) => {
+    const [a] = await tx
+      .update(t.announcements)
+      .set({ status: 'PUBLISHED', publishedAt: new Date() })
+      .where(
+        and(
+          eq(t.announcements.id, announcementId),
+          eq(t.announcements.institutionId, institutionId),
+          inArray(t.announcements.status, ['SCHEDULED', 'PENDING_APPROVAL'] as never[]),
+        ),
+      )
+      .returning();
+    if (!a) return 0;
+    const targets = await tx.select().from(t.announcementTargets).where(eq(t.announcementTargets.announcementId, a.id));
+    const audience = await resolveAudience(
+      institutionId,
+      targets.map((r) => ({
+        scope: r.scope as AudienceRule['scope'],
+        campusId: r.campusId ?? undefined,
+        departmentId: r.departmentId ?? undefined,
+        programId: r.programId ?? undefined,
+        sectionId: r.sectionId ?? undefined,
+        offeringId: r.offeringId ?? undefined,
+        year: r.year ?? undefined,
+        role: r.role ?? undefined,
+        userId: r.userId ?? undefined,
+        isExclusion: r.isExclusion,
+      })),
+    );
+    await deliverAnnouncement(
+      tx,
+      { id: a.id, institutionId, title: a.title, summary: a.summary ?? a.body.slice(0, 160), priority: a.priority, category: a.category, isEmergencyBroadcast: a.isEmergencyBroadcast },
+      audience.userIds,
+    );
+    await tx.update(t.announcements).set({ recipientCount: audience.userIds.length }).where(eq(t.announcements.id, a.id));
+    return audience.userIds.length;
+  });
 }
 
 async function nextReference(institutionId: string): Promise<string> {

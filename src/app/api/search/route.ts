@@ -1,7 +1,9 @@
 import { and, eq, ilike, or, isNull, sql, desc } from 'drizzle-orm';
 import { db } from '@/lib/db';
+import { resourceVisibilityFor } from '@/services/resources';
 import * as t from '@/lib/db/schema';
 import { withAuth, ok } from '@/lib/api';
+import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { isEnabled } from '@/lib/features';
 import { toolsFor } from '@/lib/tools';
 import { listEvents } from '@/services/events';
@@ -20,7 +22,9 @@ export const GET = withAuth(null, async (request, { user }) => {
 
   if (q.length < 2) return ok({ results: [] });
 
-  const like = `%${q}%`;
+  await enforceRateLimit(keyFor('search', user.userId), { limit: 240, windowSec: 60 }, 'Searching too fast. Pause for a moment.');
+  // Escape LIKE wildcards so "%" or "_" in a query match literally.
+  const like = `%${q.slice(0, 100).replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
   const results: {
     id: string;
     title: string;
@@ -88,12 +92,13 @@ export const GET = withAuth(null, async (request, { user }) => {
       title: row.title,
       subtitle: `${row.reference} · ${row.category}`,
       group: 'Notices',
-      href: `/${user.portal}/announcements/${row.id}`,
+      href: user.portal === 'admin' ? `/admin/communications/${row.id}` : `/${user.portal}/announcements#${row.id}`,
     });
   }
 
   // --- Resources (full-text) ----------------------------------------------
-  const resourceRows = await db
+  // Only portals with a resources page, and only when the hub is on.
+  const resourceRows = (user.portal === 'student' || user.portal === 'faculty') && isEnabled(user.featureFlags, 'resource_hub_enabled') ? await db
     .select({
       id: t.resources.id,
       title: t.resources.title,
@@ -102,13 +107,11 @@ export const GET = withAuth(null, async (request, { user }) => {
     .from(t.resources)
     .where(
       and(
-        eq(t.resources.institutionId, user.institutionId),
-        eq(t.resources.status, 'PUBLISHED'),
-        isNull(t.resources.deletedAt),
+        resourceVisibilityFor(user),
         sql`${t.resources.searchVector} @@ plainto_tsquery('english', ${q})`,
       ),
     )
-    .limit(5);
+    .limit(5) : [];
 
   for (const row of resourceRows) {
     results.push({
@@ -116,7 +119,7 @@ export const GET = withAuth(null, async (request, { user }) => {
       title: row.title,
       subtitle: row.topic ? `Resource · ${row.topic}` : 'Resource',
       group: 'Resources',
-      href: `/${user.portal}/resources/${row.id}`,
+      href: `/${user.portal}/resources?q=${encodeURIComponent(row.title)}`,
     });
   }
 
@@ -179,13 +182,13 @@ export const GET = withAuth(null, async (request, { user }) => {
         title: `${row.firstName} ${row.lastName}`,
         subtitle: row.rollNumber ? `Student · ${row.rollNumber}` : row.role.replace('_', ' '),
         group: 'People',
-        href: row.rollNumber ? `/admin/students/${row.id}` : `/admin/faculty/${row.id}`,
+        href: row.rollNumber ? `/admin/students?q=${encodeURIComponent(row.rollNumber)}` : '/admin/faculty',
       });
     }
   }
 
   // --- Grievance cases by number ------------------------------------------
-  const caseRows = await db
+  const caseRows = !isEnabled(user.featureFlags, 'grievance_enabled') ? [] : await db
     .select({
       id: t.grievances.id,
       caseNumber: t.grievances.caseNumber,

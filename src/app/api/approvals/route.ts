@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
+import { publishAnnouncement } from '@/services/communication';
 import * as t from '@/lib/db/schema';
 import { withAuth, ok, parseBody, AppError, NotFoundError } from '@/lib/api';
 import { recordAudit } from '@/services/audit';
@@ -134,10 +135,8 @@ async function executeApproval(
     case 'ANNOUNCEMENT_PUBLISH': {
       const announcementId = (approval.payload as { announcementId?: string }).announcementId;
       if (!announcementId) throw new Error('Announcement id missing from approval payload.');
-      await db
-        .update(t.announcements)
-        .set({ status: 'PUBLISHED', publishedAt: new Date() })
-        .where(eq(t.announcements.id, announcementId));
+      // Resolves the audience and delivers the notice; scoped to the approver's college.
+      await publishAnnouncement(announcementId, institutionId);
       return;
     }
 

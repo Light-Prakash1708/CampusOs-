@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { and, eq, lt, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
+import { publishAnnouncement } from '@/services/communication';
 import * as t from '@/lib/db/schema';
 import { ok, fail, AppError } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth/context';
@@ -83,17 +84,19 @@ export async function POST(request: Request) {
       if (selected.includes('publish_scheduled')) {
         // Scheduled notices whose publish time has arrived.
         const due = await db
-          .update(t.announcements)
-          .set({ status: 'PUBLISHED', publishedAt: new Date() })
+          .select({ id: t.announcements.id })
+          .from(t.announcements)
           .where(
             and(
               eq(t.announcements.institutionId, institutionId),
               eq(t.announcements.status, 'SCHEDULED'),
               lt(t.announcements.publishAt, new Date()),
             ),
-          )
-          .returning({ id: t.announcements.id });
+          );
+        let delivered = 0;
+        for (const a of due) delivered += await publishAnnouncement(a.id, institutionId);
         perTenant.published = due.length;
+        perTenant.recipients = delivered;
       }
 
       if (selected.includes('expire_announcements')) {

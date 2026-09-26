@@ -1,3 +1,5 @@
+import { clientIp } from '@/lib/http';
+import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { z } from 'zod';
 import { ok, parseBody, publicRoute } from '@/lib/api';
 import { metaFrom } from '@/lib/http';
@@ -10,6 +12,7 @@ const Body = z.object({
 });
 
 export const POST = publicRoute(async (request) => {
+  await enforceRateLimit(keyFor('invite:accept:ip', clientIp(request.headers) ?? 'unknown'), { limit: 20, windowSec: 3600 }, 'Too many requests. Please wait a little and try again.');
   const input = await parseBody(request, Body);
   const meta = metaFrom(request);
   const user = await acceptInvite({ ...input, meta });

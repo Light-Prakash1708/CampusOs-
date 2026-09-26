@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { safeReturnPath } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, GraduationCap, UserCog, ShieldCheck } from 'lucide-react';
 import { Button, Field, Input } from '@/components/ui';
@@ -78,7 +79,7 @@ export function LoginForm({
       }
 
       // Only same-site relative paths are honoured ("//evil.com" is protocol-relative).
-      const safeNext = nextUrl && nextUrl.startsWith('/') && !nextUrl.startsWith('//') ? nextUrl : null;
+      const safeNext = safeReturnPath(nextUrl, window.location.origin);
       router.push(json.data.mustChangePassword ? json.data.redirectTo : (safeNext ?? json.data.redirectTo));
       router.refresh();
     } catch {

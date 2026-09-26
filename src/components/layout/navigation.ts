@@ -305,7 +305,7 @@ export const MOBILE_NAV: Record<'student' | 'faculty' | 'admin', MobileNavItem[]
     { label: 'Home', href: '/admin', icon: 'home' },
     { label: 'Timetable', href: '/admin/timetable', icon: 'calendarClock' },
     { label: 'Notices', href: '/admin/communications', icon: 'megaphone' },
-    { label: 'Cases', href: '/admin/redressal', icon: 'lifebuoy' },
+    { label: 'Cases', href: '/admin/redressal', icon: 'lifebuoy', feature: 'grievance_enabled', fallback: { label: 'Approvals', href: '/admin/approvals', icon: 'shield' } },
     { label: 'Menu', href: '#menu', icon: 'boxes' },
   ],
 };

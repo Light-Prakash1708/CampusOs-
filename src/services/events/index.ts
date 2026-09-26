@@ -323,8 +323,17 @@ export async function getEvent(ctx: Ctx, eventId: string) {
         .limit(1)
     : [];
 
+  // Only what a viewer should see: the joining link is for registrants and
+  // organisers; moderation notes and the organiser's account id for managers.
+  const registeredNow = reg?.status === 'REGISTERED';
+  const event = {
+    ...e,
+    onlineUrl: manager || registeredNow ? e.onlineUrl : null,
+    moderationNote: manager ? e.moderationNote : null,
+    organizerId: manager ? e.organizerId : null,
+  };
   return {
-    event: e,
+    event,
     institutionName: row.institutionName,
     institutionShort: row.institutionShort,
     ownCollege: own,

@@ -1,5 +1,6 @@
+import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { z } from 'zod';
-import { withAuth, ok, parseBody, AppError } from '@/lib/api';
+import { withAuth, ok, parseBody, AppError, requireFeatureEnabled } from '@/lib/api';
 import { generateTimetable } from '@/services/timetable/generate';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
@@ -21,6 +22,8 @@ const Body = z.object({
  * step.
  */
 export const POST = withAuth('timetable:generate', async (request, { user }) => {
+  await enforceRateLimit(keyFor('timetable:generate', user.userId), { limit: 10, windowSec: 3600 }, 'Too many requests. Please wait a little and try again.');
+  requireFeatureEnabled(user, 'timetable_optimizer_enabled');
   const input = await parseBody(request, Body);
 
   let termId = input.termId;

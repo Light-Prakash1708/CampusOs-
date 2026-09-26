@@ -52,13 +52,16 @@ export interface EventInput {
   coverUrl?: string | null;
 }
 
-async function loadManaged(ctx: AuthContext, eventId: string) {
+async function loadManaged(ctx: AuthContext, eventId: string, opts: { forCheckIn?: boolean } = {}) {
   const [e] = await db
     .select()
     .from(t.events)
     .where(and(eq(t.events.id, eventId), eq(t.events.institutionId, ctx.institutionId), isNull(t.events.deletedAt)))
     .limit(1);
-  if (!e || !canManageEvent(ctx, e)) throw new NotFoundError('Event');
+  // Check-in desk volunteers (event:checkin) may scan passes at their own college's
+  // events without being able to edit or see anything else about them.
+  const allowed = e && (canManageEvent(ctx, e) || (opts.forCheckIn && ctx.permissions.has('event:checkin')));
+  if (!e || !allowed) throw new NotFoundError('Event');
   return e;
 }
 
@@ -262,6 +265,7 @@ export async function getManagedEvent(ctx: AuthContext, eventId: string) {
       name: sql<string>`${t.users.firstName} || ' ' || ${t.users.lastName}`,
       email: t.users.email,
       college: t.institutions.name,
+      attendeeInstitutionId: t.eventRegistrations.attendeeInstitutionId,
     })
     .from(t.eventRegistrations)
     .innerJoin(t.users, eq(t.users.id, t.eventRegistrations.userId))
@@ -274,7 +278,13 @@ export async function getManagedEvent(ctx: AuthContext, eventId: string) {
   const active = registrations.filter((r) => r.status !== 'CANCELLED');
   return {
     event: e,
-    registrations: registrations.map((r) => ({ ...r, certified: certSet.has(r.id) })),
+    // Staff see every attendee's email; a student organiser sees emails only for
+    // attendees from their own college (other colleges' students stay private).
+    registrations: registrations.map((r) => ({
+      ...r,
+      email: ctx.permissions.has('event:approve') || r.attendeeInstitutionId === ctx.institutionId || r.attendeeInstitutionId === null ? r.email : null,
+      certified: certSet.has(r.id),
+    })),
     updates,
     stats: {
       registered: active.filter((r) => r.status === 'REGISTERED').length,
@@ -325,8 +335,7 @@ export type CheckInResult =
  * never create a second attendance record.
  */
 export async function checkIn(ctx: AuthContext, eventId: string, input: { token?: string; code?: string }): Promise<CheckInResult> {
-  const e = await loadManaged(ctx, eventId);
-  if (!ctx.permissions.has('event:checkin') && !ctx.permissions.has('event:approve') && e.organizerId !== ctx.userId) throw new ForbiddenError();
+  const e = await loadManaged(ctx, eventId, { forCheckIn: true });
 
   let registrationId: string | null = null;
   let method: 'QR' | 'CODE' = 'CODE';
@@ -423,18 +432,21 @@ async function notifyAudience(
   message: { title: string; body?: string | null; priority: 'CRITICAL' | 'IMPORTANT' | 'NORMAL' },
   audience: 'REGISTERED' | 'FOLLOWERS',
 ): Promise<number> {
+  const live = and(eq(t.users.status, 'ACTIVE'), isNull(t.users.deletedAt));
   const registrants = await db
     .select({ userId: t.eventRegistrations.userId, inst: t.users.institutionId })
     .from(t.eventRegistrations)
     .innerJoin(t.users, eq(t.users.id, t.eventRegistrations.userId))
-    .where(and(eq(t.eventRegistrations.eventId, e.id), inArray(t.eventRegistrations.status, ['REGISTERED', 'WAITLISTED', 'PENDING_APPROVAL'])));
+    .where(and(eq(t.eventRegistrations.eventId, e.id), inArray(t.eventRegistrations.status, ['REGISTERED', 'WAITLISTED', 'PENDING_APPROVAL']), live));
+  // Followers from other colleges only while the event is still open to them.
+  const [current] = await db.select({ visibility: t.events.visibility }).from(t.events).where(eq(t.events.id, e.id)).limit(1);
   const savers =
     audience === 'FOLLOWERS'
       ? await db
           .select({ userId: t.eventSaves.userId, inst: t.users.institutionId })
           .from(t.eventSaves)
           .innerJoin(t.users, eq(t.users.id, t.eventSaves.userId))
-          .where(eq(t.eventSaves.eventId, e.id))
+          .where(and(eq(t.eventSaves.eventId, e.id), live, current?.visibility === 'PUBLIC' ? sql`true` : eq(t.users.institutionId, e.institutionId)))
       : [];
   const recipients = new Map<string, string>();
   for (const r of [...registrants, ...savers]) recipients.set(r.userId, r.inst);
@@ -445,7 +457,7 @@ async function notifyAudience(
     body: message.body ?? null,
     priority: message.priority,
     category: 'EVENT' as const,
-    actionUrl: `/student/events/${e.id}`,
+    actionUrl: `/events/${e.id}`,
     groupKey: `event:${e.id}`,
     sourceType: 'event',
     sourceId: e.id,

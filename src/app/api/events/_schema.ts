@@ -16,7 +16,7 @@ export const EventBody = z
     venueText: text(200),
     city: text(80),
     area: text(80),
-    onlineUrl: z.string().url().max(500).nullable().optional(),
+    onlineUrl: z.string().url().max(500).refine((u) => /^https?:\/\//i.test(u), 'Use an http(s) link').nullable().optional(),
     startsAt: z.coerce.date(),
     endsAt: z.coerce.date(),
     capacity: z.coerce.number().int().positive().max(100_000).nullable().optional(),
@@ -35,7 +35,9 @@ export const EventBody = z
     faqs: z.array(z.object({ q: z.string().trim().max(200), a: z.string().trim().max(1000) })).max(20).optional(),
     tags: z.array(z.string().trim().min(1).max(30)).max(8).optional(),
     contactEmail: z.string().email().max(200).nullable().optional(),
-    coverUrl: z.string().max(500).regex(/^(\/api\/files\/[0-9a-f-]{36}|https:\/\/.+)$/, 'Upload a cover or use an https link.').nullable().optional(),
+    // Covers must be uploaded to CampusOS: an external image URL would let its host
+    // see every viewer's IP address (a tracking pixel across colleges).
+    coverUrl: z.string().max(500).regex(/^\/api\/files\/[0-9a-f-]{36}$/, 'Upload the cover image to CampusOS.').nullable().optional(),
   })
   .refine((v) => v.endsAt > v.startsAt, { message: 'The event must end after it starts.', path: ['endsAt'] })
   .refine((v) => v.teamSizeMax >= v.teamSizeMin, { message: 'Maximum team size must be at least the minimum.', path: ['teamSizeMax'] })

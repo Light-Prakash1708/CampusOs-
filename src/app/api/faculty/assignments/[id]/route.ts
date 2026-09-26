@@ -2,7 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
-import { AppError, NotFoundError, ok, parseBody, withAuth } from '@/lib/api';
+import { AppError, NotFoundError, ok, parseBody, withAuth, idParam } from '@/lib/api';
 import { getRequestMetadata } from '@/lib/auth/context';
 import { recordAudit } from '@/services/audit';
 import { assertOfferingBelongsToFaculty } from '../../_lib/attendance';
@@ -14,7 +14,7 @@ const Body = z.object({
 /** Lifecycle transitions for an assignment the caller owns. */
 export const PATCH = withAuth('assignment:create', async (request, { user, params }) => {
   const input = await parseBody(request, Body);
-  const id = params.id;
+  const id = idParam(params.id, 'That assignment');
   if (!id) throw new NotFoundError('Assignment');
 
   const [assignment] = await db

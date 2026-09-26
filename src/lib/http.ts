@@ -1,21 +1,24 @@
 /**
  * Request metadata helpers shared by route handlers and services.
  *
- * Client IP: `x-forwarded-for` is attacker-controlled unless a trusted proxy
- * overwrites it. Render, Vercel, Railway and nginx set it; a bare Node server
- * does not. TRUST_PROXY (default true, because every supported host sits
- * behind a proxy) controls whether it is honoured. The LEFT-most entry is the
- * client as seen by the first proxy.
+ * Client IP: `x-forwarded-for` is a list the CLIENT can pre-fill; each proxy
+ * APPENDS the address it received the request from. So only the entries added
+ * by our own proxies can be trusted, counted from the RIGHT. TRUSTED_PROXY_HOPS
+ * (default 1: Render / Railway / a single nginx) says how many proxies sit in
+ * front of the app — use 2 behind Cloudflare → Render. TRUST_PROXY=false
+ * ignores the header entirely (a bare Node server).
  */
 export function clientIp(headers: Headers): string | null {
   const trust = (process.env.TRUST_PROXY ?? 'true') !== 'false';
-  if (trust) {
-    const forwarded = headers.get('x-forwarded-for');
-    if (forwarded) return (forwarded.split(',')[0] ?? '').trim() || null;
-    const real = headers.get('x-real-ip');
-    if (real) return real.trim();
+  if (!trust) return null;
+  const forwarded = headers.get('x-forwarded-for');
+  if (forwarded) {
+    const hops = Math.max(1, Number(process.env.TRUSTED_PROXY_HOPS ?? 1) || 1);
+    const list = forwarded.split(',').map((x) => x.trim()).filter(Boolean);
+    return list.length ? (list[Math.max(0, list.length - hops)] ?? null) : null;
   }
-  return null;
+  const real = headers.get('x-real-ip');
+  return real ? real.trim() : null;
 }
 
 export function userAgent(headers: Headers): string | null {

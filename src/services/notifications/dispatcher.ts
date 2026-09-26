@@ -130,7 +130,7 @@ export async function planPendingNotifications(opts: { now?: Date; batch?: numbe
       .from(t.institutions)
       .where(inArray(t.institutions.id, institutionIds)),
     db
-      .select({ id: t.users.id, email: t.users.email, phone: t.users.phone, verifiedAt: t.users.emailVerifiedAt, status: t.users.status })
+      .select({ id: t.users.id, institutionId: t.users.institutionId, email: t.users.email, phone: t.users.phone, verifiedAt: t.users.emailVerifiedAt, status: t.users.status })
       .from(t.users)
       .where(inArray(t.users.id, userIds)),
     db.select().from(t.notificationSettings).where(inArray(t.notificationSettings.userId, userIds)),
@@ -159,6 +159,8 @@ export async function planPendingNotifications(opts: { now?: Date; batch?: numbe
   const tenantById = new Map(tenants.map((x) => [x.id, x]));
   const userById = new Map(recipients.map((x) => [x.id, x]));
   const settingsByUser = new Map(settings.map((x) => [x.userId, x]));
+  const prefsByUser = new Map<string, typeof prefs>();
+  for (const p of prefs) prefsByUser.set(p.userId, [...(prefsByUser.get(p.userId) ?? []), p]);
   const pushSet = new Set(pushUsers.map((x) => x.userId));
   const recentCounts = new Map<string, Partial<Record<Channel, number>>>();
   for (const r of recent) {
@@ -181,12 +183,13 @@ export async function planPendingNotifications(opts: { now?: Date; batch?: numbe
   for (const n of pending) {
     const tenant = tenantById.get(n.institutionId);
     const user = userById.get(n.userId);
-    if (!tenant || !user || user.status !== 'ACTIVE') continue;
+    // A notification is only ever delivered under the recipient's own college.
+    if (!tenant || !user || user.status !== 'ACTIVE' || user.institutionId !== n.institutionId) continue;
     const flags = (tenant.flags ?? {}) as Record<string, boolean>;
     const s = settingsByUser.get(n.userId);
     const categoryPrefs: Partial<Record<Channel, boolean>> = {};
-    for (const p of prefs) {
-      if (p.userId === n.userId && p.category === n.category && p.channel !== 'IN_APP') {
+    for (const p of prefsByUser.get(n.userId) ?? []) {
+      if (p.category === n.category && p.channel !== 'IN_APP') {
         categoryPrefs[p.channel as Channel] = p.enabled;
       }
     }

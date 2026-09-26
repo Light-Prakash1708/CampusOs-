@@ -111,6 +111,16 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
               value={e.capacity ? `${detail.registeredCount} / ${e.capacity} registered` : e.registrationRequired ? `${detail.registeredCount} registered` : 'Open entry'}
             />
           </dl>
+          {e.onlineUrl && e.mode !== 'OFFLINE' && e.endsAt > new Date() && e.status !== 'CANCELLED' && /^https?:\/\//i.test(e.onlineUrl) ? (
+            <a
+              href={e.onlineUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mr-2 mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-brand px-3 text-[13px] font-extrabold text-white shadow-pop"
+            >
+              <Globe2 size={15} aria-hidden /> Join online
+            </a>
+          ) : null}
           {e.endsAt > new Date() && e.status !== 'CANCELLED' ? (
             <a
               href={`/api/events/${e.id}/ics`}

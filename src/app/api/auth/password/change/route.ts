@@ -1,3 +1,4 @@
+import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { z } from 'zod';
 import { ok, parseBody, withAuth } from '@/lib/api';
 import { metaFrom } from '@/lib/http';
@@ -14,6 +15,7 @@ const Body = z.object({
  * fresh session so the person is not bounced to the sign-in page.
  */
 export const POST = withAuth(null, async (request, { user }) => {
+  await enforceRateLimit(keyFor('pwchange', user.userId), { limit: 10, windowSec: 900 }, 'Too many requests. Please wait a little and try again.');
   const input = await parseBody(request, Body);
   const meta = metaFrom(request);
   const { sessionEpoch } = await changePassword(user, { ...input, meta });

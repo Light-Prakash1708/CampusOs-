@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
@@ -250,16 +251,17 @@ export async function refreshProgress(userId: string, institutionId: string, tim
 
 /* ------------------------------- read models ------------------------------ */
 
-export async function levelOf(userId: string): Promise<ReturnType<typeof levelFor> & { totalXp: number }> {
+/** Level from the XP ledger. Memoised per request (shell + dashboard both ask). */
+export const levelOf = cache(async (userId: string): Promise<ReturnType<typeof levelFor> & { totalXp: number }> => {
   const [xp] = await db.select({ total: sql<number>`coalesce(sum(${t.xpEvents.amount}), 0)::int` }).from(t.xpEvents).where(eq(t.xpEvents.userId, userId));
   const totalXp = Number(xp?.total ?? 0);
   return { ...levelFor(totalXp), totalXp };
-}
+});
 
 export async function getProgress(ctx: AuthContext) {
+  // Read-only: awards happen on the activity that earns them (check-in, task,
+  // event attendance, certificate), never as a side effect of viewing this page.
   const info = await institutionInfo(ctx.institutionId);
-  // Catch up anything earned since the last activity (e.g. a new week's challenge).
-  await refreshProgress(ctx.userId, ctx.institutionId, info.timeZone);
   const today = localDate(new Date(), info.timeZone);
   const [stats, ws, earned, ledger, verified] = await Promise.all([
     progressStats(ctx.userId, today),

@@ -8,11 +8,18 @@ export const dynamic = 'force-dynamic';
 
 /** Public, unauthenticated verification. Shows the minimum needed to verify. */
 export default async function VerifyPage({ params }: { params: Promise<{ code: string }> }) {
-  const { code } = await params;
-  const c = await verifyCertificate(decodeURIComponent(code));
+  const { code: raw } = await params;
+  // A malformed %-escape must be "not found", not a server error.
+  let code: string;
+  try {
+    code = decodeURIComponent(raw).slice(0, 40);
+  } catch {
+    code = '';
+  }
+  const c = code ? await verifyCertificate(code) : null;
   const valid = c && !c.revokedAt;
   return (
-    <AuthShell title="Certificate verification" subtitle={`Verification ID ${decodeURIComponent(code).toUpperCase()}`}>
+    <AuthShell title="Certificate verification" subtitle={`Verification ID ${code.toUpperCase() || '—'}`}>
       {valid ? (
         <div className="rounded-2xl border-[1.5px] border-ink bg-mint p-5 shadow-pop" role="status">
           <p className="flex items-center gap-2 font-display text-[18px] font-extrabold text-mint-ink"><BadgeCheck size={20} aria-hidden /> Valid certificate</p>

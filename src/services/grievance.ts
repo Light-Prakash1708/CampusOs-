@@ -4,7 +4,8 @@ import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import type { AuthContext } from '@/lib/auth/context';
 import { recordAudit } from '@/services/audit';
-import { AppError, ForbiddenError, NotFoundError } from '@/lib/api';
+import { AppError, ForbiddenError, NotFoundError, requireFeatureEnabled } from '@/lib/api';
+import { permissionsForRoles } from '@/lib/auth/permissions';
 
 /**
  * REDRESSAL / GRIEVANCE SERVICE
@@ -55,6 +56,7 @@ export async function createGrievance(
     preferredContactMethod?: string;
   },
 ): Promise<{ id: string; caseNumber: string; resolutionDueAt: Date | null }> {
+  requireFeatureEnabled(user, 'grievance_enabled');
   const [category] = await db
     .select()
     .from(t.grievanceCategories)
@@ -196,6 +198,7 @@ export async function transitionGrievance(
   grievanceId: string,
   params: { to: string; note?: string; resolutionSummary?: string },
 ): Promise<void> {
+  requireFeatureEnabled(user, 'grievance_enabled');
   const [grievance] = await db
     .select()
     .from(t.grievances)
@@ -288,6 +291,7 @@ export async function assignGrievance(
   assigneeId: string,
   note?: string,
 ): Promise<void> {
+  requireFeatureEnabled(user, 'grievance_enabled');
   if (!user.permissions.has('grievance:assign')) {
     throw new ForbiddenError('You cannot reassign cases.');
   }
@@ -301,6 +305,17 @@ export async function assignGrievance(
     .limit(1);
 
   if (!grievance) throw new NotFoundError('Case');
+
+  // The assignee comes from the request: it must be an active handler at this college.
+  const [assignee] = await db
+    .select({ id: t.users.id, role: t.users.role, secondary: t.users.secondaryRoles, status: t.users.status })
+    .from(t.users)
+    .where(and(eq(t.users.id, assigneeId), eq(t.users.institutionId, user.institutionId), isNull(t.users.deletedAt)))
+    .limit(1);
+  if (!assignee || assignee.status !== 'ACTIVE') throw new AppError('That person was not found at your college.', 422, 'BAD_ASSIGNEE');
+  if (!permissionsForRoles(assignee.role, assignee.secondary ?? []).has('grievance:resolve')) {
+    throw new AppError('Cases can only be assigned to staff who handle them.', 422, 'NOT_A_HANDLER');
+  }
 
   await db.transaction(async (tx) => {
     await tx
@@ -352,6 +367,7 @@ export async function addGrievanceMessage(
   body: string,
   isInternalNote = false,
 ): Promise<void> {
+  requireFeatureEnabled(user, 'grievance_enabled');
   const [grievance] = await db
     .select()
     .from(t.grievances)
@@ -454,6 +470,7 @@ export async function getGrievance(
   user: AuthContext,
   grievanceId: string,
 ): Promise<GrievanceDetail> {
+  requireFeatureEnabled(user, 'grievance_enabled');
   const [row] = await db
     .select({
       g: t.grievances,

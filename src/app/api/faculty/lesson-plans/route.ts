@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
-import { AppError, ok, parseBody, withAuth } from '@/lib/api';
+import { AppError, ok, parseBody, withAuth, requireFeatureEnabled } from '@/lib/api';
 import { assertOfferingBelongsToFaculty } from '../_lib/attendance';
 import { baselineManualMinutes } from '../_lib/estimates';
 
@@ -33,6 +33,7 @@ const Body = z.object({
 });
 
 export const POST = withAuth('ai:use_copilot', async (request, { user }) => {
+  requireFeatureEnabled(user, 'teacher_copilot_enabled');
   const input = await parseBody(request, Body);
 
   if (input.offeringId) {

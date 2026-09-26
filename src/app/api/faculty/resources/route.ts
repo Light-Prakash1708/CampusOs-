@@ -1,8 +1,9 @@
+import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
-import { AppError, ok, parseBody, withAuth } from '@/lib/api';
+import { AppError, ok, parseBody, withAuth, requireFeatureEnabled } from '@/lib/api';
 import { fileUrl } from '@/services/storage';
 
 /**
@@ -26,7 +27,7 @@ const Body = z.object({
     'LESSON_PLAN',
     'OTHER',
   ]),
-  externalUrl: z.string().url('Enter a full URL, including https://').max(2000).optional(),
+  externalUrl: z.string().url('Enter a full URL, including https://').max(2000).refine((u) => /^https?:\/\//i.test(u), 'Only http(s) links').optional(),
   /** A file previously uploaded via POST /api/files with purpose RESOURCE. */
   fileId: z.string().uuid().optional(),
   subjectId: z.string().uuid().nullable().optional(),
@@ -41,6 +42,8 @@ const Body = z.object({
 });
 
 export const POST = withAuth('resource:upload', async (request, { user }) => {
+  await enforceRateLimit(keyFor('resource:create', user.userId), { limit: 60, windowSec: 3600 }, 'Too many requests. Please wait a little and try again.');
+  requireFeatureEnabled(user, 'resource_hub_enabled');
   const input = await parseBody(request, Body);
 
   let file: { url: string; name: string; size: number; mime: string } | null = null;

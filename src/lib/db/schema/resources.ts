@@ -89,6 +89,8 @@ export const resources = pgTable(
     index('resources_institution_idx').on(t.institutionId, t.status),
     index('resources_subject_idx').on(t.subjectId),
     index('resources_owner_idx').on(t.ownerId),
+    // File downloads look up the resource that owns a stored file.
+    index('resources_file_url_idx').on(t.fileUrl),
   ],
 );
 

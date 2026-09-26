@@ -64,6 +64,13 @@
       "when": 1790367097579,
       "tag": "0008_opportunities",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790399577520,
+      "tag": "0009_audit_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import { AppError, ConflictError, ForbiddenError, NotFoundError } from '@/lib/ap
 import type { AuthContext } from '@/lib/auth/context';
 import { isEnabled } from '@/lib/features';
 import { availableCopies, canRenew, dueDateFrom, fineFor, holdUntil, LIBRARY_POLICY, normaliseIsbn, RENEW_REASON } from '@/lib/library';
+import { uuidArray } from '@/lib/db/sql-helpers';
 import { recordAudit } from '@/services/audit';
 import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 
@@ -106,7 +107,7 @@ async function settleFirst(ctx: AuthContext, bookId: string) {
 }
 
 async function lockBook(tx: Tx, ctx: AuthContext, bookId: string) {
-  await tx.execute(sql`SELECT id FROM library_books WHERE id = ${bookId} FOR UPDATE`);
+  await tx.execute(sql`SELECT id FROM library_books WHERE id = ${bookId} AND institution_id = ${ctx.institutionId} FOR UPDATE`);
   const [book] = await tx
     .select()
     .from(t.libraryBooks)
@@ -456,14 +457,18 @@ export async function myLibrary(ctx: AuthContext) {
       .orderBy(desc(t.libraryReservations.createdAt))
       .limit(30),
   ]);
-  // Queue position = waiting reservations for the same book created earlier.
+  // Queue position = rank among WAITING reservations for the same book (one query).
   const positions = new Map<string, number>();
-  for (const { r } of reservations.filter((x) => x.r.status === 'WAITING')) {
-    const [{ n }] = (await db
-      .select({ n: count() })
-      .from(t.libraryReservations)
-      .where(and(eq(t.libraryReservations.bookId, r.bookId), eq(t.libraryReservations.status, 'WAITING'), lt(t.libraryReservations.createdAt, r.createdAt)))) as [{ n: number }];
-    positions.set(r.id, Number(n) + 1);
+  const waitingIds = reservations.filter((x) => x.r.status === 'WAITING').map((x) => x.r.id);
+  if (waitingIds.length) {
+    const bookIds = [...new Set(reservations.filter((x) => x.r.status === 'WAITING').map((x) => x.r.bookId))];
+    const ranked = await db.execute<{ id: string; pos: number }>(sql`
+      SELECT id, pos FROM (
+        SELECT id, row_number() OVER (PARTITION BY book_id ORDER BY created_at, id)::int AS pos
+          FROM library_reservations
+         WHERE status = 'WAITING' AND book_id = ANY(${uuidArray(bookIds)})
+      ) q WHERE id = ANY(${uuidArray(waitingIds)})`);
+    for (const r of ranked.rows) positions.set(r.id, Number(r.pos));
   }
   const waitingByBook = new Map<string, number>();
   const openBookIds = [...new Set(loans.filter((l) => !l.loan.returnedAt).map((l) => l.loan.bookId))];

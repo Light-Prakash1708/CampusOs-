@@ -114,3 +114,19 @@ export function minutesToHuman(minutes: number): string {
 export function truncate(text: string, max = 120): string {
   return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
 }
+
+/**
+ * A same-origin path to return to after sign-in, or null. Rejects anything a
+ * browser could resolve off-site: "//host", "/\host", control characters,
+ * or a different origin after URL parsing.
+ */
+export function safeReturnPath(next: string | null | undefined, origin = 'http://campusos.local'): string | null {
+  // eslint-disable-next-line no-control-regex -- rejecting control characters is the point
+  if (!next || !next.startsWith('/') || /^\/[\\/]/.test(next) || /[\u0000-\u001f\\]/.test(next)) return null;
+  try {
+    const u = new URL(next, origin);
+    return u.origin === new URL(origin).origin ? `${u.pathname}${u.search}${u.hash}` : null;
+  } catch {
+    return null;
+  }
+}

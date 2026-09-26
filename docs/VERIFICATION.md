@@ -27,7 +27,11 @@ secrets, `EMAIL_PROVIDER=none`, `STORAGE_PROVIDER=local` +
 - Sign-in/sign-out through the real form (bad password message, return to the
   requested page, protected pages after sign-out).
 
-## Latest run (final, after Phase 9)
+## Latest run (production-readiness audit)
+
+See `PRODUCTION_READINESS_AUDIT.md`. The crawl now also checks 768px (tablet). Result: 0 problems at 1440, 768 and 390 for student (27 routes), faculty (18), admin (29) and super admin (29). Both authorization probes pass. 241 tests.
+
+## Earlier run (final, after Phase 9)
 
 | Role | Routes | Links checked | Problems |
 |---|---|---|---|

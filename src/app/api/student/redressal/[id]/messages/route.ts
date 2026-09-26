@@ -1,8 +1,9 @@
+import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { z } from 'zod';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
-import { NotFoundError, ok, parseBody, withAuth } from '@/lib/api';
+import { NotFoundError, ok, parseBody, withAuth, idParam } from '@/lib/api';
 import { addGrievanceMessage } from '@/services/grievance';
 
 /**
@@ -18,7 +19,8 @@ const Body = z.object({
 });
 
 export const POST = withAuth('grievance:view_own', async (request, { user, params }) => {
-  const grievanceId = params.id;
+  await enforceRateLimit(keyFor('grievance:message', user.userId), { limit: 60, windowSec: 3600 }, 'Too many requests. Please wait a little and try again.');
+  const grievanceId = idParam(params.id, 'That case');
   const input = await parseBody(request, Body);
 
   const [grievance] = await db

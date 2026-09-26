@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { withAuth, ok, parseBody } from '@/lib/api';
+import { withAuth, ok, parseBody, idParam } from '@/lib/api';
 import { transitionGrievance, assignGrievance } from '@/services/grievance';
 
 const Body = z.object({
@@ -17,10 +17,10 @@ export const POST = withAuth('grievance:view_own', async (request, { user, param
 
   // Reassignment and transition can arrive together (the usual admin action).
   if (input.assignToId) {
-    await assignGrievance(user, params.id!, input.assignToId, input.note);
+    await assignGrievance(user, idParam(params.id, 'That case'), input.assignToId, input.note);
   }
 
-  await transitionGrievance(user, params.id!, {
+  await transitionGrievance(user, idParam(params.id, 'That case'), {
     to: input.to,
     note: input.note,
     resolutionSummary: input.resolutionSummary,

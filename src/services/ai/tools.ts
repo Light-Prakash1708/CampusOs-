@@ -3,8 +3,10 @@ import { and, eq, desc, gte, inArray, isNull, sql, count, lt } from 'drizzle-orm
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import type { AuthContext } from '@/lib/auth/context';
+import { isEnabled } from '@/lib/features';
 import type { AiTool, Citation, ToolResult } from './types';
 import { actionAvailable, proposeAction, type ActionOperation } from './actions';
+import { resourceVisibilityFor } from '@/services/resources';
 
 /**
  * AI TOOL REGISTRY
@@ -96,10 +98,15 @@ const getSchedule: RegisteredTool = {
           eq(t.timetableEntries.institutionId, user.institutionId),
           eq(t.timetableVersions.status, 'PUBLISHED'),
           eq(t.timetableEntries.isCancelled, false),
-          user.sectionId ? eq(t.timetableEntries.sectionId, user.sectionId) : sql`true`,
-          user.facultyProfileId
-            ? eq(t.timetableEntries.facultyId, user.facultyProfileId)
-            : sql`true`,
+          // Own section / own teaching only. Someone with neither sees the whole
+          // timetable only if they may (timetable:view_all); otherwise nothing.
+          user.sectionId
+            ? eq(t.timetableEntries.sectionId, user.sectionId)
+            : user.facultyProfileId
+              ? eq(t.timetableEntries.facultyId, user.facultyProfileId)
+              : user.permissions.has('timetable:view_all')
+                ? sql`true`
+                : sql`false`,
           day ? eq(t.timetableEntries.dayOfWeek, day as never) : sql`true`,
         ),
       )
@@ -435,6 +442,7 @@ const getGrievances: RegisteredTool = {
   description:
     'Return redressal cases visible to the caller, with SLA status. Students see only their own cases.',
   requiredPermission: 'grievance:view_own',
+  available: (u) => isEnabled(u.featureFlags, 'grievance_enabled'),
   inputSchema: {
     type: 'object',
     properties: { onlyOpen: { type: 'boolean' } },
@@ -501,6 +509,7 @@ const getSkillProfile: RegisteredTool = {
   description:
     'Return the calling student\'s evidenced skill profile and, if a career goal is set, the gap to that role.',
   requiredPermission: 'skill:view_own',
+  available: (u) => isEnabled(u.featureFlags, 'skill_engine_enabled'),
   inputSchema: { type: 'object', properties: {} },
   handler: async (_input, { user }) => {
     if (!user.studentProfileId) {
@@ -519,6 +528,7 @@ const searchResources: RegisteredTool = {
   name: 'search_resources',
   description:
     'Full-text search over the institution\'s academic resources. Returns only resources the caller may view. Never invents sources.',
+  available: (u) => isEnabled(u.featureFlags, 'resource_hub_enabled'),
   inputSchema: {
     type: 'object',
     properties: { query: { type: 'string', description: 'Search terms.' } },
@@ -543,9 +553,7 @@ const searchResources: RegisteredTool = {
       .leftJoin(t.subjects, eq(t.subjects.id, t.resources.subjectId))
       .where(
         and(
-          eq(t.resources.institutionId, user.institutionId),
-          eq(t.resources.status, 'PUBLISHED'),
-          isNull(t.resources.deletedAt),
+          resourceVisibilityFor(user),
           sql`${t.resources.searchVector} @@ plainto_tsquery('english', ${query})`,
         ),
       )
@@ -569,7 +577,7 @@ const searchResources: RegisteredTool = {
         type: 'resource',
         id: r.id,
         label: r.title,
-        href: `/${user.portal}/resources/${r.id}`,
+        href: `/${user.portal === 'student' ? 'student' : 'faculty'}/resources?q=${encodeURIComponent(r.title)}`,
       })),
     };
   },
@@ -700,6 +708,8 @@ const getAtRiskStudents: RegisteredTool = {
   description:
     'Return students below the attendance requirement, so staff can intervene. Faculty see only their own sections.',
   requiredPermission: 'attendance:view_section',
+  // Faculty see their own classes; institution-wide lists need attendance:view_all.
+  available: (u) => !!u.facultyProfileId || u.permissions.has('attendance:view_all'),
   inputSchema: { type: 'object', properties: { limit: { type: 'number' } } },
   handler: async (input, { user }) => {
     const limit = Math.min(50, Math.max(1, Number(input.limit ?? 20)));

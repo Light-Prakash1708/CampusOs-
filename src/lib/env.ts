@@ -30,6 +30,7 @@ const EnvSchema = z
     APP_URL: z.string().url('APP_URL must be an absolute URL, e.g. https://campus.example.edu'),
     SESSION_MAX_AGE: z.coerce.number().int().positive().default(28800),
     TRUST_PROXY: bool,
+    TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
     DEMO_MODE: bool,
     CRON_SECRET: z.string().min(16).optional(),
 

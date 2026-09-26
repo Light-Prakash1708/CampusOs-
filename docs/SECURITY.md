@@ -167,4 +167,7 @@ nonce-based `script-src` is planned for Phase 9.
 
 ### Client IP trust
 `TRUST_PROXY` (default true for proxied hosts) governs whether
-`x-forwarded-for` is honoured for audit and rate limiting.
+`x-forwarded-for` is honoured for audit and rate limiting. Clients can
+pre-fill that header, so the address is read from the right:
+`TRUSTED_PROXY_HOPS` (default 1) is the number of proxies that append to it
+(Render alone = 1; Cloudflare in front of Render = 2).

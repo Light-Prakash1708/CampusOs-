@@ -125,7 +125,7 @@ export default async function ManageEventPage({ params, searchParams }: { params
                     <tr key={r.id}>
                       <td className="px-4 py-2">
                         <p className="font-bold text-default">{r.name}</p>
-                        <p className="text-[11.5px] text-subtle">{r.email}{r.teamName ? ` · Team ${r.teamName}` : ''}</p>
+                        <p className="text-[11.5px] text-subtle">{r.email ?? r.college ?? 'Another college'}{r.teamName ? ` · Team ${r.teamName}` : ''}</p>
                       </td>
                       <td className="px-2 py-2 text-muted">{r.college ?? '—'}</td>
                       <td className="px-2 py-2 font-mono text-[12px]">{r.code}</td>

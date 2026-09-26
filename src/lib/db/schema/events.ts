@@ -96,6 +96,7 @@ export const eventCertificates = pgTable(
     uniqueIndex('event_certificates_code_uq').on(t.verificationCode),
     uniqueIndex('event_certificates_registration_uq').on(t.registrationId, t.kind),
     index('event_certificates_user_idx').on(t.userId, t.issuedAt),
+    index('event_certificates_event_idx').on(t.eventId),
   ],
 );
 

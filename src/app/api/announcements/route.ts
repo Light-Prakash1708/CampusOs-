@@ -1,3 +1,4 @@
+import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { z } from 'zod';
 import { withAuth, ok, parseBody } from '@/lib/api';
 import { createAnnouncement, resolveAudience } from '@/services/communication';
@@ -38,6 +39,7 @@ const CreateBody = z.object({
 export const POST = withAuth(
   ['announcement:create_official', 'announcement:create_informational'],
   async (request, { user }) => {
+    await enforceRateLimit(keyFor('announcement:create', user.userId), { limit: 60, windowSec: 3600 }, 'Too many notices in a short time. Please wait a little.');
     const input = await parseBody(request, CreateBody);
     const result = await createAnnouncement(user, {
       ...input,

@@ -47,7 +47,8 @@ export function EventCoverArt({ title, tone, className }: { title: string; tone:
 }
 
 export function EventCover({ title, category, coverUrl, className }: { title: string; category: string; coverUrl: string | null; className?: string }) {
-  if (coverUrl) {
+  // Only covers stored in CampusOS are shown (older external links are ignored).
+  if (coverUrl && coverUrl.startsWith('/api/files/')) {
     return <img src={coverUrl} alt="" className={cn('block w-full object-cover', className)} loading="lazy" />;
   }
   return <EventCoverArt title={title} tone={categoryTone(category)} className={className} />;

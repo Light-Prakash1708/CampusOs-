@@ -2,7 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
-import { AppError, NotFoundError, ok, parseBody, withAuth } from '@/lib/api';
+import { AppError, NotFoundError, ok, parseBody, withAuth, requireFeatureEnabled, idParam } from '@/lib/api';
 
 /**
  * Editing and publishing a saved lesson plan.
@@ -24,8 +24,9 @@ const Body = z.discriminatedUnion('action', [
 ]);
 
 export const PATCH = withAuth('ai:use_copilot', async (request, { user, params }) => {
+  requireFeatureEnabled(user, 'teacher_copilot_enabled');
   const input = await parseBody(request, Body);
-  const id = params.id;
+  const id = idParam(params.id, 'That lesson plan');
   if (!id) throw new NotFoundError('Lesson plan');
 
   const [plan] = await db
