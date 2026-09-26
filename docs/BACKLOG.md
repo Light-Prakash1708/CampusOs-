@@ -12,6 +12,38 @@
 | **P2** | Pilot-semester improvements, driven by pilot data | V1.5 |
 | **P3** | After pilots convert | V2 / V3 |
 
+## Status board
+
+Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are in the log at the end of this file.
+
+| Item | Status | Note |
+|---|---|---|
+| 001 | IN PROGRESS | Verification round 1 done (strategy §10a). Remaining: AISHE college split, private share, Indian ERP per-student prices (need demo calls) |
+| 002 | DONE | Interview kit ready. The interviews themselves need the founder |
+| 003 | TODO | |
+| 004 | TODO | |
+| 005 | TODO | |
+| 006 | TODO | |
+| 007 | TODO | |
+| 008 | TODO | |
+| 009 | TODO | |
+| 010 | TODO | |
+| 011 | TODO | |
+| 012 | TODO | |
+| 013 | TODO | |
+| 014 | TODO | |
+| 015 | TODO | |
+| 016 | TODO | |
+| 017 | TODO | |
+| 018 | TODO | |
+| 019 | TODO | |
+| 020 | TODO | |
+| 021 | TODO | |
+| 022 | TODO | |
+| 030 | TODO | |
+| 023–029 | DEFERRED | V1.5, only after pilot evidence |
+| 031–039 | DEFERRED | V2/V3 |
+
 ## Rules that apply to every item
 
 - Migrations are additive only.
@@ -285,7 +317,10 @@
 
 - **Objective:**
   - Map the existing Redressal Centre to the UGC 2023 regulations: committee membership (SGRC), the ombudsperson escalation step, statutory timelines as SLA presets, and a public-facing grievance policy page per college.
-  - Exact timelines are UNKNOWN — REQUIRES VERIFICATION against the regulation text.
+  - Timelines, verified from the regulation text (strategy §10a):
+    - SGRC report preferably within 15 working days;
+    - student appeal to the ombudsperson within 15 days;
+    - ombudsperson resolution within 30 days.
 - **Business reason:** A compliance "why pay" for principals.
 - **User:** Student, grievance committee, admin.
 - **Affected files:** `src/services/grievance*`, `/admin/redressal`, `/student/redressal`, `docs/GRIEVANCE.md`.
@@ -524,3 +559,19 @@ These can be revisited only with pilot evidence:
 - Student subscriptions.
 - A recruiter marketplace.
 - Sponsored listings before V3.
+
+---
+
+## Completion log
+
+### 2026-09-27: CAMPUSOS-001 (round 1) and CAMPUSOS-002
+
+- **Files:**
+  - `docs/CAMPUSOS_STRATEGY_AUDIT.md` (new §10a verification update);
+  - `docs/research/interview-guide.md`;
+  - `docs/research/interview-synthesis-template.md`.
+- **Findings that change strategy:**
+  - Linways bundles grievance, messaging, mentoring and a student app. The wedge is narrowed to ERP-neutral overlay, verified acknowledgement and a student-owned workspace.
+  - The UGC 2023 timelines are now verified (15 working days / 15 days / 30 days).
+- **Tests:** n/a (docs).
+- **Deployment:** none.

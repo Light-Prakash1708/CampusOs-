@@ -283,6 +283,35 @@ Tags: [VENDOR] is positioning from the vendor's own pages or titles; [FACT] is v
 3. Placement tools already exist.
 4. **No Indian vendor clearly owns "the student-facing daily layer"**: verified notices, attendance transparency, grievances and growth, running *alongside* the ERP. That gap is CampusOS's opportunity. It is UNKNOWN — REQUIRES VERIFICATION whether Camu's student app already fills it; this needs hands-on demos (CAMPUSOS-001).
 
+### 10a. Verification update (CAMPUSOS-001, 27 Sep 2026)
+
+This round read the pages directly, closing several gaps above. Anything not listed here is still UNKNOWN.
+
+| Item | Finding | Tag | Source |
+|---|---|---|---|
+| **Fedena pricing** | Standard **$999**, Premium **$1,399**, Ultimate **$1,699**, each billed yearly; Enterprise is custom. The pricing unit (flat per institution or otherwise) is not stated. | [VENDOR] | fedena.com/pricing-and-plans |
+| **Fedena reviews** | 4.2/5 from 19 reviews. Complaints: cluttered UI, complex installation, weak mobile access, slow support. | [COMPLAINT] | Capterra |
+| **Camu pricing** | Not public ("pricing as per your requirements"). | [VENDOR] | SoftwareSuggest |
+| **Camu reviews** | 4.4/5 from 8 reviews. Complaints: report-generator glitches, slow or inflexible reports, not intuitive for new users. | [COMPLAINT] | SoftwareSuggest |
+| **Linways modules** | 45+ modules, including **Grievance Management, Messagebox, Engagement, Parent App, Student Mentoring, Skill Mapping, Placement, AI Attendance Marking**, and a student mobile app (attendance, results, timetable). Claims NAAC/NBA/NIRF support. | [VENDOR] | linways.com |
+| **Superset reviews** | 4.8/5 from 49 reviews. Pricing not disclosed. Cons: limited customisation, glitches, "notifications can sometimes be delayed or overwhelming", limited custom reports. | [COMPLAINT] | Capterra India |
+| **Element451 pricing** | Annual, based on enrolled students and support tier; quote only. | [VENDOR] | element451.com/pricing |
+| **AISHE 2023–24** | 4.50 crore enrolment; GER 30; faculty 17.32 lakh; **59,533 of 64,756 registered HEIs participated**. The press release has no college/university split or private share (still UNKNOWN; needs the full report PDF). | [FACT] | PIB |
+| **UGC grievance regulations 2023 (regulation text)** | SGRC report "preferably within **15 working days**"; appeal to the ombudsperson "within **15 days**" of the decision; the ombudsperson resolves "within **30 days**". SGRC: a professor as chair, 4 senior faculty, and a student special invitee, with at least one woman and one SC/ST/OBC member. The regulation lists 12 grievance categories (admission, academic, conduct, examination, internship/placement, amenities, hostel, finance, student conflicts, harassment, discrimination, regulatory violations). | [FACT] | UGC regulation text (SRMIST-hosted copy); Careers360 |
+| **DPDP Rules 2025** | Notified **14 Nov 2025**, with an **18-month phased timeline**. Verifiable consent is required before processing children's data, with limited exemptions including education. Data-principal requests must be answered within 90 days at most. | [FACT] | PIB |
+| **NAAC reform** | Binary accreditation was planned from April–May 2025, followed by MBGL. The data-submission specifics are not in the source (still UNKNOWN). | [FACT] | Careers360 |
+
+**Strategic implication [ANALYSIS]:**
+
+- **Linways already bundles grievance, messaging, a mentoring module and a student app inside its ERP.** The earlier claim that "no Indian vendor owns the student layer" is therefore **weaker than stated**. The whitespace is narrower:
+  - colleges whose ERP lacks these modules, or where students don't use them;
+  - **ERP-neutral** overlay (works with any ERP or with spreadsheets);
+  - **verified acknowledgement**: proof that a named student received and confirmed a notice. No reviewed vendor page claims this; UNKNOWN whether they offer it;
+  - a **student-owned workspace** that exists before and after the college relationship.
+- **Pilots must test this directly.** Ask "Your ERP has a messaging/grievance module; do students use it?" (interview guide §ERP).
+- If most target colleges already run Linways-like suites that students actively use, the wedge must move toward **ERP-neutral student experience plus evidence**, not modules.
+- **Pricing reference point:** Fedena's list prices (~$1–1.7k a year) are a **school-ERP** anchor. They are not evidence for college per-student pricing. Pricing remains a hypothesis (§26).
+
 ## 11. Customer pain points
 
 | Pain | Who | Type | Evidence |
