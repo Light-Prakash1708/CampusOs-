@@ -28,6 +28,8 @@ export const PURPOSE_KINDS: Record<string, AllowedKind[]> = {
   SUBMISSION: ['pdf', 'docx', 'pptx', 'xlsx', 'png', 'jpeg'],
   AVATAR: ['png', 'jpeg', 'webp'],
   EVENT_COVER: ['png', 'jpeg', 'webp'],
+  /** A college / student ID attached to a membership request. Private to its owner. */
+  VERIFICATION_ID: ['pdf', 'png', 'jpeg', 'webp'],
 };
 
 export const UPLOAD_PURPOSES = Object.keys(PURPOSE_KINDS) as [string, ...string[]];

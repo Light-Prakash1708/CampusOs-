@@ -60,6 +60,7 @@ import { levelOf } from '@/services/gamification';
 import { loansDueSoon } from '@/services/library';
 import { applicationDeadlinesSoon } from '@/services/opportunities';
 import { buildToday, type TodayItem } from '@/lib/today';
+import { JoinCollegeBanner } from './_components/JoinCollegeBanner';
 import { categoryTone, EventCoverArt, formatEventDates } from '@/components/campus/events';
 import { findNextClass, occurrencesForDate, type ClassOccurrence } from './_lib/schedule';
 import { addIsoDays, DAY_LABEL, isoToDate, timeToMinutes, zonedNow } from './_lib/time';
@@ -221,6 +222,8 @@ export default async function StudentHome() {
           <CampusSpeech>“{dailyLine(now.today)}”</CampusSpeech>
         </div>
       </header>
+
+      <JoinCollegeBanner user={user} />
 
       <YourDay items={dayItems} />
 

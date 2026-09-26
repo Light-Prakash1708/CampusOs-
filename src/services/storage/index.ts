@@ -46,7 +46,11 @@ const PURPOSE_PERMISSIONS: Record<string, string[]> = {
   ANNOUNCEMENT: ['announcement:create_informational', 'announcement:create_official'],
   SUBMISSION: ['assignment:submit'],
   EVENT_COVER: ['event:create'],
+  VERIFICATION_ID: ['file:upload'],
 };
+
+/** College IDs are small scans or photos; keep the cap tight whatever the global limit. */
+const VERIFICATION_ID_MAX_BYTES = 8 * 1024 * 1024;
 
 export async function uploadFile(
   ctx: AuthContext,
@@ -60,7 +64,8 @@ export async function uploadFile(
   if (needs && !needs.some((p) => ctx.permissions.has(p as never))) throw new ForbiddenError('You can’t upload files for that.');
   await enforceRateLimit(keyFor('upload', ctx.userId), RATE_LIMITS.uploadPerUser, 'Upload limit reached for this hour.');
 
-  const check = validateUpload({ name: input.name, bytes: input.bytes, purpose: input.purpose, maxBytes: maxUploadBytes() });
+  const maxBytes = input.purpose === 'VERIFICATION_ID' ? Math.min(maxUploadBytes(), VERIFICATION_ID_MAX_BYTES) : maxUploadBytes();
+  const check = validateUpload({ name: input.name, bytes: input.bytes, purpose: input.purpose, maxBytes });
   if (!check.ok) throw new AppError(check.message, check.code === 'TOO_LARGE' ? 413 : 422, check.code);
 
   const scan = await getScanner().scan(input.bytes);
@@ -164,7 +169,10 @@ export async function storeBytes(
  *   DATA_EXPORT        owner only
  *   RESOURCE           per the resource's visibility (PRIVATE → owner / managers)
  *   ANNOUNCEMENT, EVENT_COVER, AVATAR   any member of the institution
- *   SUBMISSION (and anything else)      owner, or staff who evaluate assignments
+ *   SUBMISSION                          owner, or staff who evaluate assignments
+ *   VERIFICATION_ID (and anything else) owner only — college reviewers read an
+ *                                       ID through its membership request
+ *                                       (services/membership.ts), never here
  */
 export async function authorizeFileRead(ctx: AuthContext, fileId: string) {
   const [file] = await db

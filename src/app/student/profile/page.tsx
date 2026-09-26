@@ -16,6 +16,7 @@ import {
 import { formatDate, humanize, num } from '@/lib/utils';
 import { requireStudentContext } from '../_lib/auth';
 import { getCurrentTerm } from '../_lib/student';
+import { MembershipCard } from '../_components/MembershipCard';
 
 export const metadata = { title: 'Profile' };
 export const dynamic = 'force-dynamic';
@@ -119,6 +120,8 @@ export default async function ProfilePage() {
           </div>
         </CardBody>
       </Card>
+
+      <MembershipCard user={user} />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>

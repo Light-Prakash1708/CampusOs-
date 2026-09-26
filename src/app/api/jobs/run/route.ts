@@ -9,6 +9,7 @@ import { runEscalationSweep } from '@/services/grievance';
 import { planPendingNotifications, processDeliveryQueue } from '@/services/notifications/dispatcher';
 import { sweepRateLimits } from '@/services/rate-limit';
 import { sweepExpiredTokens } from '@/services/auth/tokens';
+import { expireStaleMembershipRequests } from '@/services/membership';
 import { timingSafeEqual } from 'node:crypto';
 
 /**
@@ -122,7 +123,11 @@ export async function POST(request: Request) {
       if (selected.includes('plan_notifications')) platform.planned = await planPendingNotifications();
       if (selected.includes('deliver_notifications')) platform.delivered = await processDeliveryQueue();
       if (selected.includes('sweep')) {
-        platform.sweep = { rateLimitBuckets: await sweepRateLimits(), authTokens: await sweepExpiredTokens() };
+        platform.sweep = {
+          rateLimitBuckets: await sweepRateLimits(),
+          authTokens: await sweepExpiredTokens(),
+          membershipRequestsExpired: await expireStaleMembershipRequests(),
+        };
       }
     }
 
