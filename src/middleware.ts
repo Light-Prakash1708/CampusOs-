@@ -31,10 +31,11 @@ const PUBLIC_PATHS = [
   '/api/jobs/run',
   '/manifest.webmanifest',
   '/icon.svg',
+  '/apple-icon.png',
   '/api/client-errors',
 ];
 
-const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/illustrations', '/verify/', '/api/auth/', '/api/public/'];
+const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/illustrations', '/branding/', '/verify/', '/api/auth/', '/api/public/'];
 
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;
@@ -122,5 +123,5 @@ function redirectToLogin(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|icons|images|illustrations).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|icons|images|illustrations|branding).*)'],
 };

@@ -22,12 +22,20 @@ interface Layout {
   footer?: string;
 }
 
+/**
+ * Email-safe CampusOS wordmark: live text, no image (many clients block
+ * images and SVG). Deeper shades of the logo's lavender and green keep the
+ * letters readable on white without the web logo's outline.
+ */
+const WORDMARK_HTML =
+  '<span style="font-weight:800;color:#1E1B4B;letter-spacing:-0.02em">Campus<span style="color:#7C3AED">O</span><span style="color:#15803D">S</span></span>';
+
 function render({ institutionName, heading, paragraphs, action, footer }: Layout): { html: string; text: string } {
   const e = escapeHtml;
   const html = `<!doctype html><html><body style="margin:0;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111827">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" style="max-width:520px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px" cellpadding="0" cellspacing="0">
-<tr><td style="padding:28px 28px 8px;font-size:13px;color:#6b7280">${e(institutionName)} · CampusOS</td></tr>
+<tr><td style="padding:28px 28px 8px;font-size:13px;color:#6b7280">${e(institutionName)} · ${WORDMARK_HTML}</td></tr>
 <tr><td style="padding:0 28px"><h1 style="font-size:20px;line-height:1.3;margin:8px 0 16px">${e(heading)}</h1>
 ${paragraphs.map((p) => `<p style="font-size:15px;line-height:1.6;margin:0 0 14px">${e(p)}</p>`).join('\n')}
 ${action ? `<p style="margin:22px 0"><a href="${e(action.url)}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-weight:600;font-size:15px">${e(action.label)}</a></p>

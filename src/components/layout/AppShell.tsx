@@ -24,6 +24,7 @@ import { PixelAvatar, type AvatarTone } from '@/components/campus/pixel';
 import type { MobileNavItem, NavGroup, QuickCreateEntry } from './navigation';
 import { CampusBottomSheet, CampusDrawer } from '@/components/campus/overlays';
 import { CampusComingSoon, CampusLevelChip } from '@/components/campus';
+import { CampusLogo } from '@/components/brand';
 import { navIcon } from './icons';
 import { CommandPalette } from './CommandPalette';
 
@@ -179,9 +180,8 @@ export function CampusSidebar({
   return (
     <>
       <div className="flex h-16 shrink-0 items-center justify-between px-5">
-        <Link href={`/${user.portal}`} className="flex items-center gap-2" aria-label="CampusOS home">
-          <Logo />
-          <span className="font-display text-[19px] font-extrabold text-brand">CampusOS</span>
+        <Link href={`/${user.portal}`} className="flex items-center rounded-lg" aria-label="CampusOS home">
+          <CampusLogo size="md" decorative />
         </Link>
         {onClose ? (
           <button onClick={onClose} className="rounded-lg p-2 text-muted hover:bg-surface-sunken lg:hidden" aria-label="Close navigation">
@@ -238,9 +238,8 @@ export function CampusTopbar({
         <button onClick={onOpenNav} className="-ml-1 rounded-lg p-2 text-default hover:bg-surface-sunken lg:hidden" aria-label="Open navigation">
           <Menu size={20} />
         </button>
-        <Link href={home} className="flex items-center gap-1.5 lg:hidden" aria-label="CampusOS home">
-          <Logo />
-          <span className="font-display text-[16px] font-extrabold text-brand">CampusOS</span>
+        <Link href={home} className="flex shrink-0 items-center rounded-lg lg:hidden" aria-label="CampusOS home">
+          <CampusLogo size="sm" decorative />
         </Link>
 
         <button
@@ -413,19 +412,6 @@ function QuickCreateList({ items }: { items: QuickCreateEntry[] }) {
         </div>
       ) : null}
     </div>
-  );
-}
-
-function Logo() {
-  return (
-    <span className="flex h-8 w-8 items-center justify-center rounded-lg border-[1.5px] border-ink bg-brand shadow-pop" aria-hidden>
-      <svg viewBox="0 0 16 16" width="18" height="18" shapeRendering="crispEdges">
-        <rect x="3" y="3" width="10" height="10" fill="#fff" />
-        <rect x="4" y="4" width="3" height="8" fill="#9D97F2" />
-        <rect x="9" y="4" width="3" height="8" fill="#9D97F2" />
-        <rect x="7" y="3" width="2" height="10" fill="#1F1B3D" />
-      </svg>
-    </span>
   );
 }
 

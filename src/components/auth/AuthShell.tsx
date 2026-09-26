@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { CampusIllustration, CampusSpeech, PixelRobot } from '@/components/campus';
+import { CampusLogo } from '@/components/brand';
 
 /**
  * Shared frame for the signed-out screens (sign in, register, password reset,
@@ -21,12 +22,8 @@ export function AuthShell({
     <div className="flex min-h-screen bg-surface-muted">
       <main className="flex w-full flex-col justify-center px-4 py-12 sm:px-12 lg:w-[46%] lg:px-16">
         <div className="mx-auto w-full max-w-sm">
-          <a href="/login" className="mb-8 flex items-center gap-2.5" aria-label="CampusOS home">
-            <PixelRobot size={40} />
-            <span>
-              <span className="block font-display text-[20px] font-extrabold leading-tight text-brand">CampusOS</span>
-              <span className="block text-[11.5px] font-medium leading-tight text-subtle">Your college. Your campus. Your progress.</span>
-            </span>
+          <a href="/login" className="mb-8 inline-flex rounded-lg" aria-label="CampusOS home">
+            <CampusLogo size="lg" tagline decorative />
           </a>
           <h1 className="font-display text-[26px] font-extrabold leading-tight text-default">{title}</h1>
           {subtitle ? <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{subtitle}</p> : null}

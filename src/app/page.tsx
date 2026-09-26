@@ -11,6 +11,7 @@ import {
   Check,
 } from 'lucide-react';
 import { Badge, Button } from '@/components/ui';
+import { CampusLogo } from '@/components/brand';
 
 export const metadata = {
   title: 'CampusOS — One intelligent operating system for your campus',
@@ -72,12 +73,9 @@ export default function LandingPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-[hsl(var(--border))] bg-surface/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-sm font-bold text-white">
-              C
-            </span>
-            <span className="text-[15px] font-semibold text-default">CampusOS</span>
-          </div>
+          <Link href="/" className="flex items-center rounded-lg" aria-label="CampusOS home">
+            <CampusLogo size="sm" decorative />
+          </Link>
           <nav className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">
               <Link href="#features">Features</Link>

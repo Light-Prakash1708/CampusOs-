@@ -19,7 +19,8 @@
     "db:setup": "npm run db:migrate && npm run db:seed",
     "lint": "eslint .",
     "provision": "tsx --conditions=react-server scripts/provision.ts",
-    "xp:backfill": "tsx --conditions=react-server scripts/backfill-xp.ts"
+    "xp:backfill": "tsx --conditions=react-server scripts/backfill-xp.ts",
+    "brand:assets": "tsx scripts/brand/generate-assets.ts"
   },
   "keywords": [],
   "author": "",

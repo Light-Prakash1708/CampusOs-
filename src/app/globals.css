@@ -105,10 +105,19 @@
     --shadow-sm: 0 1px 3px 0 rgb(31 27 61 / 0.08), 0 1px 2px -1px rgb(31 27 61 / 0.05);
     --shadow-md: 0 6px 12px -4px rgb(31 27 61 / 0.14);
     --shadow-lg: 0 16px 28px -10px rgb(31 27 61 / 0.22);
+
+    /* Logo (CampusLogo): brand constants, not tenant colours */
+    --logo-word: 244 47% 20%;       /* #1E1B4B indigo */
+    --logo-outline: 244 47% 20%;
+    --logo-o: 255 92% 76%;          /* #A78BFA lavender */
+    --logo-s: 142 71% 45%;          /* #22C55E green */
+    --logo-accent: 43 96% 56%;      /* #FBBF24 yellow */
   }
 
   /* Night campus: deep indigo, cream text, lifted outlines, dusk pastels */
   .dark {
+    --logo-word: 40 82% 95%;        /* #FDF7E9 cream */
+    --logo-outline: 222 47% 11%;    /* #0F172A */
     --surface: 248 30% 13%;
     --surface-muted: 248 32% 9%;
     --surface-raised: 248 28% 15%;
@@ -271,6 +280,57 @@
   .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
   /* Scaled bitmap art stays crisp. */
   .pixelated { image-rendering: pixelated; }
+
+  /* CampusOS logo (src/components/brand/CampusLogo.tsx). A forced theme
+     sets the logo tokens locally, e.g. on an always-dark panel. */
+  .campus-logo[data-logo-theme='light'] {
+    --logo-word: 244 47% 20%;
+    --logo-outline: 244 47% 20%;
+  }
+  .campus-logo[data-logo-theme='dark'] {
+    --logo-word: 40 82% 95%;
+    --logo-outline: 222 47% 11%;
+  }
+  .campus-wordmark {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    white-space: nowrap;
+    color: hsl(var(--logo-word));
+  }
+  .campus-wordmark-os { margin-left: 0.02em; letter-spacing: -0.01em; }
+  .campus-wordmark-o,
+  .campus-wordmark-s {
+    /* Ink outline so the pastel letters read on cream (and in print). */
+    --o: hsl(var(--logo-outline));
+    text-shadow:
+      0.045em 0 0 var(--o), -0.045em 0 0 var(--o), 0 0.045em 0 var(--o), 0 -0.045em 0 var(--o),
+      0.032em 0.032em 0 var(--o), -0.032em 0.032em 0 var(--o), 0.032em -0.032em 0 var(--o), -0.032em -0.032em 0 var(--o);
+  }
+  .campus-wordmark-o { color: hsl(var(--logo-o)); }
+  .campus-wordmark-s { color: hsl(var(--logo-s)); margin-left: 0.03em; }
+  .campus-tagline {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    white-space: nowrap;
+    color: hsl(var(--text-muted));
+  }
+  .campus-tagline-accent {
+    color: hsl(var(--logo-word));
+    background: linear-gradient(hsl(var(--logo-accent)), hsl(var(--logo-accent))) no-repeat 0 100% / 100% 0.18em;
+    padding-bottom: 0.06em;
+  }
+  /* Restrained hover: a linked logo lifts its mark by a pixel. */
+  .campus-mark { transition: transform 160ms ease-out; }
+  a:hover .campus-mark,
+  a:focus-visible .campus-mark { transform: translateY(-1px); }
+  @media (prefers-reduced-motion: reduce) {
+    a:hover .campus-mark,
+    a:focus-visible .campus-mark { transform: none; }
+  }
 
   /* Press feedback for outlined buttons/tiles: shadow collapses as it sinks. */
   .campus-press { transition: transform 0.08s ease, box-shadow 0.08s ease; }

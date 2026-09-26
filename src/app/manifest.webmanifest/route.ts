@@ -3,15 +3,18 @@ export function GET() {
   return Response.json({
     name: 'CampusOS',
     short_name: 'CampusOS',
-    description: 'The academic operating system for your institution.',
+    description: 'Your Campus. All in One.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#4F46E5',
+    background_color: '#FDF7E9',
+    theme_color: '#1E1B4B',
     orientation: 'portrait-primary',
     icons: [
-      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+      { src: '/branding/campusos-app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+      { src: '/branding/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/branding/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/branding/campusos-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+      { src: '/branding/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   });
 }

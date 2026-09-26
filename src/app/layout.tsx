@@ -7,12 +7,19 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'CampusOS — Your college. Your campus. Your progress.',
+    default: 'CampusOS — Your Campus. All in One.',
     template: '%s · CampusOS',
   },
   description:
     'One intelligent platform connecting students, faculty, classrooms, academic resources and institutional communication.',
   applicationName: 'CampusOS',
+  openGraph: {
+    type: 'website',
+    siteName: 'CampusOS',
+    title: 'CampusOS — Your Campus. All in One.',
+    description:
+      'One intelligent platform connecting students, faculty, classrooms, academic resources and institutional communication.',
+  },
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'CampusOS' },
   formatDetection: { telephone: false },
