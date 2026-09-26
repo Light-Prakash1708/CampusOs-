@@ -10,6 +10,7 @@ import { randomBytes } from 'node:crypto';
 import { appUrl, selfRegistrationEnabled } from '@/lib/env';
 import { humanize } from '@/lib/utils';
 import { recordAudit } from '@/services/audit';
+import { track } from '@/services/product-events';
 import { enforceRateLimit, checkRateLimit, keyFor, RATE_LIMITS } from '@/services/rate-limit';
 import { sendTransactionalEmail } from '@/services/notifications/dispatcher';
 import { getProviders } from '@/services/notifications/providers';
@@ -727,6 +728,8 @@ export async function registerIndependentStudent(
     await sendVerification({ id: created.id, institutionId: created.institutionId, email, firstName, institutionName: 'CampusOS' }).catch(() => undefined);
   }
 
+  await track({ userId: created.id, institutionId: created.institutionId, role: 'STUDENT' }, 'student_signup');
+
   return {
     user: { id: created.id, institutionId: created.institutionId, role: 'STUDENT', sessionEpoch: created.sessionEpoch },
     redirectTo: `/${portalForRole('STUDENT')}?welcome=1`,
@@ -975,6 +978,9 @@ export async function acceptInvite(input: { token: string; password: string; met
     { userId: user.id, institutionId: user.institutionId, role: user.role },
     { action: 'INVITE_ACCEPTED', entityType: 'user', entityId: user.id, ...input.meta },
   );
+  await track({ userId: user.id, institutionId: user.institutionId, role: user.role }, 'invite_accepted', {
+    role: user.role === 'STUDENT' ? 'STUDENT' : user.role === 'FACULTY' ? 'FACULTY' : ['ADMIN', 'SUPER_ADMIN'].includes(user.role) ? 'ADMIN' : 'OTHER',
+  });
   return { ...user, redirectTo: `/${portalForRole(user.role)}` };
 }
 

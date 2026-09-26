@@ -8,6 +8,7 @@ import { isEnabled } from '@/lib/features';
 import { ACHIEVEMENTS, addDays, CHECKIN_XP_DAILY_CAP, localDate, STREAK_MILESTONES, XP } from '@/lib/gamification';
 import { completionRate, goalState, heatmap, type Cadence, type GoalCategory } from '@/lib/tracker';
 import { enforceRateLimit, keyFor } from '@/services/rate-limit';
+import { track } from '@/services/product-events';
 import { awardXp, gamificationOn, institutionInfo, refreshProgress } from '@/services/gamification';
 
 /**
@@ -69,7 +70,7 @@ export async function createGoal(ctx: AuthContext, input: GoalInput) {
   if (input.targetDate && input.targetDate < today) throw new AppError('The target date is in the past.', 422, 'BAD_DATE');
   if (input.cadence === 'WEEKLY' && input.targetPerPeriod > 7) throw new AppError('A week has 7 days.', 422, 'BAD_TARGET');
 
-  return db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     const [g] = await tx
       .insert(t.trackerGoals)
       .values({
@@ -91,6 +92,8 @@ export async function createGoal(ctx: AuthContext, input: GoalInput) {
     }
     return { id: g!.id };
   });
+  await track(ctx, 'tracker_goal_created');
+  return created;
 }
 
 export async function updateGoal(

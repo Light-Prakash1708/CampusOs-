@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import type { AuthContext } from '@/lib/auth/context';
 import { recordAudit } from '@/services/audit';
+import { track } from '@/services/product-events';
 import { AppError, ForbiddenError } from '@/lib/api';
 
 /**
@@ -350,6 +351,8 @@ export async function createAnnouncement(
     },
   });
 
+  await track(user, 'notice_created', { requires_ack: !!input.requiresAcknowledgement, emergency: !!input.isEmergencyBroadcast });
+
   return {
     id: announcementId,
     reference,
@@ -447,15 +450,18 @@ async function nextReference(institutionId: string): Promise<string> {
   return `NOTICE-${year}-${String((row?.value ?? 0) + 1).padStart(5, '0')}`;
 }
 
-/** Marks a notice read for a user. Idempotent. */
-export async function markAnnouncementRead(userId: string, announcementId: string): Promise<void> {
+type Actor = Pick<AuthContext, 'userId' | 'institutionId' | 'role'>;
+
+/** Marks a notice read for a user. Idempotent; counts the first read only. */
+export async function markAnnouncementRead(actor: Actor, announcementId: string): Promise<void> {
   const result = await db
     .update(t.announcementRecipients)
     .set({ readAt: new Date() })
     .where(
       and(
+        eq(t.announcementRecipients.institutionId, actor.institutionId),
         eq(t.announcementRecipients.announcementId, announcementId),
-        eq(t.announcementRecipients.userId, userId),
+        eq(t.announcementRecipients.userId, actor.userId),
         isNull(t.announcementRecipients.readAt),
       ),
     )
@@ -466,21 +472,30 @@ export async function markAnnouncementRead(userId: string, announcementId: strin
       .update(t.announcements)
       .set({ readCount: sql`${t.announcements.readCount} + 1` })
       .where(eq(t.announcements.id, announcementId));
+    await track(actor, 'notice_viewed');
   }
 }
 
-/** Records an explicit acknowledgement — the "I've read this" action. */
-export async function acknowledgeAnnouncement(
-  userId: string,
-  announcementId: string,
-): Promise<{ acknowledged: boolean }> {
+/**
+ * Records an explicit acknowledgement — the "I've read this" action.
+ * Idempotent and race-safe: the counter moves only when this call is the one
+ * that set acknowledged_at.
+ */
+export async function acknowledgeAnnouncement(actor: Actor, announcementId: string): Promise<{ acknowledged: boolean; acknowledgedAt: Date }> {
   const [recipient] = await db
-    .select()
+    .select({
+      id: t.announcementRecipients.id,
+      readAt: t.announcementRecipients.readAt,
+      acknowledgedAt: t.announcementRecipients.acknowledgedAt,
+      deadline: t.announcements.acknowledgementDeadline,
+    })
     .from(t.announcementRecipients)
+    .innerJoin(t.announcements, eq(t.announcements.id, t.announcementRecipients.announcementId))
     .where(
       and(
+        eq(t.announcementRecipients.institutionId, actor.institutionId),
         eq(t.announcementRecipients.announcementId, announcementId),
-        eq(t.announcementRecipients.userId, userId),
+        eq(t.announcementRecipients.userId, actor.userId),
       ),
     )
     .limit(1);
@@ -488,26 +503,30 @@ export async function acknowledgeAnnouncement(
   if (!recipient) {
     throw new AppError('This notice was not addressed to you.', 403, 'NOT_A_RECIPIENT');
   }
-  if (recipient.acknowledgedAt) return { acknowledged: true };
+  if (recipient.acknowledgedAt) return { acknowledged: true, acknowledgedAt: recipient.acknowledgedAt };
 
-  await db.transaction(async (tx) => {
-    await tx
+  const now = new Date();
+  const changed = await db.transaction(async (tx) => {
+    const updated = await tx
       .update(t.announcementRecipients)
-      .set({ acknowledgedAt: new Date(), readAt: recipient.readAt ?? new Date() })
-      .where(eq(t.announcementRecipients.id, recipient.id));
-
+      .set({ acknowledgedAt: now, readAt: sql`coalesce(${t.announcementRecipients.readAt}, ${now})` })
+      .where(and(eq(t.announcementRecipients.id, recipient.id), isNull(t.announcementRecipients.acknowledgedAt)))
+      .returning({ id: t.announcementRecipients.id });
+    if (updated.length === 0) return false;
     await tx
       .update(t.announcements)
       .set({
         acknowledgedCount: sql`${t.announcements.acknowledgedCount} + 1`,
-        readCount: recipient.readAt
-          ? sql`${t.announcements.readCount}`
-          : sql`${t.announcements.readCount} + 1`,
+        readCount: recipient.readAt ? sql`${t.announcements.readCount}` : sql`${t.announcements.readCount} + 1`,
       })
       .where(eq(t.announcements.id, announcementId));
+    return true;
   });
 
-  return { acknowledged: true };
+  if (changed) {
+    await track(actor, 'notice_acknowledged', { on_time: !recipient.deadline || now <= recipient.deadline });
+  }
+  return { acknowledged: true, acknowledgedAt: now };
 }
 
 /** Who has not acknowledged — the number that ends "I didn't know". */

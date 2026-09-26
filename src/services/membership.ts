@@ -5,6 +5,8 @@ import * as t from '@/lib/db/schema';
 import { AppError, ConflictError, ForbiddenError, NotFoundError, pgErrorOf } from '@/lib/api';
 import type { AuthContext } from '@/lib/auth/context';
 import { permissionsForRoles, ROLE_PERMISSIONS, type Role } from '@/lib/auth/permissions';
+import { track } from '@/services/product-events';
+import { clearCampusInterest } from '@/services/campus-demand';
 import { recordAudit } from '@/services/audit';
 import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { getStorageProvider } from '@/services/storage/providers';
@@ -79,6 +81,8 @@ export const TRANSFER_KEEP_TABLES = [
   'users', 'student_profiles', 'membership_requests',
   // history and credentials that belong to the workspace
   'audit_logs', 'auth_tokens', 'sessions', 'job_queue', 'import_jobs',
+  // pseudonymous product analytics: history stays where it happened
+  'product_events', 'product_active_days', 'campus_interest',
   // structure, configuration and catalogues of the workspace
   'academic_years', 'campuses', 'departments', 'programs', 'sections', 'subjects', 'terms', 'time_slots',
   'holidays', 'rooms', 'system_settings', 'notification_settings', 'data_retention_policies',
@@ -301,6 +305,7 @@ export async function createMembershipRequest(ctx: AuthContext, input: Membershi
     inst.id,
   );
   await notifyReviewers(inst.id, request!.id, `${ctx.fullName} asked to join as a student`);
+  await track(ctx, 'college_join_requested', { with_id: !!input.documentFileId });
   return { id: request!.id, status: 'PENDING' as const, institutionName: inst.name };
 }
 
@@ -496,6 +501,8 @@ export async function decideMembershipRequest(ctx: AuthContext, requestId: strin
     ...meta,
   });
   await recordAudit(null, { action, entityType: 'membership_request', entityId: requestId }, outcome.fromInstitutionId);
+  if (outcome.approved) await clearCampusInterest(outcome.userId);
+  if (outcome.approved) await track({ userId: outcome.userId, institutionId: ctx.institutionId, role: 'STUDENT' }, 'college_verified');
 
   // The student hears about it in whichever workspace they now live in.
   await db.insert(t.notifications).values({

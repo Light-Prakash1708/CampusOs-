@@ -8,6 +8,7 @@ import { cn, pluralize } from '@/lib/utils';
 import { getAttendanceOverview, type SubjectAttendance } from '@/services/attendance';
 import { requireStudentContext } from '../_lib/auth';
 import { AskAiLink } from '../_components/bits';
+import { track } from '@/services/product-events';
 
 export const metadata = { title: 'Attendance Tracker' };
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const { view } = await searchParams;
   const tab = view === 'subjects' ? 'subjects' : 'overall';
   const data = await getAttendanceOverview(user);
+  await track(user, 'attendance_viewed');
   const { overall, policy, subjects } = data;
   const grievanceOn = isEnabled(user.featureFlags, 'grievance_enabled');
   const recorded = subjects.some((s) => s.held > 0);

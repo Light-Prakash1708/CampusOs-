@@ -5,6 +5,7 @@ import * as t from '@/lib/db/schema';
 import { AppError, ConflictError, ok, parseBody, withAuth } from '@/lib/api';
 import { getRequestMetadata } from '@/lib/auth/context';
 import { recordAudit } from '@/services/audit';
+import { track } from '@/services/product-events';
 import {
   assertOfferingBelongsToFaculty,
   recomputeAttendanceSummaries,
@@ -250,6 +251,7 @@ export const POST = withAuth('attendance:mark', async (request, { user }) => {
     ...meta,
   });
 
+  await track(user, 'attendance_marked');
   return ok({
     sessionId: result.sessionId,
     date: input.date,

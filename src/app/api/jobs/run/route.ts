@@ -10,6 +10,7 @@ import { planPendingNotifications, processDeliveryQueue } from '@/services/notif
 import { sweepRateLimits } from '@/services/rate-limit';
 import { sweepExpiredTokens } from '@/services/auth/tokens';
 import { expireStaleMembershipRequests } from '@/services/membership';
+import { purgeOldProductEvents } from '@/services/product-events';
 import { timingSafeEqual } from 'node:crypto';
 
 /**
@@ -127,6 +128,7 @@ export async function POST(request: Request) {
           rateLimitBuckets: await sweepRateLimits(),
           authTokens: await sweepExpiredTokens(),
           membershipRequestsExpired: await expireStaleMembershipRequests(),
+          productEventsPurged: await purgeOldProductEvents(),
         };
       }
     }

@@ -92,6 +92,13 @@
       "when": 1790435759832,
       "tag": "0012_membership_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790453787935,
+      "tag": "0013_product_analytics",
+      "breakpoints": true
     }
   ]
 }

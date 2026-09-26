@@ -6,6 +6,7 @@ import { AppError, ConflictError, ForbiddenError, NotFoundError } from '@/lib/ap
 import type { AuthContext } from '@/lib/auth/context';
 import { isEnabled } from '@/lib/features';
 import { recordAudit } from '@/services/audit';
+import { track } from '@/services/product-events';
 import { enforceRateLimit, keyFor } from '@/services/rate-limit';
 import { getFeedProvider, type OpportunityFeedProvider } from './providers';
 
@@ -238,6 +239,7 @@ export async function trackOpportunity(ctx: AuthContext, id: string, input: { st
         updatedAt: now,
       },
     });
+  if (input.status === 'SAVED') await track(ctx, 'opportunity_saved');
   return { status: input.status };
 }
 
@@ -369,6 +371,7 @@ export async function setCareerGoal(ctx: AuthContext, careerRoleId: string | nul
       .values({ institutionId: ctx.institutionId, studentId: ctx.studentProfileId!, careerRoleId: role.id, isPrimary: true })
       .onConflictDoUpdate({ target: [t.careerGoals.studentId, t.careerGoals.careerRoleId], set: { isPrimary: true } });
   });
+  await track(ctx, 'career_goal_set');
   return { careerRoleId: role.id };
 }
 

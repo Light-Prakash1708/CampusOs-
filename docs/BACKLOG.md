@@ -20,7 +20,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 |---|---|---|
 | 001 | IN PROGRESS | Verification round 1 done (strategy §10a). Remaining: AISHE college split, private share, Indian ERP per-student prices (need demo calls) |
 | 002 | DONE | Interview kit ready. The interviews themselves need the founder |
-| 003 | TODO | |
+| 003 | DONE | Operator metrics at /admin/metrics |
 | 004 | TODO | |
 | 005 | TODO | |
 | 006 | TODO | |
@@ -29,7 +29,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 009 | TODO | |
 | 010 | TODO | |
 | 011 | TODO | |
-| 012 | TODO | |
+| 012 | DONE | Built with 003; warm campuses on /admin/metrics |
 | 013 | TODO | |
 | 014 | TODO | |
 | 015 | TODO | |
@@ -575,3 +575,24 @@ These can be revisited only with pilot evidence:
   - The UGC 2023 timelines are now verified (15 working days / 15 days / 30 days).
 - **Tests:** n/a (docs).
 - **Deployment:** none.
+
+### 2026-09-27: CAMPUSOS-003 product analytics and CAMPUSOS-012 campus demand
+
+- **Database:** migration `0013_product_analytics`, additive. New tables `product_events`, `product_active_days` and `campus_interest`, all tenant-scoped and all classified KEEP for membership transfer.
+- **Services:**
+  - `product-events.ts`: allowlisted events, HMAC actor, never throws, 400-day purge in `sweep`;
+  - `product-metrics.ts`: operator-only aggregates;
+  - `campus-demand.ts`: aggregate-only warm campuses, minimum 5 per college.
+- **Instrumented:** sign-up, join request, verification, invite acceptance, notice view/ack/create, attendance view and marking, planner, grievances created/resolved, opportunity open/save, goals, career goal, AI queries, and daily activity in `PortalLayout`.
+- **API:**
+  - `POST /api/product-events` (three browser events only, rate-limited);
+  - `GET/POST /api/student/campus-interest`.
+- **UI:**
+  - `/admin/metrics` (operators only);
+  - operator links on the admin home;
+  - on **Join your college**, "College not listed?" with a copy-a-link share for classmates.
+- **Fix found on the way:** notice acknowledgement could double-count under concurrent clicks, and did not check the caller's tenant. It is now conditional and tenant-scoped, with a test.
+- **Tests:** `tests/product-analytics.test.ts` (12). Full suite: 296/296; typecheck and lint clean (no errors).
+- **Docs:** `docs/ANALYTICS.md`, `.env.example`.
+- **Known issues:** `profile_completed` is not emitted, because there is no profile-editing flow yet (Growth Profile is V1.5). `career_goal_set` is used instead.
+- **Deployment:** runs the migration automatically. Optionally set `ANALYTICS_HASH_KEY`.

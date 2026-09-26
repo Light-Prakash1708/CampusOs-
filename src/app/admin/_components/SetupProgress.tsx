@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Building2, CheckCircle2, Circle, ShieldCheck } from 'lucide-react';
+import { BarChart3, Building2, CheckCircle2, Circle, ShieldCheck } from 'lucide-react';
 import type { AuthContext } from '@/lib/auth/context';
 import { can } from '@/lib/auth/context';
 import { Card, CardBody, CardHeader, Progress } from '@/components/ui';
@@ -21,12 +21,20 @@ export async function SetupProgress({ user, pending }: { user: AuthContext; pend
   return (
     <div className="mb-6 space-y-3">
       {operator ? (
-        <Link
-          href="/admin/institutions"
-          className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] bg-surface px-4 py-2.5 text-[13.5px] font-medium text-default hover:border-[hsl(var(--border-strong))]"
-        >
-          <Building2 size={16} className="text-brand" aria-hidden /> Platform: create and manage institutions
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/institutions"
+            className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] bg-surface px-4 py-2.5 text-[13.5px] font-medium text-default hover:border-[hsl(var(--border-strong))]"
+          >
+            <Building2 size={16} className="text-brand" aria-hidden /> Platform: create and manage institutions
+          </Link>
+          <Link
+            href="/admin/metrics"
+            className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] bg-surface px-4 py-2.5 text-[13.5px] font-medium text-default hover:border-[hsl(var(--border-strong))]"
+          >
+            <BarChart3 size={16} className="text-brand" aria-hidden /> Platform: product metrics
+          </Link>
+        </div>
       ) : null}
 
       {progress && !progress.launched ? (

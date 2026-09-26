@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import type { AuthContext } from '@/lib/auth/context';
 import { recordAudit } from '@/services/audit';
+import { track } from '@/services/product-events';
 import { AppError, ForbiddenError, NotFoundError, requireFeatureEnabled } from '@/lib/api';
 import { permissionsForRoles } from '@/lib/auth/permissions';
 
@@ -161,6 +162,7 @@ export async function createGrievance(
     after: { caseNumber, category: category.name, anonymous: input.isAnonymous ?? false },
   });
 
+  await track(user, 'grievance_created', { anonymous: !!input.isAnonymous });
   return { id: grievanceId, caseNumber, resolutionDueAt };
 }
 
@@ -283,6 +285,9 @@ export async function transitionGrievance(
     after: { status: params.to },
     reason: params.note,
   });
+  if (params.to === 'RESOLVED') {
+    await track(user, 'grievance_resolved', { within_sla: !grievance.resolutionDueAt || now <= grievance.resolutionDueAt });
+  }
 }
 
 export async function assignGrievance(

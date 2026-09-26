@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import type { AuthContext } from '@/lib/auth/context';
 import { getAiProvider } from './providers';
+import { track } from '@/services/product-events';
 import { executeTool, toolsForUser } from './tools';
 import type { AiFeature, AiMessage, Citation, ToolResult } from './types';
 
@@ -216,6 +217,8 @@ export async function askAssistant(
   if (actionIds.length && generation) {
     await db.update(t.aiActions).set({ generationId: generation.id }).where(inArray(t.aiActions.id, actionIds));
   }
+
+  await track(user, 'ai_query', { provider: provider.name === 'anthropic' ? 'anthropic' : provider.name === 'openai' ? 'openai' : 'local' });
 
   // De-duplicate citations by label.
   const seen = new Set<string>();

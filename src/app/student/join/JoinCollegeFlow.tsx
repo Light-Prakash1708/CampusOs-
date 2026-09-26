@@ -161,6 +161,7 @@ export function JoinCollegeFlow({ storage }: { storage: boolean }) {
               ))
             )}
           </ul>
+          <NotOnCampusOs initialName={q.trim().length >= 3 ? q.trim() : ''} />
         </CardBody>
       </Card>
     );
@@ -319,5 +320,82 @@ export function RequestStatusPanel({
         </Button>
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * "My college isn't here yet." We only count how many students name each
+ * college; nobody is contacted on the student's behalf, and no contacts are
+ * read. Sharing CampusOS with classmates is a plain link the student copies.
+ */
+function NotOnCampusOs({ initialName }: { initialName: string }) {
+  const [open, setOpen] = React.useState(false);
+  const [name, setName] = React.useState('');
+  const [city, setCity] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+  const api = useApi<{ recorded: boolean }>();
+
+  React.useEffect(() => {
+    if (!open && initialName) setName(initialName);
+  }, [initialName, open]);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const result = await api.call('/api/student/campus-interest', { name, city: city || null });
+    if (result?.recorded) setSaved(true);
+  }
+
+  async function copyLink() {
+    const link = `${window.location.origin}/register`;
+    try {
+      await navigator.clipboard.writeText(`I use CampusOS to plan attendance and keep college notices in one place: ${link}`);
+      setCopied(true);
+      void fetch('/api/product-events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ event: 'invite_link_copied' }), keepalive: true }).catch(() => undefined);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <p className="text-[13px] text-muted">
+        College not listed?{' '}
+        <button type="button" className="font-semibold text-brand underline-offset-2 hover:underline" onClick={() => setOpen(true)}>
+          Tell us which college you attend
+        </button>
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-[hsl(var(--border))] p-4">
+      {saved ? (
+        <>
+          <p className="text-[13.5px] text-default">
+            Thanks. When enough students from your college use CampusOS, we let the college know that its students are asking for it. We never share who you are.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant="secondary" onClick={copyLink}>
+              {copied ? 'Link copied' : 'Copy a link for classmates'}
+            </Button>
+            <span className="text-[12px] text-subtle">You choose who to send it to. We never message anyone for you.</span>
+          </div>
+        </>
+      ) : (
+        <form onSubmit={save} className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end" noValidate>
+          <Field label="Your college" htmlFor="ci-name" error={api.fieldError('name')}>
+            <Input id="ci-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={160} required />
+          </Field>
+          <Field label="City" htmlFor="ci-city" hint="Optional">
+            <Input id="ci-city" value={city} onChange={(e) => setCity(e.target.value)} maxLength={80} />
+          </Field>
+          <Button type="submit" size="sm" variant="primary" loading={api.loading} disabled={name.trim().length < 3}>
+            Save
+          </Button>
+          <div className="sm:col-span-3"><ErrorBox error={api.error} /></div>
+        </form>
+      )}
+    </div>
   );
 }

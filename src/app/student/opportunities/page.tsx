@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TrackedLink } from '@/components/campus/TrackedLink';
 import { notFound } from 'next/navigation';
 import { Briefcase, CalendarClock, CheckCircle2, ExternalLink, MapPin, Search } from 'lucide-react';
 import { isEnabled } from '@/lib/features';
@@ -151,14 +152,15 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
                       ) : null}
                       <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
                         {o.applyUrl && !closed ? (
-                          <a
+                          <TrackedLink
+                            event="opportunity_opened"
                             href={o.applyUrl}
                             target="_blank"
                             rel="noreferrer noopener"
                             className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border-[1.5px] border-ink bg-brand px-3.5 text-[13px] font-extrabold text-white shadow-pop campus-press"
                           >
                             Apply on their site <ExternalLink size={13} aria-hidden />
-                          </a>
+                          </TrackedLink>
                         ) : null}
                         <TrackSelect opportunityId={o.id} status={o.track} title={o.title} />
                       </div>
