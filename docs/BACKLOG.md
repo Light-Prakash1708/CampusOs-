@@ -30,7 +30,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 010 | DONE | Receipts, CSV, reminders, faculty view |
 | 011 | TODO | |
 | 012 | DONE | Built with 003; warm campuses on /admin/metrics |
-| 013 | TODO | |
+| 013 | DONE | `get_at_risk_students` removed; student card + staff scoping |
 | 014 | TODO | |
 | 015 | TODO | |
 | 016 | TODO | |
@@ -655,3 +655,23 @@ These can be revisited only with pilot evidence:
 - **Tests:** `tests/verified-communication.test.ts` (4). Full suite 309/309.
 - **Deployment:** the scheduler already runs every tenant job. No new configuration.
 - **Known limits:** email and push delivery still need `EMAIL_PROVIDER` and `PUSH_PROVIDER` configured for pilots (an owner step under CAMPUSOS-004). WhatsApp is deferred (028).
+
+### 2026-09-27: CAMPUSOS-013 attention signals
+
+- **`services/attention-signals.ts`:** transparent rules. Each signal has what, why, source and action, and no score.
+  - **Student signals:**
+    - subjects below or on the edge of the minimum, reusing the attendance planner's numbers;
+    - assignments missing in the last 14 days;
+    - assignments due within 48 hours;
+    - notices waiting for acknowledgement.
+  - **Staff signals:**
+    - only for classes the caller teaches, or college-wide with `attendance:view_all`;
+    - attendance below the minimum, and 3 or more missing submissions in 14 days;
+    - listed by section and name, never ranked.
+- **AI:** `get_at_risk_students` is replaced by `get_attention_signals`. It gives students their own signals and staff their scoped signals. The offline assistant recognises "what needs my attention" and "who is falling behind", and the tool description forbids "at risk" and "likely to fail" language.
+- **UI:**
+  - a "Needs your attention" card on the student home (attendance and coursework), which records `attention_signal_viewed`;
+  - "Your Day" keeps deadlines and notices, and drops duplicate attendance items;
+  - faculty and admin copy changed from "at risk" to "below minimum" or "Needs attention", described as "a rule, not a prediction".
+- **Tests:** `tests/attention-signals.test.ts` (4) checks the explanation fields, no score or prediction language, scoping, cross-tenant denial, and the tool registry.
+- **Deployment:** none.

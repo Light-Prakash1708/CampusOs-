@@ -335,7 +335,7 @@ export default async function FacultyDashboard() {
           }
         />
         <Stat
-          label="Attendance risk"
+          label="Below attendance minimum"
           value={totalAtRisk}
           icon={AlertTriangle}
           tone={totalAtRisk > 0 ? 'danger' : 'success'}
@@ -429,11 +429,11 @@ export default async function FacultyDashboard() {
           </Section>
 
           <Section
-            title="Students at attendance risk"
+            title="Needs attention: attendance"
             description={
               totalAtRisk > atRisk.length
-                ? `Showing the ${atRisk.length} lowest of ${totalAtRisk}.`
-                : undefined
+                ? `Showing ${atRisk.length} of ${totalAtRisk} below the minimum, from your registers. A rule, not a prediction.`
+                : 'Students below the required minimum in your classes, from your registers. A rule, not a prediction.'
             }
           >
             <Card>

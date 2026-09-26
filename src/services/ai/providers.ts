@@ -138,7 +138,8 @@ class LocalProvider implements AiProvider {
       { match: /(conflict|clash|double.?book|overlap)/, tool: 'find_schedule_conflicts' },
       { match: /(workload|teaching hour|overload|contracted)/, tool: 'analyze_workload' },
       { match: /(grievance|complaint|\bcase\b|redressal|\bsla\b|escalat)/, tool: 'get_grievances' },
-      { match: /(attendance|\bpresent\b|\babsent\b|shortage|at risk)/, tool: 'get_attendance' },
+      { match: /(need.{0,10}attention|attention signal|what should i (do|focus)|who needs (help|attention)|falling behind|at risk)/, tool: 'get_attention_signals' },
+      { match: /(attendance|\bpresent\b|\babsent\b|shortage)/, tool: 'get_attendance' },
       { match: /(assignment|submission|\bdue\b|deadline|homework|grading)/, tool: 'get_assignments' },
       { match: /(skill|career|employab|\bgap\b|readiness)/, tool: 'get_skill_profile' },
       { match: /(resource|notes|material|slides|question bank)/, tool: 'search_resources' },
@@ -231,7 +232,8 @@ export function offlineProposal(raw: string, available: Set<string>): { tool: st
 function describeTool(name: string): string {
   const map: Record<string, string> = {
     get_schedule: 'Show your timetable for a day or the week',
-    get_attendance: 'Report your attendance, including subjects at risk',
+    get_attendance: 'Report your attendance, including subjects below the requirement',
+    get_attention_signals: 'Explain what needs attention and why (never a score)',
     get_assignments: 'List assignments and their deadlines',
     get_recent_changes: 'Explain what changed recently and why',
     find_schedule_conflicts: 'Scan the timetable for clashes',
@@ -475,12 +477,17 @@ function format(tool: string, r: any): string {
       ].join('\n');
     }
 
-    case 'get_at_risk_students': {
+    case 'get_attention_signals': {
+      if (r.audience === 'self') {
+        const signals: any[] = r.signals ?? [];
+        if (signals.length === 0) return 'Nothing needs your attention right now.';
+        return ['Things that need your attention:', ...signals.slice(0, 8).map((x) => `• ${x.what} — ${x.why}`)].join('\n');
+      }
       const students: any[] = r.students ?? [];
-      if (students.length === 0) return 'No students are below the attendance requirement.';
+      if (students.length === 0) return 'No attention signals in your classes right now.';
       return [
-        `${r.count} student record${n(r.count) === 1 ? '' : 's'} below the attendance requirement:`,
-        ...students.slice(0, 15).map((s) => `• ${s.name} (${s.rollNumber}, ${s.section}) — ${s.subject} at ${s.attendance}% (${s.attended}/${s.held})`),
+        `${r.count} student${n(r.count) === 1 ? '' : 's'} with attention signals (by section; rule-based, not predictions):`,
+        ...students.slice(0, 15).map((s) => `• ${s.name} (${s.rollNumber}${s.section ? `, ${s.section}` : ''}) — ${s.signals.map((x: any) => x.what).join('; ')}`),
       ].join('\n');
     }
 

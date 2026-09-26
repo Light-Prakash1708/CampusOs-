@@ -1,4 +1,5 @@
 import 'server-only';
+import { staffSignals, studentSignals } from '@/services/attention-signals';
 import { and, eq, desc, gte, inArray, isNull, sql, count, lt } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
@@ -703,60 +704,31 @@ const getRoomAvailability: RegisteredTool = {
   },
 };
 
-const getAtRiskStudents: RegisteredTool = {
-  name: 'get_at_risk_students',
+const getAttentionSignals: RegisteredTool = {
+  name: 'get_attention_signals',
   description:
-    'Return students below the attendance requirement, so staff can intervene. Faculty see only their own sections.',
-  requiredPermission: 'attendance:view_section',
-  // Faculty see their own classes; institution-wide lists need attendance:view_all.
-  available: (u) => !!u.facultyProfileId || u.permissions.has('attendance:view_all'),
+    'Explain what needs attention, as transparent rules with their reasons (attendance below the requirement, missing or due assignments, notices awaiting acknowledgement). Students get their own signals. Staff get signals only for classes they teach (college-wide with attendance:view_all). Never a score, ranking or prediction — do not describe students as "at risk" or likely to fail.',
+  // Students see their own; staff need section attendance access.
+  available: (u) => !!u.studentProfileId || (u.permissions.has('attendance:view_section') && (!!u.facultyProfileId || u.permissions.has('attendance:view_all'))),
   inputSchema: { type: 'object', properties: { limit: { type: 'number' } } },
   handler: async (input, { user }) => {
     const limit = Math.min(50, Math.max(1, Number(input.limit ?? 20)));
-
-    const rows = await db
-      .select({
-        rollNumber: t.studentProfiles.rollNumber,
-        firstName: t.users.firstName,
-        lastName: t.users.lastName,
-        sectionCode: t.sections.code,
-        subjectCode: t.subjects.code,
-        percentageBp: t.attendanceSummaries.percentageBp,
-        attended: t.attendanceSummaries.attendedSessions,
-        held: t.attendanceSummaries.heldSessions,
-      })
-      .from(t.attendanceSummaries)
-      .innerJoin(t.studentProfiles, eq(t.studentProfiles.id, t.attendanceSummaries.studentId))
-      .innerJoin(t.users, eq(t.users.id, t.studentProfiles.userId))
-      .innerJoin(t.courseOfferings, eq(t.courseOfferings.id, t.attendanceSummaries.offeringId))
-      .innerJoin(t.subjects, eq(t.subjects.id, t.courseOfferings.subjectId))
-      .innerJoin(t.sections, eq(t.sections.id, t.courseOfferings.sectionId))
-      .where(
-        and(
-          eq(t.attendanceSummaries.institutionId, user.institutionId),
-          eq(t.attendanceSummaries.isBelowThreshold, true),
-          user.facultyProfileId && !user.permissions.has('attendance:view_all')
-            ? eq(t.courseOfferings.facultyId, user.facultyProfileId)
-            : sql`true`,
-        ),
-      )
-      .orderBy(t.attendanceSummaries.percentageBp)
-      .limit(limit);
-
+    if (user.studentProfileId) {
+      const signals = await studentSignals(user);
+      return {
+        content: { audience: 'self', count: signals.length, signals: signals.slice(0, limit) },
+        citations: [{ type: 'attendance', label: 'Your attendance and coursework', href: '/student' }],
+      };
+    }
+    const rows = await staffSignals(user, { limit });
     return {
       content: {
+        audience: 'staff',
         count: rows.length,
-        students: rows.map((r) => ({
-          rollNumber: r.rollNumber,
-          name: `${r.firstName} ${r.lastName}`,
-          section: r.sectionCode,
-          subject: r.subjectCode,
-          attendance: r.percentageBp / 100,
-          attended: r.attended,
-          held: r.held,
-        })),
+        note: 'Listed by section and name. These are rule-based observations, not predictions.',
+        students: rows.map((r) => ({ name: r.student.name, rollNumber: r.student.rollNumber, section: r.student.section, signals: r.signals.map((x) => ({ kind: x.kind, what: x.what, why: x.why })) })),
       },
-      citations: [{ type: 'attendance', label: 'Attendance analytics', href: '/admin/analytics' }],
+      citations: [{ type: 'attendance', label: 'Attendance registers and submissions', href: '/faculty/classes' }],
     };
   },
 };
@@ -818,7 +790,7 @@ const ALL_TOOLS: RegisteredTool[] = [
   searchResources,
   getAnnouncements,
   getRoomAvailability,
-  getAtRiskStudents,
+  getAttentionSignals,
   proposeTask,
   proposeGoalCheckin,
   proposeLibraryRenewal,

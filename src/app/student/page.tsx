@@ -61,6 +61,8 @@ import { loansDueSoon } from '@/services/library';
 import { applicationDeadlinesSoon } from '@/services/opportunities';
 import { buildToday, type TodayItem } from '@/lib/today';
 import { JoinCollegeBanner } from './_components/JoinCollegeBanner';
+import { AttentionCard } from '@/components/campus/AttentionCard';
+import { studentSignals } from '@/services/attention-signals';
 import { categoryTone, EventCoverArt, formatEventDates } from '@/components/campus/events';
 import { findNextClass, occurrencesForDate, type ClassOccurrence } from './_lib/schedule';
 import { addIsoDays, DAY_LABEL, isoToDate, timeToMinutes, zonedNow } from './_lib/time';
@@ -110,6 +112,10 @@ export default async function StudentHome() {
     user.permissions.has('library:borrow') ? loansDueSoon(user) : Promise.resolve([]),
     user.permissions.has('opportunity:view') ? applicationDeadlinesSoon(user) : Promise.resolve([]),
   ]);
+
+  // Transparent attention signals (attendance + coursework) get their own card;
+  // deadlines and notices stay in "Your Day".
+  const attention = (await studentSignals(user)).filter((x) => x.kind === 'ATTENDANCE' || x.kind === 'SUBMISSIONS');
 
   const holidayToday = holidays.find((h) => h.date === now.today) ?? null;
   const todays = holidayToday ? [] : occurrencesForDate(now.today, classes, exceptions);
@@ -181,7 +187,7 @@ export default async function StudentHome() {
     classes: todays.map((c) => ({ key: c.key, subject: c.subjectName, room: c.roomCode, start: c.startTime, end: c.endTime, status: c.status })),
     nextClass: next && !next.isToday ? { subject: next.occurrence.subjectName, room: next.occurrence.roomCode, start: next.occurrence.startTime, dayLabel: DAY_LABEL[next.occurrence.day] } : null,
     assignments: assignments.map((a) => ({ id: a.id, title: a.title, subject: a.subjectName, dueAt: a.dueAt, submitted: a.bucket === 'SUBMITTED' || a.bucket === 'EVALUATED' })),
-    attentionSubjects: (attendanceOverview?.advice ?? [])
+    attentionSubjects: attention.some((x) => x.kind === 'ATTENDANCE') ? [] : (attendanceOverview?.advice ?? [])
       .filter((a) => a.offeringId && (a.severity === 'critical' || a.severity === 'warning'))
       .map((a) => ({ offeringId: a.offeringId!, title: a.title, body: a.body, critical: a.severity === 'critical' })),
     events: [...new Map([...myEvents, ...savedEvents].map((e) => [e.id, e])).values()].map((e) => ({
@@ -224,6 +230,8 @@ export default async function StudentHome() {
       </header>
 
       <JoinCollegeBanner user={user} />
+
+      <AttentionCard signals={attention} />
 
       <YourDay items={dayItems} />
 

@@ -171,7 +171,7 @@ export default async function AnalyticsPage() {
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-[13px] font-medium text-default">{s.subject}</span>
                   <span className="tabular text-[12.5px] text-muted">
-                    {s.percent}% · {pluralize(s.belowCount, 'student')} at risk
+                    {s.percent}% · {pluralize(s.belowCount, 'student')} below minimum
                   </span>
                 </div>
                 <Progress
