@@ -66,6 +66,8 @@ services:
         value: "false"
       - key: SELF_REGISTRATION_ENABLED
         value: "true"        # students may sign up without a college (private workspace)
+      - key: PLATFORM_OPERATOR_EMAILS
+        sync: false          # comma-separated; these SUPER_ADMINs can create institutions
       - key: TRUST_PROXY
         value: "true"        # Render terminates TLS in front of Node
       - key: TRUSTED_PROXY_HOPS

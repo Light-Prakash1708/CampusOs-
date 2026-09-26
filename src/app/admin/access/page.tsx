@@ -7,6 +7,7 @@ import { listPendingRegistrations } from '@/services/auth/accounts';
 import { listDeletionRequests } from '@/services/privacy';
 import { formatDateTime } from '@/lib/utils';
 import { InviteForm, RegistrationDecision, DeletionDecision } from './AccessForms';
+import { InviteActions } from '../_components/PeopleActions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Access & Privacy · CampusOS' };
@@ -54,7 +55,7 @@ export default async function AccessPage() {
                   <li key={u.id} className="flex items-center justify-between gap-3 px-5 py-2.5 text-[13px]">
                     <span className="min-w-0 truncate text-default">{u.email}</span>
                     <span className="shrink-0 text-subtle">{u.role.toLowerCase()} · {formatDateTime(u.createdAt)}</span>
-                    <RegistrationDecision userId={u.id} mode="resend" />
+                    <InviteActions userId={u.id} email={u.email} />
                   </li>
                 ))}
               </ul>

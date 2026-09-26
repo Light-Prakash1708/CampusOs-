@@ -35,13 +35,14 @@ export function FeatureToggle({ flag, label, enabled }: { flag: string; label: s
 export function RegistrationPolicyForm({
   initial,
 }: {
-  initial: { mode: 'DISABLED' | 'EMAIL_DOMAIN' | 'ADMIN_APPROVAL'; allowedDomains: string[]; isListed: boolean };
+  initial: { mode: 'DISABLED' | 'EMAIL_DOMAIN' | 'ADMIN_APPROVAL'; allowedDomains: string[]; isListed: boolean; idDocument?: 'REQUIRED' | 'OPTIONAL' };
 }) {
   const router = useRouter();
   const api = useApi();
   const [mode, setMode] = React.useState(initial.mode);
   const [domains, setDomains] = React.useState(initial.allowedDomains.join(', '));
   const [listed, setListed] = React.useState(initial.isListed);
+  const [idDocument, setIdDocument] = React.useState(initial.idDocument ?? 'OPTIONAL');
   const [saved, setSaved] = React.useState(false);
 
   async function save(e: React.FormEvent) {
@@ -53,6 +54,7 @@ export function RegistrationPolicyForm({
         mode,
         allowedDomains: domains.split(/[,\s]+/).map((d) => d.trim()).filter(Boolean),
         isListed: listed,
+        idDocument,
       },
       'PATCH',
     );
@@ -73,9 +75,17 @@ export function RegistrationPolicyForm({
             <option value="ADMIN_APPROVAL">Anyone, after an administrator approves</option>
           </Select>
         </Field>
-        <Field label="College email domains" htmlFor="reg-domains" hint="e.g. kbi.edu.in — required for email-domain registration" error={api.fieldError('allowedDomains')}>
-          <Input id="reg-domains" value={domains} onChange={(e) => setDomains(e.target.value)} disabled={mode !== 'EMAIL_DOMAIN'} />
+        <Field label="College email domains" htmlFor="reg-domains" hint="e.g. kbi.edu.in — required for email-domain registration; otherwise a verification signal" error={api.fieldError('allowedDomains')}>
+          <Input id="reg-domains" value={domains} onChange={(e) => setDomains(e.target.value)} />
         </Field>
+        {mode !== 'DISABLED' ? (
+          <Field label="College ID with join requests" htmlFor="reg-id" hint="Existing CampusOS students asking to join always need your approval">
+            <Select id="reg-id" value={idDocument} onChange={(e) => setIdDocument(e.target.value as typeof idDocument)}>
+              <option value="OPTIONAL">Optional</option>
+              <option value="REQUIRED">Required</option>
+            </Select>
+          </Field>
+        ) : null}
       </div>
       <label className="flex items-center gap-2 text-[13px] text-default">
         <input type="checkbox" checked={listed} onChange={(e) => setListed(e.target.checked)} />

@@ -11,6 +11,7 @@ const Body = z
       .max(10)
       .optional(),
     isListed: z.boolean().optional(),
+    idDocument: z.enum(['REQUIRED', 'OPTIONAL']).optional(),
   })
   .refine((v) => v.mode !== 'EMAIL_DOMAIN' || (v.allowedDomains?.length ?? 0) > 0, {
     message: 'Add at least one email domain for domain-verified registration.',

@@ -753,7 +753,10 @@ export interface InviteInput {
   meta: RequestMeta;
 }
 
-export async function inviteUser(ctx: AuthContext, input: InviteInput): Promise<{ userId: string; emailSent: boolean }> {
+export async function inviteUser(
+  ctx: AuthContext,
+  input: InviteInput,
+): Promise<{ userId: string; emailSent: boolean; inviteUrl: string | null }> {
   if (!ctx.permissions.has('user:invite')) throw new ForbiddenError();
   if (!ORDINARY_INVITE_ROLES.includes(input.role) && !ctx.permissions.has('role:manage')) {
     throw new ForbiddenError(`Only a super administrator can invite someone as ${humanize(input.role)}.`);
@@ -787,15 +790,20 @@ export async function inviteUser(ctx: AuthContext, input: InviteInput): Promise<
   }
 
   const [existing] = await db
-    .select({ id: t.users.id, status: t.users.status, firstName: t.users.firstName })
+    .select({ id: t.users.id, status: t.users.status, firstName: t.users.firstName, role: t.users.role, passwordHash: t.users.passwordHash })
     .from(t.users)
     .where(and(eq(t.users.institutionId, ctx.institutionId), eq(t.users.email, email)))
     .limit(1);
 
   let userId: string;
   if (existing) {
-    if (existing.status !== 'INVITED') {
+    // A revoked invitation (archived, never activated) can be issued again for the same role.
+    const revokedInvite = existing.status === 'ARCHIVED' && !existing.passwordHash && existing.role === input.role;
+    if (existing.status !== 'INVITED' && !revokedInvite) {
       throw new ConflictError('An account with that email already exists at this institution.');
+    }
+    if (revokedInvite) {
+      await db.update(t.users).set({ status: 'INVITED', deletedAt: null, updatedAt: new Date() }).where(eq(t.users.id, existing.id));
     }
     userId = existing.id; // re-send
   } else {
@@ -839,6 +847,7 @@ export async function inviteUser(ctx: AuthContext, input: InviteInput): Promise<
   }
 
   const { raw } = await issueToken({ institutionId: ctx.institutionId, userId, purpose: 'INVITE', sentTo: email, createdById: ctx.userId });
+  const inviteUrl = appUrl(`/invite?token=${raw}`);
   const sent = await sendTransactionalEmail({
     institutionId: ctx.institutionId,
     userId,
@@ -848,7 +857,7 @@ export async function inviteUser(ctx: AuthContext, input: InviteInput): Promise<
       institutionName: ctx.institutionName,
       inviterName: ctx.fullName,
       roleLabel: humanize(input.role).toLowerCase(),
-      url: appUrl(`/invite?token=${raw}`),
+      url: inviteUrl,
       expiresDays: TOKEN_TTL_MINUTES.INVITE / 60 / 24,
     }),
   });
@@ -859,7 +868,66 @@ export async function inviteUser(ctx: AuthContext, input: InviteInput): Promise<
     after: { email, role: input.role, resent: !!existing, emailSent: sent.sent },
     ...input.meta,
   });
-  return { userId, emailSent: sent.sent };
+  // Without a working email provider the inviting administrator gets the
+  // one-time link to pass on privately. It is never logged or stored in clear.
+  return { userId, emailSent: sent.sent, inviteUrl: sent.sent ? null : inviteUrl };
+}
+
+/**
+ * Withdraws an invitation that has not been accepted: every open link stops
+ * working and the placeholder account is archived (not deleted — the audit
+ * trail keeps pointing at it). An accepted account is never touched here.
+ */
+export async function revokeInvite(ctx: AuthContext, userId: string, meta: RequestMeta) {
+  if (!ctx.permissions.has('user:invite')) throw new ForbiddenError();
+  const revoked = await db.transaction(async (tx) => {
+    const [u] = await tx
+      .update(t.users)
+      .set({ status: 'ARCHIVED', deletedAt: new Date(), sessionEpoch: sql`${t.users.sessionEpoch} + 1` })
+      .where(and(eq(t.users.id, userId), eq(t.users.institutionId, ctx.institutionId), eq(t.users.status, 'INVITED'), isNull(t.users.deletedAt)))
+      .returning({ id: t.users.id, email: t.users.email, role: t.users.role });
+    if (!u) return null;
+    await tx
+      .update(t.authTokens)
+      .set({ consumedAt: new Date() })
+      .where(and(eq(t.authTokens.userId, u.id), eq(t.authTokens.purpose, 'INVITE'), isNull(t.authTokens.consumedAt)));
+    return u;
+  });
+  if (!revoked) throw new NotFoundError('Invitation');
+  await recordAudit(ctx, { action: 'INVITE_REVOKED', entityType: 'user', entityId: revoked.id, after: { email: revoked.email, role: revoked.role }, ...meta });
+}
+
+/**
+ * Suspends or restores someone's access. Suspension bumps the session epoch,
+ * so every open session ends on its next request, and sign-in refuses the
+ * account. Nobody can suspend themselves or a super administrator here.
+ */
+export async function setUserAccess(ctx: AuthContext, userId: string, action: 'SUSPEND' | 'REACTIVATE', meta: RequestMeta) {
+  if (!ctx.permissions.has('user:deactivate')) throw new ForbiddenError();
+  if (userId === ctx.userId) throw new AppError('You can’t change your own access.', 422, 'SELF_ACTION');
+  const [target] = await db
+    .select({ id: t.users.id, role: t.users.role, status: t.users.status })
+    .from(t.users)
+    .where(and(eq(t.users.id, userId), eq(t.users.institutionId, ctx.institutionId), isNull(t.users.deletedAt)))
+    .limit(1);
+  if (!target) throw new NotFoundError('User');
+  if (target.role === 'SUPER_ADMIN') throw new ForbiddenError('A super administrator’s access can’t be changed here.');
+  const from = action === 'SUSPEND' ? 'ACTIVE' : 'SUSPENDED';
+  const to = action === 'SUSPEND' ? 'SUSPENDED' : 'ACTIVE';
+  const [changed] = await db
+    .update(t.users)
+    .set({ status: to, sessionEpoch: sql`${t.users.sessionEpoch} + 1`, updatedAt: new Date() })
+    .where(and(eq(t.users.id, userId), eq(t.users.institutionId, ctx.institutionId), eq(t.users.status, from)))
+    .returning({ id: t.users.id });
+  if (!changed) throw new ConflictError(action === 'SUSPEND' ? 'This account is not active.' : 'This account is not suspended.');
+  await recordAudit(ctx, {
+    action: action === 'SUSPEND' ? 'USER_DEACTIVATED' : 'USER_REACTIVATED',
+    entityType: 'user',
+    entityId: userId,
+    before: { status: from },
+    after: { status: to },
+    ...meta,
+  });
 }
 
 /** Re-sends an invitation to an existing INVITED account (e.g. one created by CSV import). */

@@ -37,6 +37,11 @@ const EnvSchema = z
      * Off by default; college-controlled onboarding is unaffected either way.
      */
     SELF_REGISTRATION_ENABLED: bool,
+    /**
+     * Comma-separated emails of CampusOS platform operators. An operator must
+     * also be an active SUPER_ADMIN; they can create institutions.
+     */
+    PLATFORM_OPERATOR_EMAILS: z.string().optional(),
     CRON_SECRET: z.string().min(16).optional(),
 
     AI_PROVIDER: z.enum(['local', 'anthropic']).default('local'),

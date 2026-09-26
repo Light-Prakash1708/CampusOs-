@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Field, Input, Select } from '@/components/ui';
 import { ErrorBox, useApi } from '@/components/auth/useApi';
+import { InviteLinkNotice } from '../_components/PeopleActions';
 
 const ORDINARY = ['STUDENT', 'FACULTY', 'CLUB_ADMIN', 'EVENT_ORGANIZER', 'CAMPUS_REP'];
 const STAFF = ['ADMIN', 'HOD', 'DEPARTMENT_ADMIN', 'EXAM_CELL', 'COUNSELLOR', 'IT_SUPPORT', 'FINANCE', 'HR', 'LIBRARY', 'MANAGEMENT'];
@@ -21,11 +22,12 @@ export function InviteForm({
   sections: { id: string; name: string; programId: string; year: number }[];
 }) {
   const router = useRouter();
-  const api = useApi<{ userId: string; emailSent: boolean }>();
+  const api = useApi<{ userId: string; emailSent: boolean; inviteUrl: string | null }>();
   const [f, setF] = React.useState({
     email: '', firstName: '', lastName: '', role: 'STUDENT', departmentId: '', programId: '', sectionId: '', year: '1', rollNumber: '', employeeCode: '',
   });
   const [done, setDone] = React.useState<string | null>(null);
+  const [link, setLink] = React.useState<{ url: string; email: string } | null>(null);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
 
   const deptPrograms = programs.filter((p) => !f.departmentId || p.departmentId === f.departmentId);
@@ -43,7 +45,8 @@ export function InviteForm({
       employeeCode: f.role === 'FACULTY' ? f.employeeCode || null : null,
     });
     if (data) {
-      setDone(data.emailSent ? `Invitation sent to ${f.email}.` : `Account created for ${f.email}, but the email could not be sent — check the email provider settings.`);
+      setDone(data.emailSent ? `Invitation sent to ${f.email}.` : `Account created for ${f.email}.`);
+      setLink(data.inviteUrl ? { url: data.inviteUrl, email: f.email } : null);
       setF({ ...f, email: '', firstName: '', lastName: '', rollNumber: '', employeeCode: '' });
       router.refresh();
     }
@@ -53,6 +56,7 @@ export function InviteForm({
     <form onSubmit={submit} className="space-y-4" noValidate>
       <ErrorBox error={api.error} />
       {done ? <p className="text-[13px] text-success" role="status">{done}</p> : null}
+      {link ? <InviteLinkNotice url={link.url} email={link.email} /> : null}
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Email" htmlFor="inv-email" required error={api.fieldError('email')}><Input id="inv-email" type="email" value={f.email} onChange={set('email')} /></Field>
         <Field label="First name" htmlFor="inv-first" required><Input id="inv-first" value={f.firstName} onChange={set('firstName')} /></Field>

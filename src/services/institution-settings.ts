@@ -47,7 +47,7 @@ export async function updateFeatureFlags(
 
 export async function updateRegistrationPolicy(
   ctx: AuthContext,
-  policy: { mode: 'DISABLED' | 'EMAIL_DOMAIN' | 'ADMIN_APPROVAL'; allowedDomains?: string[]; isListed?: boolean },
+  policy: { mode: 'DISABLED' | 'EMAIL_DOMAIN' | 'ADMIN_APPROVAL'; allowedDomains?: string[]; isListed?: boolean; idDocument?: 'REQUIRED' | 'OPTIONAL' },
   meta: { ipAddress: string | null; userAgent: string | null },
 ) {
   if (!ctx.permissions.has('institution:manage')) throw new ForbiddenError();
@@ -59,6 +59,7 @@ export async function updateRegistrationPolicy(
   const next = {
     mode: policy.mode,
     allowedDomains: (policy.allowedDomains ?? []).map((d) => d.trim().toLowerCase().replace(/^@/, '')).filter(Boolean),
+    idDocument: policy.idDocument ?? inst.policy.idDocument ?? 'OPTIONAL',
   };
   await db
     .update(t.institutions)

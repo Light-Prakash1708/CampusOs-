@@ -30,6 +30,9 @@ export const institutions = pgTable(
     slug: text('slug').notNull(),
     name: text('name').notNull(),
     shortName: text('short_name'),
+    /** University / College / School / Institute (free text from a short list; see services/institutions.ts). */
+    institutionType: text('institution_type'),
+    website: text('website'),
     /** White-label branding — never hard-code CampusOS branding in components. */
     logoUrl: text('logo_url'),
     primaryColor: text('primary_color').default('#4F46E5'),
@@ -55,9 +58,16 @@ export const institutions = pgTable(
      *   mode DISABLED        — accounts only via invite/import (default)
      *   mode EMAIL_DOMAIN    — open to verified addresses on `allowedDomains`
      *   mode ADMIN_APPROVAL  — anyone may apply; an administrator activates
+     * Existing CampusOS students may request to join (services/membership.ts)
+     * whenever mode is not DISABLED; an administrator always reviews those.
      */
     registrationPolicy: jsonb('registration_policy')
-      .$type<{ mode: 'DISABLED' | 'EMAIL_DOMAIN' | 'ADMIN_APPROVAL'; allowedDomains?: string[] }>()
+      .$type<{
+        mode: 'DISABLED' | 'EMAIL_DOMAIN' | 'ADMIN_APPROVAL';
+        allowedDomains?: string[];
+        /** Join requests from existing CampusOS students: must a college ID be attached? (default OPTIONAL) */
+        idDocument?: 'REQUIRED' | 'OPTIONAL';
+      }>()
       .notNull()
       .default({ mode: 'DISABLED' }),
     /**

@@ -15,6 +15,7 @@ import {
   getClassesInProgress, getCurrentTerm, getInstitutionCounts, getOutstandingAcknowledgements,
   getPendingApprovals, getPublishedVersion, getRecentChanges,
 } from './_lib/admin';
+import { SetupProgress } from './_components/SetupProgress';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Dashboard · CampusOS' };
@@ -136,6 +137,8 @@ export default async function AdminDashboard() {
           </>
         }
       />
+
+      <SetupProgress user={user} />
 
       {/* ---------------- What needs attention ---------------- */}
       <Section title="Needs your attention">

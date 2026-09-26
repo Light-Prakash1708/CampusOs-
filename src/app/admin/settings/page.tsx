@@ -122,6 +122,7 @@ export default async function SettingsPage() {
                   mode: institution?.registrationPolicy.mode ?? 'DISABLED',
                   allowedDomains: institution?.registrationPolicy.allowedDomains ?? [],
                   isListed: institution?.isListed ?? false,
+                  idDocument: institution?.registrationPolicy.idDocument ?? 'OPTIONAL',
                 }}
               />
             ) : (
