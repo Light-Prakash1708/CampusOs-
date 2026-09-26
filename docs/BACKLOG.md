@@ -31,7 +31,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 011 | DONE | Committee, statutory dates, Ombudsperson appeal |
 | 012 | DONE | Built with 003; warm campuses on /admin/metrics |
 | 013 | DONE | `get_at_risk_students` removed; student card + staff scoping |
-| 014 | TODO | |
+| 014 | DONE | ZIP pack; reconciled with receipts and Campus Insights |
 | 015 | TODO | |
 | 016 | TODO | |
 | 017 | TODO | |
@@ -39,7 +39,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 019 | DONE | `ai_external_processing_enabled`, off by default |
 | 020 | TODO | |
 | 021 | TODO | |
-| 022 | TODO | |
+| 022 | DONE | Productivity score and "time saved" removed |
 | 030 | TODO | |
 | 023–029 | DEFERRED | V1.5, only after pilot evidence |
 | 031–039 | DEFERRED | V2/V3 |
@@ -703,3 +703,35 @@ These can be revisited only with pilot evidence:
 - **Known limits:**
   - "Working days" excludes Sundays and the college's holidays only. Colleges on a five-day week will see a slightly later date.
   - The Ombudsperson portal is the admin portal (invite them as Management).
+
+### 2026-09-27: CAMPUSOS-014 evidence pack and CAMPUSOS-022 metric cleanup
+
+- **`services/campus-evidence.ts`:** the canonical institutional numbers.
+  - Communication: counted from recipient rows, pooled rates.
+  - Grievances: received and resolved, median time, within the committee's 15 working days, SLA misses, appeals and Ombudsperson decisions within 30 days, per-category counts.
+  - Attendance by programme and section, as of the export.
+  - Participation: events, attendance, opportunities, career goals.
+  - The committee checklist.
+- **The export:** `GET /api/reports/evidence?from&to[&individual=1]` returns a ZIP.
+  - Contents: `summary.html` (printable, which gives the PDF) plus CSVs.
+  - Aggregates by default. Individual rows need `data:export`.
+  - Audited as `EVIDENCE_PACK_EXPORTED`, tracked as `evidence_pack_generated`.
+  - A new form on **Evidence & Reports** requests it.
+- **Reconciliation:**
+  - `computeCommunicationHealth` now uses the same canonical summary, as pooled rates. It used to average per-notice rates, which disagreed with the receipts.
+  - Tests assert that the pack equals the receipts and Campus Insights, and that grievance counts equal the redressal dashboard.
+- **022:**
+  - The composite "Campus productivity" score is removed from Campus Insights.
+  - "Estimated time saved" is replaced by factual counts, "Work handled in CampusOS", on Insights and on the admin home.
+  - Labels renamed: "Average read rate" → "Opened"; "Average acknowledgement" → "Acknowledgement rate".
+- **Security fix:** CSV cells in the older `/api/reports/*` exports are now formula-injection safe. Plain numbers are untouched.
+- **Bug found and fixed:** drizzle renders columns inside `sql` select fields without a table qualifier. The attention-signal "submitted?" subquery therefore compared against the wrong table, so every assignment looked missing. It is fixed and has a regression test. The communication summary was rewritten as explicit SQL for the same reason.
+- **Dependency:** `fflate` (ZIP, no transitive dependencies).
+- **Tests:**
+  - `tests/evidence-pack.test.ts` (5);
+  - `attention-signals` (+1);
+  - full suite 323/323; typecheck clean; lint has 0 errors.
+- **Known limits:**
+  - "Working days" uses Sundays plus the college's holidays.
+  - Attendance is a current snapshot, not period-bounded.
+  - NAAC criterion mapping is intentionally not claimed.

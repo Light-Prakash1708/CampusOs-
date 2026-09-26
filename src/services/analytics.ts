@@ -219,58 +219,36 @@ export interface CommunicationHealth {
   worstPerforming: { reference: string; title: string; readRate: number; pending: number }[];
 }
 
+/**
+ * Last 30 days of notices. Uses the canonical definitions in
+ * services/campus-evidence.ts (pooled rates counted from recipient rows), so
+ * this card, the notice receipts and the evidence pack always agree.
+ * `averageReadRate` / `averageAcknowledgementRate` keep their names for
+ * compatibility but are pooled rates: opened ÷ recipients, acknowledged ÷
+ * recipients of notices that asked for it.
+ */
 export async function computeCommunicationHealth(
   institutionId: string,
 ): Promise<CommunicationHealth> {
-  const since = new Date(Date.now() - 30 * 86_400_000);
-
-  const rows = await db
-    .select({
-      reference: t.announcements.reference,
-      title: t.announcements.title,
-      recipientCount: t.announcements.recipientCount,
-      readCount: t.announcements.readCount,
-      acknowledgedCount: t.announcements.acknowledgedCount,
-      requiresAck: t.announcements.requiresAcknowledgement,
-    })
-    .from(t.announcements)
-    .where(
-      and(
-        eq(t.announcements.institutionId, institutionId),
-        eq(t.announcements.status, 'PUBLISHED'),
-        gte(t.announcements.publishedAt, since),
-      ),
-    );
-
-  const withRecipients = rows.filter((r) => r.recipientCount > 0);
-  const readRates = withRecipients.map((r) => (r.readCount / r.recipientCount) * 100);
-  const ackNotices = withRecipients.filter((r) => r.requiresAck);
-  const ackRates = ackNotices.map((r) => (r.acknowledgedCount / r.recipientCount) * 100);
-
-  const outstanding = ackNotices.reduce(
-    (n, r) => n + (r.recipientCount - r.acknowledgedCount),
-    0,
-  );
-
-  const worst = withRecipients
-    .map((r) => ({
-      reference: r.reference,
-      title: r.title,
-      readRate: Math.round((r.readCount / r.recipientCount) * 1000) / 10,
-      pending: r.recipientCount - (r.requiresAck ? r.acknowledgedCount : r.readCount),
+  const { communicationSummary } = await import('@/services/campus-evidence');
+  const range = { from: new Date(Date.now() - 30 * 86_400_000), to: new Date(Date.now() + 60_000) };
+  const c = await communicationSummary(institutionId, range);
+  const worst = c.notices
+    .filter((n) => n.recipients > 0)
+    .map((n) => ({
+      reference: n.reference,
+      title: n.title,
+      readRate: Math.round((n.read / n.recipients) * 1000) / 10,
+      pending: n.recipients - (n.requiresAck ? n.acknowledged : n.read),
     }))
     .sort((a, b) => a.readRate - b.readRate)
     .slice(0, 5);
-
-  const avg = (xs: number[]) =>
-    xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 10) / 10 : 0;
-
   return {
-    publishedLast30Days: rows.length,
-    averageReadRate: avg(readRates),
-    averageAcknowledgementRate: avg(ackRates),
-    outstandingAcknowledgements: outstanding,
-    noticesRequiringAck: ackNotices.length,
+    publishedLast30Days: c.published,
+    averageReadRate: c.readRate ?? 0,
+    averageAcknowledgementRate: c.ackRate ?? 0,
+    outstandingAcknowledgements: c.outstanding,
+    noticesRequiringAck: c.requiringAck,
     worstPerforming: worst,
   };
 }

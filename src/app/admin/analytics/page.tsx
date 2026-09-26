@@ -1,12 +1,12 @@
-import { BarChart3, DoorOpen, Gauge, Megaphone, TrendingUp, Users } from 'lucide-react';
+import { BarChart3, DoorOpen, Megaphone, TrendingUp, Users } from 'lucide-react';
 import { requireAnyPermission } from '@/lib/auth/context';
 import {
   Alert, Badge, Card, CardBody, CardHeader, PageHeader, Progress, Section, Stat, Table, Td, Th,
 } from '@/components/ui';
-import { humanize, minutesToHuman, num, pluralize } from '@/lib/utils';
+import { humanize, num, pluralize } from '@/lib/utils';
 import {
   computeAttendanceHealth, computeCommunicationHealth, computeGrievanceHealth,
-  computeProductivityScore, computeRoomUtilization, computeTimeSaved, computeWorkloadBalance,
+  computeRoomUtilization, computeTimeSaved, computeWorkloadBalance,
 } from '@/services/analytics';
 
 export const dynamic = 'force-dynamic';
@@ -25,9 +25,8 @@ export default async function AnalyticsPage() {
     'analytics:view_department',
   ]);
 
-  const [productivity, rooms, workload, attendance, comms, grievance, timeSaved] =
+  const [rooms, workload, attendance, comms, grievance, timeSaved] =
     await Promise.all([
-      computeProductivityScore(user.institutionId),
       computeRoomUtilization(user.institutionId),
       computeWorkloadBalance(user.institutionId),
       computeAttendanceHealth(user.institutionId),
@@ -42,43 +41,6 @@ export default async function AnalyticsPage() {
         title="Campus Insights"
         description="Computed live from institutional records. Nothing here is a stored estimate unless labelled as one."
       />
-
-      {/* ---------------- Productivity composite ---------------- */}
-      <Section title="Campus productivity">
-        <Card>
-          <CardBody>
-            <div className="flex flex-wrap items-start gap-8">
-              <div>
-                <p className="text-5xl font-semibold tabular tracking-[-0.03em] text-default">
-                  {productivity.score}
-                </p>
-                <p className="text-[13px] text-muted">out of 100</p>
-              </div>
-              <div className="min-w-[280px] flex-1 space-y-3">
-                {productivity.dimensions.map((d) => (
-                  <div key={d.label}>
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-[13px] font-medium text-default">{d.label}</span>
-                      <span className="tabular text-[12.5px] text-muted">
-                        {d.score} · weight {Math.round(d.weight * 100)}%
-                      </span>
-                    </div>
-                    <Progress
-                      value={d.score}
-                      tone={d.score > 75 ? 'success' : d.score > 50 ? 'warning' : 'danger'}
-                      className="mt-1"
-                    />
-                    <p className="mt-0.5 text-[11.5px] text-subtle">{d.basis}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <p className="mt-5 border-t border-[hsl(var(--border))] pt-3 text-[12px] leading-relaxed text-subtle">
-              {productivity.disclaimer}
-            </p>
-          </CardBody>
-        </Card>
-      </Section>
 
       {/* ---------------- Room utilisation ---------------- */}
       <Section title="Room utilisation">
@@ -192,8 +154,8 @@ export default async function AnalyticsPage() {
             <CardHeader title="Communication reach" icon={Megaphone} />
             <CardBody className="space-y-3">
               <MetricRow label="Notices in 30 days" value={comms.publishedLast30Days} />
-              <MetricRow label="Average read rate" value={`${comms.averageReadRate}%`} />
-              <MetricRow label="Average acknowledgement" value={`${comms.averageAcknowledgementRate}%`} />
+              <MetricRow label="Opened (all notices)" value={`${comms.averageReadRate}%`} />
+              <MetricRow label="Acknowledgement rate" value={`${comms.averageAcknowledgementRate}%`} />
               <MetricRow
                 label="Outstanding acknowledgements"
                 value={comms.outstandingAcknowledgements}
@@ -237,29 +199,20 @@ export default async function AnalyticsPage() {
         </div>
       </Section>
 
-      {/* ---------------- Time saved ---------------- */}
-      <Section title="Estimated time saved">
+      {/* ---------------- Work handled (factual counts, no estimates) ---------------- */}
+      <Section title="Work handled in CampusOS" description="How often each task was done here. CampusOS no longer converts these into “hours saved”: that would be an estimate nobody could check.">
         <Card>
-          <CardBody>
-            <p className="text-2xl font-semibold tabular tracking-[-0.02em] text-default">
-              {minutesToHuman(timeSaved.totalMinutes)}
-            </p>
-            <div className="mt-3 space-y-2">
-              {timeSaved.byActivity.map((a) => (
+          <CardBody className="space-y-2">
+            {timeSaved.byActivity.length === 0 ? (
+              <p className="text-[13px] text-muted">Nothing recorded yet.</p>
+            ) : (
+              timeSaved.byActivity.map((a) => (
                 <div key={a.activity} className="flex items-center justify-between text-[13px]">
-                  <span className="text-muted">
-                    {humanize(a.activity)}{' '}
-                    <span className="text-subtle">({pluralize(a.occurrences, 'time')})</span>
-                  </span>
-                  <span className="tabular font-medium text-default">
-                    {minutesToHuman(a.minutes)}
-                  </span>
+                  <span className="text-muted">{humanize(a.activity)}</span>
+                  <span className="tabular font-medium text-default">{pluralize(a.occurrences, 'time')}</span>
                 </div>
-              ))}
-            </div>
-            <p className="mt-4 border-t border-[hsl(var(--border))] pt-3 text-[12px] leading-relaxed text-subtle">
-              {timeSaved.disclaimer}
-            </p>
+              ))
+            )}
           </CardBody>
         </Card>
       </Section>

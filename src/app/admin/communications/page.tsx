@@ -67,12 +67,12 @@ export default async function CommunicationsPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Notices published" value={health.publishedLast30Days} icon={Megaphone} />
           <Stat
-            label="Average read rate"
+            label="Opened"
             value={`${health.averageReadRate}%`}
             tone={health.averageReadRate < 70 ? 'warning' : 'success'}
           />
           <Stat
-            label="Average acknowledgement"
+            label="Acknowledgement rate"
             value={`${health.averageAcknowledgementRate}%`}
             sublabel={`across ${pluralize(health.noticesRequiringAck, 'notice')}`}
           />

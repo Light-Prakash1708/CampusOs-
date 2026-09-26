@@ -89,7 +89,9 @@ export async function studentSignals(ctx: StudentCtx, now = new Date()): Promise
         id: t.assignments.id,
         title: t.assignments.title,
         dueAt: t.assignments.dueAt,
-        submitted: sql<boolean>`exists (select 1 from ${t.submissions} s where s.assignment_id = ${t.assignments.id} and s.student_id = ${ctx.studentProfileId} and s.status <> 'NOT_SUBMITTED')`,
+        // Qualified by hand: drizzle renders columns in select fields unqualified,
+        // which inside this subquery would resolve against s.
+        submitted: sql<boolean>`exists (select 1 from submissions s where s.assignment_id = "assignments"."id" and s.student_id = ${ctx.studentProfileId} and s.status <> 'NOT_SUBMITTED')`,
       })
       .from(t.assignments)
       .where(

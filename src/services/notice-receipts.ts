@@ -148,7 +148,7 @@ export async function getNoticeReceipts(ctx: AuthContext, announcementId: string
 function csvCell(value: string | null | undefined): string {
   const v = value ?? '';
   // Neutralise spreadsheet formula injection, then quote.
-  const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+  const safe = /^[=+\-@\t\r]/.test(v) && !/^-?\d+(\.\d+)?$/.test(v) ? `'${v}` : v;
   return `"${safe.replace(/"/g, '""')}"`;
 }
 

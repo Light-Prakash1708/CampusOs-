@@ -1,7 +1,7 @@
 {
   "name": "campusos",
   "version": "0.1.0",
-  "description": "CampusOS \u2014 the operating system for college life",
+  "description": "CampusOS — the operating system for college life",
   "main": "index.js",
   "scripts": {
     "dev": "next dev -p 3000",
@@ -45,6 +45,7 @@
     "date-fns": "^4.4.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
+    "fflate": "^0.8.3",
     "jose": "^6.2.9",
     "lucide-react": "^1.33.0",
     "next": "^15.5.23",

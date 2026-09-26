@@ -3,9 +3,9 @@ import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, DoorOpen, Gauge
 import { can, requireAuth } from '@/lib/auth/context';
 import {
   Alert, Badge, Button, Card, CardBody, CardHeader, EmptyState,
-  PageHeader, Progress, Section, Stat, EstimateChip,
+  PageHeader, Progress, Section, Stat,
 } from '@/components/ui';
-import { DISPLAY_TIME_ZONE, formatTime, humanize, minutesToHuman, relativeTime, pluralize } from '@/lib/utils';
+import { DISPLAY_TIME_ZONE, formatTime, humanize, relativeTime, pluralize } from '@/lib/utils';
 import { scanVersionConflicts } from '@/services/timetable/conflicts';
 import {
   computeAttendanceHealth, computeCommunicationHealth, computeGrievanceHealth,
@@ -364,7 +364,7 @@ export default async function AdminDashboard() {
               {comms.outstandingAcknowledgements > 0 ? (
                 <InsightRow
                   tone="info"
-                  text={`${comms.outstandingAcknowledgements} acknowledgements are still outstanding across ${pluralize(comms.noticesRequiringAck, 'notice')}. Average read rate is ${comms.averageReadRate}%.`}
+                  text={`${comms.outstandingAcknowledgements} acknowledgements are still outstanding across ${pluralize(comms.noticesRequiringAck, 'notice')}. ${comms.averageReadRate}% of recipients opened their notices.`}
                   href="/admin/communications"
                 />
               ) : null}
@@ -460,24 +460,22 @@ export default async function AdminDashboard() {
             )}
           </Card>
 
-          {/* Estimated time saved */}
+          {/* Work handled — counts only; no "time saved" estimate (CAMPUSOS-022) */}
           <Card>
-            <CardHeader title="Estimated time saved" icon={Gauge} />
+            <CardHeader title="Work handled in CampusOS" icon={Gauge} />
             <CardBody>
-              <p className="text-2xl font-semibold tabular tracking-[-0.02em] text-default">
-                {minutesToHuman(timeSaved.totalMinutes)}
-              </p>
-              <div className="mt-2 space-y-1">
-                {timeSaved.byActivity.map((a) => (
-                  <div key={a.activity} className="flex items-center justify-between text-[12.5px]">
-                    <span className="text-muted">{humanize(a.activity)}</span>
-                    <EstimateChip>{minutesToHuman(a.minutes)}</EstimateChip>
-                  </div>
-                ))}
+              <div className="space-y-1">
+                {timeSaved.byActivity.length === 0 ? (
+                  <p className="text-[12.5px] text-muted">Nothing recorded yet.</p>
+                ) : (
+                  timeSaved.byActivity.map((a) => (
+                    <div key={a.activity} className="flex items-center justify-between text-[12.5px]">
+                      <span className="text-muted">{humanize(a.activity)}</span>
+                      <span className="tabular font-medium text-default">{a.occurrences}</span>
+                    </div>
+                  ))
+                )}
               </div>
-              <p className="mt-3 text-[11.5px] leading-relaxed text-subtle">
-                {timeSaved.disclaimer}
-              </p>
             </CardBody>
           </Card>
         </div>

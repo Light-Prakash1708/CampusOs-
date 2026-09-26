@@ -10,8 +10,10 @@ import { recordAudit } from '@/services/audit';
 /** Escapes a value for CSV, quoting when needed. */
 function cell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const s = String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  const raw = String(value);
+  // Neutralise spreadsheet formulas (a name like "=HYPERLINK(...)" must stay text).
+  const s = /^[=+\-@\t\r]/.test(raw) && !/^-?\d+(\.\d+)?$/.test(raw) ? `'${raw}` : raw;
+  return /[",\n']/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 function toCsv(headers: string[], rows: unknown[][]): string {

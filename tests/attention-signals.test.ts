@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { db, pool } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import { staffSignals, studentSignals } from '@/services/attention-signals';
@@ -67,6 +68,24 @@ describe('student signals', () => {
     expect(att.action.href).toBe(`/student/attendance/${offeringId}`);
     const text = JSON.stringify(signals).toLowerCase();
     expect(text).not.toMatch(/\bscore\b|\bat risk\b|predict|likely to fail/);
+  });
+
+  it('count only work that is actually missing', async () => {
+    const me = await studentBelowMinimum();
+    const teacherProfile = (await db.select().from(t.facultyProfiles).where(eq(t.facultyProfiles.userId, facultyUserId)))[0]!;
+    const due = new Date(AT.getTime() - 2 * 86_400_000);
+    const [done, missed] = await db
+      .insert(t.assignments)
+      .values([
+        { institutionId: A.id, offeringId, createdById: teacherProfile.id, title: 'Submitted one', status: 'PUBLISHED', dueAt: due },
+        { institutionId: A.id, offeringId, createdById: teacherProfile.id, title: 'Missed one', status: 'PUBLISHED', dueAt: due },
+      ])
+      .returning();
+    await db.insert(t.submissions).values({ institutionId: A.id, assignmentId: done!.id, studentId: me.studentProfileId!, status: 'SUBMITTED', submittedAt: due });
+    const sub = (await studentSignals(me, AT)).find((s) => s.kind === 'SUBMISSIONS')!;
+    expect(sub.what).toBe('1 assignment not submitted in the last 14 days');
+    expect(sub.source).toContain(missed!.title);
+    expect(sub.source).not.toContain('Submitted one');
   });
 
   it('are empty for someone without student records', async () => {

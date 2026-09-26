@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { BarChart3, Download, FileText } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/context';
+import { EvidencePackForm } from './EvidencePackForm';
 import { Alert, Button, Card, CardBody, CardHeader, PageHeader, Section } from '@/components/ui';
 
-export const metadata = { title: 'Reports · CampusOS' };
+export const metadata = { title: 'Evidence & Reports · CampusOS' };
 
 const REPORTS = [
   { key: 'attendance', title: 'Attendance register', description: 'Per-student attendance across every subject, with shortage flags.' },
@@ -18,7 +19,7 @@ const REPORTS = [
  * these are not placeholder buttons.
  */
 export default async function ReportsPage() {
-  await requirePermission('report:generate');
+  const user = await requirePermission('report:generate');
 
   return (
     <div>
@@ -26,6 +27,15 @@ export default async function ReportsPage() {
         title="Evidence & Reports"
         description="Download live data as CSV for offline analysis or institutional returns."
       />
+
+      <Section title="Evidence pack" description="One download for a period: communication proof, grievance handling against the committee’s timelines, attendance by programme, and participation. Aggregated by default.">
+        <Card>
+          <CardHeader title="Campus evidence" description="A ZIP with a printable summary (open it, then Print → Save as PDF) and the CSVs behind every number." />
+          <CardBody>
+            <EvidencePackForm canIndividual={user.permissions.has('data:export')} />
+          </CardBody>
+        </Card>
+      </Section>
 
       <Section title="Available reports">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -49,7 +59,8 @@ export default async function ReportsPage() {
 
       <Alert tone="info" icon={FileText} title="About these exports">
         Every report is generated from the database at the moment you download it. Figures match
-        what you see in Analytics because they come from the same queries.
+        Campus Insights and each notice’s receipts because they come from the same queries. Mapping
+        to accreditation criteria is for your IQAC to decide; CampusOS does not claim a mapping.
       </Alert>
     </div>
   );
