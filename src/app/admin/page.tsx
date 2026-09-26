@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { AlertTriangle, ArrowRight, CalendarClock, CheckCircle2, DoorOpen, Gauge, LifeBuoy, Megaphone, ShieldCheck, TrendingUp, Users } from 'lucide-react';
-import { requireAuth } from '@/lib/auth/context';
+import { can, requireAuth } from '@/lib/auth/context';
 import {
   Alert, Badge, Button, Card, CardBody, CardHeader, EmptyState,
   PageHeader, Progress, Section, Stat, EstimateChip,
@@ -16,6 +16,7 @@ import {
   getPendingApprovals, getPublishedVersion, getRecentChanges,
 } from './_lib/admin';
 import { SetupProgress } from './_components/SetupProgress';
+import { countOpenMembershipRequests } from '@/services/membership';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Dashboard · CampusOS' };
@@ -40,6 +41,8 @@ export default async function AdminDashboard() {
     getRecentChanges(user.institutionId, 8),
     getOutstandingAcknowledgements(user.institutionId),
   ]);
+
+  const openVerifications = can(user, 'user:approve_registration') ? await countOpenMembershipRequests(user.institutionId) : 0;
 
   const [conflicts, grievances, rooms, workload, attendance, comms, timeSaved] = await Promise.all([
     version
@@ -138,7 +141,16 @@ export default async function AdminDashboard() {
         }
       />
 
-      <SetupProgress user={user} />
+      <SetupProgress
+        user={user}
+        pending={[
+          {
+            label: `${pluralize(openVerifications, 'student verification request')} waiting`,
+            href: '/admin/verifications',
+            count: openVerifications,
+          },
+        ]}
+      />
 
       {/* ---------------- What needs attention ---------------- */}
       <Section title="Needs your attention">

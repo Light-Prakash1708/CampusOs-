@@ -67,7 +67,7 @@ export async function SetupProgress({ user, pending }: { user: AuthContext; pend
               href={p.href}
               className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--warning-border))] bg-warning-subtle px-3 py-1.5 text-[13px] font-medium text-default"
             >
-              <ShieldCheck size={15} aria-hidden /> {p.count} {p.label}
+              <ShieldCheck size={15} aria-hidden /> {p.label}
             </Link>
           ))}
         </div>

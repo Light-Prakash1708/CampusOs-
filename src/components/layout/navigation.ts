@@ -159,6 +159,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { label: 'Students', href: '/admin/students', icon: 'graduation', permissions: ['user:view_all'] },
       { label: 'Faculty', href: '/admin/faculty', icon: 'userCog', permissions: ['user:view_all'] },
+      { label: 'Verification', href: '/admin/verifications', icon: 'shield', permissions: ['user:approve_registration'] },
       {
         label: 'Access & Privacy',
         href: '/admin/access',
