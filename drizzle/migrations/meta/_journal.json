@@ -71,6 +71,13 @@
       "when": 1790399577520,
       "tag": "0009_audit_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790421999780,
+      "tag": "0010_institution_kind",
+      "breakpoints": true
     }
   ]
 }

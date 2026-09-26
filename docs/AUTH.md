@@ -133,6 +133,34 @@ section are re-validated server-side against **that** college — an id from
 another tenant is rejected. Registration never reveals whether an email is
 already registered.
 
+### Student sign-up without a college
+
+This is enabled by `SELF_REGISTRATION_ENABLED=true` and is off by default. The route is `POST /api/auth/register/student`, handled by `registerIndependentStudent`.
+
+**What it creates.** A private **PERSONAL** workspace, which is an institution row with `kind = 'PERSONAL'`. The workspace:
+
+- is unlisted and never accepts registrations;
+- has no administrators;
+- holds one "Independent study" department and programme, which the student profile requires;
+- starts with the student's own tools switched on (tracker, career, progress, discovering events other colleges open to everyone);
+- has the college-only modules switched off (grievances, library, leaderboards, resource hub).
+
+**Why a workspace of its own.** Every query in CampusOS is scoped by tenant. A workspace per student keeps that isolation intact instead of adding a "no college" case, so the student sees only their own records plus data that colleges deliberately publish, such as open events.
+
+**Security rules:**
+
+- The role is always `STUDENT`, and a new tenant is always created.
+- The request body can't choose a role, a tenant or a user id. The schema discards any other fields.
+
+**Other behaviour:**
+
+- The account is active at once, and the student is signed in after sign-up.
+- A confirmation email is sent only when an email provider is configured.
+- One personal account per email address. Sign-ups are serialised per address with an advisory lock, and a duplicate gets 409.
+- Sign-ups are rate-limited per IP, with the same limit as college registration.
+
+**Joining a college** is still decided by the college, through an invitation or the college's own registration policy. That creates a separate college account.
+
 ### Roles added in 2.0
 
 `CLUB_ADMIN`, `EVENT_ORGANIZER`, `CAMPUS_REP` — intended as **secondary** roles

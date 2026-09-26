@@ -64,6 +64,8 @@ services:
         value: "28800"
       - key: DEMO_MODE
         value: "false"
+      - key: SELF_REGISTRATION_ENABLED
+        value: "true"        # students may sign up without a college (private workspace)
       - key: TRUST_PROXY
         value: "true"        # Render terminates TLS in front of Node
       - key: TRUSTED_PROXY_HOPS

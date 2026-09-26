@@ -81,6 +81,7 @@ fix. That list appears in the deploy log, and the release never takes traffic.
 | `STORAGE_PROVIDER` | `none` | Uploads off until storage is configured |
 | `EMAIL_PROVIDER`, `PUSH_PROVIDER`, `SMS_PROVIDER`, `WHATSAPP_PROVIDER`, `ERROR_REPORTER`, `OPPORTUNITY_FEED_PROVIDER` | `none` | Integrations off; the product says the feature isn't available rather than failing |
 | `LOG_LEVEL`, `NEXT_TELEMETRY_DISABLED` | `info`, `1` | |
+| `SELF_REGISTRATION_ENABLED` | `true` | Students can create their own account without a college (a private workspace); `false` keeps sign-up to college invitations and registration policies |
 
 ### Secrets you enter manually (all optional)
 
@@ -104,6 +105,16 @@ the missing variable.
 
 Never put a secret in a `NEXT_PUBLIC_*` variable: those are compiled into the
 browser bundle.
+
+## First accounts
+
+A fresh database has **no accounts**, so every sign-in fails with "That email
+and password combination is not correct" until someone exists:
+
+- **Students** can create their own account at `/register` when
+  `SELF_REGISTRATION_ENABLED=true`.
+- **A college** is created with `npm run provision` (see step 6 above). Its
+  administrator then invites staff and students, or opens registration.
 
 ## Database and migrations
 

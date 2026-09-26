@@ -6,11 +6,13 @@ import { AppError, ConflictError, ForbiddenError, NotFoundError, pgErrorOf } fro
 import type { AuthContext } from '@/lib/auth/context';
 import { checkPasswordPolicy, dummyPasswordWork, hashPassword, verifyPassword } from '@/lib/auth/password';
 import { portalForRole, type Role } from '@/lib/auth/permissions';
-import { appUrl } from '@/lib/env';
+import { randomBytes } from 'node:crypto';
+import { appUrl, selfRegistrationEnabled } from '@/lib/env';
 import { humanize } from '@/lib/utils';
 import { recordAudit } from '@/services/audit';
 import { enforceRateLimit, checkRateLimit, keyFor, RATE_LIMITS } from '@/services/rate-limit';
 import { sendTransactionalEmail } from '@/services/notifications/dispatcher';
+import { getProviders } from '@/services/notifications/providers';
 import {
   inviteEmail,
   passwordChangedEmail,
@@ -585,6 +587,150 @@ export async function registerStudent(input: RegistrationInput): Promise<{ messa
   );
   await sendVerification({ id: created.id, institutionId: inst.id, email, firstName: input.firstName.trim(), institutionName: inst.name });
   return { message: REGISTRATION_ACCEPTED };
+}
+
+/* ===================== independent student sign-up ======================= */
+
+/**
+ * A personal workspace has no administrator to switch modules on, so it starts
+ * with the student's own tools on (tracker, career, progress, discovering
+ * events other colleges open to everyone) and the modules that only make
+ * sense inside a real college off (grievance desk, physical library,
+ * class-wide leaderboards, the college's resource shelf).
+ */
+const PERSONAL_WORKSPACE_FLAGS: Record<string, boolean> = {
+  personal_tracker_enabled: true,
+  opportunity_hub_enabled: true,
+  gamification_enabled: true,
+  event_discovery_enabled: true,
+  grievance_enabled: false,
+  anonymous_grievance_enabled: false,
+  library_enabled: false,
+  leaderboards_enabled: false,
+  resource_hub_enabled: false,
+};
+
+export interface IndependentRegistrationInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  meta: RequestMeta;
+}
+
+export const EMAIL_ALREADY_REGISTERED = new ConflictError(
+  'An account with this email already exists.',
+  undefined,
+  'Sign in instead, or use “Forgot password” if you can’t remember it.',
+);
+
+/**
+ * Student sign-up without a college (SELF_REGISTRATION_ENABLED).
+ *
+ * Every account in CampusOS belongs to exactly one tenant, and every query is
+ * scoped by it. Rather than weakening that, a self-registered student gets a
+ * private PERSONAL workspace of their own: an unlisted institution with one
+ * placeholder department and programme ("Independent study"), which the
+ * student profile requires. They see only their own records plus data other
+ * colleges deliberately publish (e.g. open events). Joining a real college
+ * stays the college's decision, through its invitation or registration flow.
+ *
+ * The role is always STUDENT: nothing in the input can choose a role, tenant
+ * or user id. The account is active at once so the student can start without
+ * an administrator; if an email provider is configured a confirmation link is
+ * also sent.
+ */
+export async function registerIndependentStudent(
+  input: IndependentRegistrationInput,
+): Promise<{ user: { id: string; institutionId: string; role: string; sessionEpoch: number }; redirectTo: string }> {
+  if (!selfRegistrationEnabled()) {
+    throw new AppError('Student sign-up is not open on this CampusOS server.', 403, 'REGISTRATION_CLOSED', undefined,
+      'If your college uses CampusOS, ask the college office for an invitation.');
+  }
+  await enforceRateLimit(keyFor('register:ip', input.meta.ipAddress), RATE_LIMITS.registerPerIp, 'Too many registration attempts.');
+  assertPolicy(input.password);
+  const email = input.email.trim().toLowerCase();
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+  const passwordHash = await hashPassword(input.password);
+
+  const created = await db.transaction(async (tx) => {
+    // Serialise sign-ups for the same address so two requests can't both pass
+    // the duplicate check.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`campusos:personal-signup:${email}`}))`);
+    const [existing] = await tx
+      .select({ id: t.users.id })
+      .from(t.users)
+      .innerJoin(t.institutions, eq(t.institutions.id, t.users.institutionId))
+      .where(and(eq(t.users.email, email), eq(t.institutions.kind, 'PERSONAL'), isNull(t.users.deletedAt)))
+      .limit(1);
+    if (existing) return null;
+
+    const suffix = randomBytes(6).toString('hex');
+    const [inst] = await tx
+      .insert(t.institutions)
+      .values({
+        slug: `personal-${suffix}`,
+        name: `${firstName} ${lastName}`.trim(),
+        shortName: 'Personal',
+        kind: 'PERSONAL',
+        isListed: false,
+        registrationPolicy: { mode: 'DISABLED' },
+        featureFlags: PERSONAL_WORKSPACE_FLAGS,
+        setupCompletedAt: new Date(),
+      })
+      .returning({ id: t.institutions.id, name: t.institutions.name });
+    const [dept] = await tx
+      .insert(t.departments)
+      .values({ institutionId: inst!.id, name: 'Independent study', code: 'IND' })
+      .returning({ id: t.departments.id });
+    const [program] = await tx
+      .insert(t.programs)
+      .values({ institutionId: inst!.id, departmentId: dept!.id, name: 'Independent study', code: 'IND', durationYears: 4, totalSemesters: 8 })
+      .returning({ id: t.programs.id });
+    const [user] = await tx
+      .insert(t.users)
+      .values({
+        institutionId: inst!.id,
+        email,
+        passwordHash,
+        firstName,
+        lastName,
+        role: 'STUDENT',
+        status: 'ACTIVE',
+        departmentId: dept!.id,
+        passwordChangedAt: new Date(),
+      })
+      .returning({ id: t.users.id, sessionEpoch: t.users.sessionEpoch });
+    await tx.insert(t.studentProfiles).values({
+      institutionId: inst!.id,
+      userId: user!.id,
+      rollNumber: `SELF-${suffix.toUpperCase()}`,
+      programId: program!.id,
+      currentYear: 1,
+      currentSemester: 1,
+    });
+    return { id: user!.id, sessionEpoch: user!.sessionEpoch, institutionId: inst!.id, institutionName: inst!.name };
+  });
+
+  if (!created) {
+    await dummyPasswordWork();
+    throw EMAIL_ALREADY_REGISTERED;
+  }
+
+  await recordAudit(
+    { userId: created.id, institutionId: created.institutionId, role: 'STUDENT' },
+    { action: 'USER_REGISTERED', entityType: 'user', entityId: created.id, after: { mode: 'PERSONAL' }, ...input.meta },
+  );
+  // Confirming the address is optional here; offer it only when email can be delivered.
+  if (getProviders().email.delivers) {
+    await sendVerification({ id: created.id, institutionId: created.institutionId, email, firstName, institutionName: 'CampusOS' }).catch(() => undefined);
+  }
+
+  return {
+    user: { id: created.id, institutionId: created.institutionId, role: 'STUDENT', sessionEpoch: created.sessionEpoch },
+    redirectTo: `/${portalForRole('STUDENT')}?welcome=1`,
+  };
 }
 
 /* ============================== invitations =============================== */

@@ -76,6 +76,14 @@ export const institutions = pgTable(
       .default({}),
     /** Shown in public college discovery (registration picker, event discovery). */
     isListed: boolean('is_listed').notNull().default(false),
+    /**
+     * COLLEGE   — an institution provisioned by CampusOS or a college admin.
+     * PERSONAL  — a private workspace created for one self-registered student
+     *             (services/auth/accounts.ts registerIndependentStudent). It
+     *             is never listed, never accepts registrations and has no
+     *             administrators; the tenant boundary isolates the student.
+     */
+    kind: text('kind').$type<'COLLEGE' | 'PERSONAL'>().notNull().default('COLLEGE'),
     /** Setup wizard progress; the institution is not "live" until completed. */
     setupCompletedAt: timestamp('setup_completed_at', { withTimezone: true }),
     isActive: boolean('is_active').notNull().default(true),

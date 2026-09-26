@@ -18,13 +18,13 @@ export default async function LoginPage({
 
   return (
     <AuthShell
-      title="Welcome back 👋"
-      subtitle="Sign in with the account your college gave you."
+      title="Welcome back"
+      subtitle="Sign in to your CampusOS account."
       footer={
         <>
-          New student?{' '}
+          New to CampusOS?{' '}
           <a href="/register" className="font-bold text-brand hover:underline">
-            Create your account
+            Create your student account
           </a>
         </>
       }

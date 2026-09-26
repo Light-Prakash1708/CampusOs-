@@ -32,6 +32,11 @@ const EnvSchema = z
     TRUST_PROXY: bool,
     TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
     DEMO_MODE: bool,
+    /**
+     * Public student sign-up without a college (a private personal workspace).
+     * Off by default; college-controlled onboarding is unaffected either way.
+     */
+    SELF_REGISTRATION_ENABLED: bool,
     CRON_SECRET: z.string().min(16).optional(),
 
     AI_PROVIDER: z.enum(['local', 'anthropic']).default('local'),
@@ -164,4 +169,10 @@ export function publicBaseUrl(source: Record<string, string | undefined> = proce
 export function appUrl(path = '/'): string {
   const base = (publicBaseUrl() ?? 'http://localhost:3000').replace(/\/+$/, '');
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+/** Whether anyone may create a student account without a college (see SELF_REGISTRATION_ENABLED). */
+export function selfRegistrationEnabled(): boolean {
+  const v = process.env.SELF_REGISTRATION_ENABLED;
+  return v === 'true' || v === '1';
 }

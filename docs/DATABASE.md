@@ -159,6 +159,7 @@ anything.
 | `0007_library` | `library_books` (unique ISBN per college), `library_loans` (one open loan per title per person), `library_reservations` (one open reservation per title per person; status CHECK), `resource_saves`. See `LIBRARY.md`. |
 | `0008_opportunities` | `opportunities` (source COLLEGE/STUDENT/FEED; unique feed item per college; CHECKs on kind, status, work mode and http(s) link), `opportunity_tracking` (one private status per student per listing). See `CAREER.md`. |
 | `0009_audit_indexes` | Indexes for file downloads (`resources.file_url`), certificates by event, the library desk and reservation queue, and saved-resource lookups. Plain `CREATE INDEX` (tables are small at this stage; use `CONCURRENTLY` by hand on a large live database). |
+| `0010_institution_kind` | `institutions.kind` (`COLLEGE` default, or `PERSONAL` for a self-registered student's private workspace) with a CHECK constraint. Additive; existing rows become `COLLEGE`. See `AUTH.md`. |
 
 **Baselining v1 databases.** Databases created by v1 with `db:push` have no
 migration history. The runner detects that (tables present, history empty),
