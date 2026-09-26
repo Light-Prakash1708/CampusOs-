@@ -118,9 +118,11 @@ export interface EnvValidation {
 
 export function validateEnv(source: Record<string, string | undefined> = process.env): EnvValidation {
   // Treat empty strings as unset so `KEY=` in .env behaves like absence.
-  const cleaned = Object.fromEntries(
+  const cleaned: Record<string, string | undefined> = Object.fromEntries(
     Object.entries(source).filter(([, v]) => v !== undefined && v !== ''),
   );
+  // On Render the public URL is known without configuration.
+  if (!cleaned.APP_URL && cleaned.RENDER_EXTERNAL_URL) cleaned.APP_URL = cleaned.RENDER_EXTERNAL_URL;
   const parsed = EnvSchema.safeParse(cleaned);
   if (parsed.success) return { ok: true, env: parsed.data, issues: [] };
   return {
@@ -149,8 +151,17 @@ export function resetEnvCache(): void {
   cached = null;
 }
 
+/**
+ * The public origin: APP_URL, or on Render the platform-provided
+ * RENDER_EXTERNAL_URL (https://<service>.onrender.com) when APP_URL is unset.
+ * Set APP_URL explicitly once a custom domain is attached.
+ */
+export function publicBaseUrl(source: Record<string, string | undefined> = process.env): string | undefined {
+  return source.APP_URL || source.RENDER_EXTERNAL_URL || undefined;
+}
+
 /** Absolute URL for links in emails. Never derived from request headers (host-header injection). */
 export function appUrl(path = '/'): string {
-  const base = (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
+  const base = (publicBaseUrl() ?? 'http://localhost:3000').replace(/\/+$/, '');
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
 }

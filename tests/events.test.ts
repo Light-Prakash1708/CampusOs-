@@ -43,8 +43,8 @@ describe('registration decision', () => {
     expect(decideRegistration({ ...base, registeredCount: 10, waitlistEnabled: false })).toMatchObject({ ok: false, code: 'FULL' });
     expect(decideRegistration({ ...base, mode: 'APPROVAL' })).toEqual({ ok: true, status: 'PENDING_APPROVAL' });
     expect(decideRegistration({ ...base, mode: 'INVITE_ONLY' })).toMatchObject({ ok: false, code: 'INVITE_ONLY' });
-    expect(decideRegistration({ ...base, deadline: new Date(Date.now() - 1000) })).toMatchObject({ ok: false, code: 'CLOSED' });
-    expect(decideRegistration({ ...base, endsAt: new Date(Date.now() - 1000) })).toMatchObject({ ok: false, code: 'ENDED' });
+    expect(decideRegistration({ ...base, deadline: new Date(base.now.getTime() - 1000) })).toMatchObject({ ok: false, code: 'CLOSED' });
+    expect(decideRegistration({ ...base, endsAt: new Date(base.now.getTime() - 1000) })).toMatchObject({ ok: false, code: 'ENDED' });
     expect(decideRegistration({ ...base, eventStatus: 'PENDING_APPROVAL' })).toMatchObject({ ok: false, code: 'NOT_OPEN' });
     expect(decideRegistration({ ...base, capacity: null, registeredCount: 9999 })).toEqual({ ok: true, status: 'REGISTERED' });
   });

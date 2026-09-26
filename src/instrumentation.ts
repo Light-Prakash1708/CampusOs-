@@ -10,6 +10,7 @@ export async function register() {
   const { validateEnv } = await import('./lib/env');
   const { logger } = await import('./lib/logger');
   const result = validateEnv();
+  await installProcessHandlers();
   if (result.ok) {
     logger.info('config.valid', {
       storage: result.env?.STORAGE_PROVIDER,
@@ -26,6 +27,27 @@ export async function register() {
     throw new Error(`Invalid CampusOS configuration:\n  - ${result.issues.join('\n  - ')}`);
   }
   logger.warn('config.invalid', { issues: result.issues });
+}
+
+/**
+ * Last-resort handlers so a stray rejection is reported (scrubbed, like every
+ * other error) instead of vanishing. An uncaught exception leaves the process
+ * in an unknown state, so it is reported and the process exits; the platform
+ * restarts it. Installed once per process.
+ */
+async function installProcessHandlers() {
+  const flag = Symbol.for('campusos.processHandlers');
+  const g = globalThis as Record<symbol, boolean>;
+  if (g[flag]) return;
+  g[flag] = true;
+  const { reportError } = await import('./lib/logger');
+  process.on('unhandledRejection', (reason) => {
+    reportError(reason, { where: 'unhandledRejection' });
+  });
+  process.on('uncaughtException', (error) => {
+    reportError(error, { where: 'uncaughtException' });
+    setTimeout(() => process.exit(1), 200);
+  });
 }
 
 /**

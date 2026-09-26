@@ -129,7 +129,10 @@ authorisation check. The bucket is never public.
 - the cron job, which calls `/api/jobs/run` every 10 minutes;
 - optionally, a Render Postgres database. If you're using Supabase, remove the `databases` block and set `DATABASE_URL` by hand.
 
-Then set `APP_URL` on the web service and on the cron job.
+`APP_URL` is optional on Render, which falls back to `RENDER_EXTERNAL_URL`.
+Set it on the web service and the cron job when you add a custom domain. The
+exact settings, variables and troubleshooting steps are in
+[`DEPLOYMENT.md`](../DEPLOYMENT.md) at the repository root.
 
 **5. First administrator.** Never run `db:seed` in production. Provision the
 college and its first super-admin instead:

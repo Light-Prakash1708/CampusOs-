@@ -56,7 +56,7 @@ export async function middleware(request: NextRequest) {
       request.method,
       request.headers.get('origin'),
       request.headers.get('host'),
-      process.env.APP_URL,
+      process.env.APP_URL || process.env.RENDER_EXTERNAL_URL,
     )
   ) {
     return NextResponse.json(
