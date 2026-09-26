@@ -109,3 +109,27 @@ describe('render.yaml blueprint', () => {
     expect(publicBaseUrl({})).toBeUndefined();
   });
 });
+
+describe('container builds without runtime secrets', () => {
+  it('lets `next build` import the database module without DATABASE_URL, failing on first use', async () => {
+    const { vi } = await import('vitest');
+    vi.resetModules();
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv('NEXT_PHASE', 'phase-production-build');
+    const g = globalThis as { __campusosPool?: unknown };
+    const saved = g.__campusosPool;
+    g.__campusosPool = undefined;
+    try {
+      const mod = await import('@/lib/db');
+      expect(() => mod.pool.connect()).toThrow('DATABASE_URL is not set');
+      vi.stubEnv('NEXT_PHASE', '');
+      vi.resetModules();
+      g.__campusosPool = undefined;
+      await expect(import('@/lib/db')).rejects.toThrow('DATABASE_URL is not set');
+    } finally {
+      g.__campusosPool = saved;
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+});

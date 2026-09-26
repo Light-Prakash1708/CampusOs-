@@ -16,12 +16,33 @@ declare global {
   var __campusosPool: Pool | undefined;
 }
 
+const MISSING_DATABASE_URL =
+  'DATABASE_URL is not set. Copy .env.example to .env and configure your PostgreSQL connection.';
+
+/**
+ * `next build` imports every route module to collect page data, and container
+ * builds (Docker on Render) have no runtime secrets at that point. Only in
+ * that phase is a missing DATABASE_URL tolerated: the pool is replaced by a
+ * stand-in that fails with the same message the moment anything uses it, so
+ * no query can silently run without a database. At runtime a missing value
+ * still fails at import (and src/instrumentation.ts stops the server first).
+ */
+function unconfiguredPool(): Pool {
+  return new Proxy(Object.create(Pool.prototype) as Pool, {
+    get(_target, prop) {
+      // Allow inspection (drizzle's client-type check, promise detection, logging).
+      if (prop === 'constructor') return Pool;
+      if (typeof prop === 'symbol' || prop === 'then') return undefined;
+      throw new Error(MISSING_DATABASE_URL);
+    },
+  });
+}
+
 function createPool(): Pool {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error(
-      'DATABASE_URL is not set. Copy .env.example to .env and configure your PostgreSQL connection.',
-    );
+    if (process.env.NEXT_PHASE === 'phase-production-build') return unconfiguredPool();
+    throw new Error(MISSING_DATABASE_URL);
   }
 
   return new Pool(poolConfig(connectionString));
