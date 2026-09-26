@@ -89,7 +89,7 @@ export default async function AssistantPage({
           studentName={user.firstName}
           conversations={conversations.map((x) => ({ id: x.id, title: x.title, updatedAt: x.updatedAt.toISOString() }))}
           initialConversation={initialConversation}
-          usingLanguageModel={aiProviderFor(user.featureFlags).isLanguageModel}
+          usingLanguageModel={aiProviderFor(user).isLanguageModel}
         />
       </div>
     </>

@@ -235,7 +235,7 @@ export interface ToolViewer {
 export function resolveTool(tool: ToolDefinition, viewer: ToolViewer, openCount = 0): ResolvedTool | null {
   if (tool.permissions && !tool.permissions.some((p) => viewer.permissions.has(p))) return null;
   if (tool.plannedPhase !== undefined || (tool.feature && !isBuilt(tool.feature))) {
-    const label = tool.plannedPhase !== undefined ? `Coming in Phase ${tool.plannedPhase}` : plannedLabel(tool.feature!)!;
+    const label = tool.plannedPhase !== undefined ? 'Planned' : plannedLabel(tool.feature!)!;
     return { ...tool, href: undefined, status: 'PLANNED', statusLabel: label, openCount: 0 };
   }
   if (tool.feature && !isEnabled(viewer.featureFlags, tool.feature)) {

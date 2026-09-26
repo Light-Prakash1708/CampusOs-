@@ -49,6 +49,21 @@ export async function sendTransactionalEmail(params: {
 }): Promise<{ sent: boolean; reason?: string }> {
   const { email } = getProviders();
   let result: SendResult;
+  const [tenant] = await db.select({ isDemo: t.institutions.isDemo }).from(t.institutions).where(eq(t.institutions.id, params.institutionId)).limit(1);
+  if (tenant?.isDemo) {
+    // The public demo never emails anyone.
+    await db.insert(t.notificationDeliveries).values({
+      institutionId: params.institutionId,
+      userId: params.userId,
+      channel: 'EMAIL',
+      provider: email.name,
+      template: params.message.tag ?? 'transactional',
+      status: 'SKIPPED',
+      reason: 'demo_tenant',
+      attempts: 0,
+    });
+    return { sent: false, reason: 'demo_tenant' };
+  }
   if (!email.delivers) {
     result = { ok: false, error: 'provider_not_configured', permanent: true };
   } else {
@@ -316,6 +331,7 @@ export async function processDeliveryQueue(opts: { now?: Date; limit?: number } 
       email: t.users.email,
       phone: t.users.phone,
       institutionName: t.institutions.name,
+      institutionDemo: t.institutions.isDemo,
     })
     .from(t.notificationDeliveries)
     .innerJoin(t.notifications, eq(t.notifications.id, t.notificationDeliveries.notificationId))
@@ -326,6 +342,14 @@ export async function processDeliveryQueue(opts: { now?: Date; limit?: number } 
   const providers = getProviders();
 
   for (const job of work) {
+    // The public demo never sends anything outside CampusOS (CAMPUSOS-015).
+    if (job.institutionDemo) {
+      await db
+        .update(t.notificationDeliveries)
+        .set({ status: 'SKIPPED', reason: 'demo_tenant', lastError: null })
+        .where(eq(t.notificationDeliveries.id, job.id));
+      continue;
+    }
     const url = job.actionUrl ? (job.actionUrl.startsWith('http') ? job.actionUrl : appUrl(job.actionUrl)) : null;
     let result: SendResult;
     let providerName = 'none';

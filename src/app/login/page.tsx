@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/context';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { LoginForm } from './LoginForm';
+import { TryDemo } from '@/components/auth/TryDemo';
+import { demoSignInEnabled } from '@/lib/demo';
 
 export const metadata = { title: 'Sign in' };
 
@@ -43,6 +45,7 @@ export default async function LoginPage({
               : null
         }
       />
+      {demoSignInEnabled() ? <TryDemo /> : null}
     </AuthShell>
   );
 }

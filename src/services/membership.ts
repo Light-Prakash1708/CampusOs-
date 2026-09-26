@@ -160,6 +160,7 @@ export async function searchJoinableInstitutions(query: string) {
         eq(t.institutions.kind, 'COLLEGE'),
         eq(t.institutions.isActive, true),
         eq(t.institutions.isListed, true),
+        eq(t.institutions.isDemo, false),
         isNull(t.institutions.deletedAt),
         sql`${t.institutions.registrationPolicy}->>'mode' <> 'DISABLED'`,
         q ? or(ilike(t.institutions.name, like), ilike(t.institutions.shortName, like), ilike(t.institutions.city, like)) : undefined,
@@ -200,6 +201,7 @@ export async function createMembershipRequest(ctx: AuthContext, input: Membershi
         eq(t.institutions.kind, 'COLLEGE'),
         eq(t.institutions.isActive, true),
         eq(t.institutions.isListed, true),
+        eq(t.institutions.isDemo, false),
         isNull(t.institutions.deletedAt),
       ),
     )

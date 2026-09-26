@@ -37,7 +37,7 @@ export function HeroSection() {
         {/* Copy */}
         <div className="relative max-w-[600px]">
           <p className={cn(s.pixelText, 'text-[12px] uppercase text-[var(--lp-lav)] sm:text-[13px]')}>
-            Classes · Attendance · Events · Library · Career
+            Notices · Attendance · Redressal · Opportunities
           </p>
           <h1 className={cn(s.display, 'mt-5 text-[clamp(48px,8vw,80px)] xl:text-[clamp(64px,5.4vw,80px)] text-[var(--lp-cream)]')}>
             Your campus.
@@ -50,8 +50,8 @@ export function HeroSection() {
             </span>
           </h1>
           <p className="mt-8 max-w-[480px] text-[17px] leading-relaxed text-[#d9d3f5] sm:text-[18px]">
-            Your timetable, attendance, notices, events, library and opportunities, together — instead of scattered across
-            WhatsApp groups, spreadsheets and five different portals.
+            Your timetable, attendance, notices and opportunities together — instead of scattered across WhatsApp groups and
+            portals. CampusOS works alongside the ERP your college already has.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
@@ -74,7 +74,7 @@ export function HeroSection() {
             </a>
           </div>
           <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-medium text-[#b9b1e0]">
-            {['Free for students', 'Start without your college', 'Your college can invite you later'].map((t) => (
+            {['Free for students', 'Works alongside your college’s ERP', 'Your college can invite you later'].map((t) => (
               <li key={t} className="flex items-center gap-2">
                 <Sparkle size={9} color="#a78bfa" />
                 {t}

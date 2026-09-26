@@ -139,7 +139,7 @@ describe('CampusOS 2.0 roles and capabilities', () => {
     for (const m of ['clubs_enabled', 'campus_channels_enabled', 'ai_coach_enabled'] as const) {
       expect(isBuilt(m)).toBe(false);
       expect(isEnabled({ [m]: true }, m)).toBe(false);
-      expect(plannedLabel(m)).toMatch(/^Coming in Phase \d+$/);
+      expect(plannedLabel(m)).toBe('Planned');
     }
     expect(isBuilt('events_enabled')).toBe(true);
     expect(plannedLabel('events_enabled')).toBeNull();

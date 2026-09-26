@@ -3,7 +3,7 @@ import { requireAuth } from '@/lib/auth/context';
 import { Badge, Card, CardHeader, EmptyState, PageHeader, Section, Table, Td, Th } from '@/components/ui';
 import { FEATURE_FLAGS } from '@/lib/features';
 import { formatDateTime } from '@/lib/utils';
-import { INSTITUTION_TYPES, isPlatformOperator, listInstitutions, ONBOARDING_MODULES } from '@/services/institutions';
+import { CORE_MODULES, INSTITUTION_TYPES, isPlatformOperator, listInstitutions, ONBOARDING_MODULES } from '@/services/institutions';
 import { CreateInstitutionWizard } from './CreateInstitutionWizard';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +18,8 @@ export default async function InstitutionsPage() {
     key: f,
     label: FEATURE_FLAGS[f].label,
     description: FEATURE_FLAGS[f].description,
-    defaultOn: FEATURE_FLAGS[f].defaultValue,
+    // New colleges start with the pilot core set; the rest stays available.
+    defaultOn: CORE_MODULES.includes(f),
   }));
 
   return (

@@ -34,6 +34,8 @@ export interface AuthContext {
   institutionPrimaryColor: string;
   /** COLLEGE, or PERSONAL for a student's own workspace. */
   institutionKind?: 'COLLEGE' | 'PERSONAL';
+  /** The public sales demo tenant: outbound email, external AI and uploads are off. */
+  isDemo?: boolean;
   featureFlags: Record<string, boolean>;
   email: string;
   firstName: string;
@@ -88,6 +90,7 @@ export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
       institutionLogoUrl: institutions.logoUrl,
       institutionPrimaryColor: institutions.primaryColor,
       institutionKind: institutions.kind,
+      isDemo: institutions.isDemo,
       featureFlags: institutions.featureFlags,
       studentProfileId: studentProfiles.id,
       sectionId: studentProfiles.sectionId,
@@ -115,6 +118,7 @@ export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
     institutionLogoUrl: row.institutionLogoUrl,
     institutionPrimaryColor: row.institutionPrimaryColor ?? '#4F46E5',
     institutionKind: row.institutionKind === 'PERSONAL' ? 'PERSONAL' : 'COLLEGE',
+    isDemo: row.isDemo,
     featureFlags: (row.featureFlags ?? {}) as Record<string, boolean>,
     email: row.email,
     firstName: row.firstName,

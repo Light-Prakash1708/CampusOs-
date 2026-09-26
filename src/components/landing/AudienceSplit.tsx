@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Reveal } from './motion';
 import s from './landing.module.css';
 
-export function AudienceSplit() {
+export function AudienceSplit({ demo = false }: { demo?: boolean }) {
   return (
     <section className="bg-[var(--lp-cream)] px-5 py-24 sm:px-8 lg:py-28" aria-label="For students and colleges">
       <div className="mx-auto grid max-w-[1240px] gap-5 lg:grid-cols-2">
@@ -37,13 +37,13 @@ export function AudienceSplit() {
         <Reveal id="colleges" delay={100} className="scroll-mt-24">
           <div className={cn(s.card, 'relative h-full overflow-hidden bg-[var(--lp-blue-soft)] p-7 sm:p-9')}>
             <p className={cn(s.pixelText, 'text-[13px] uppercase text-[#1d4ed8]')}>For colleges</p>
-            <h2 className="mt-3 text-[30px] font-extrabold leading-tight tracking-tight">Bring your campus onto CampusOS.</h2>
+            <h2 className="mt-3 text-[30px] font-extrabold leading-tight tracking-tight">Run a pilot alongside your ERP.</h2>
             <ul className="mt-5 space-y-2.5 text-[15px]">
               {[
-                'Invite students and faculty, or open sign-ups for your domain',
-                'Publish notices to exactly the right classes',
-                'Run events with registration, check-in and certificates',
-                'Timetables, attendance and a redressal desk with roles and audit logs',
+                'Keep your ERP — bring students and classes in from a CSV',
+                'Notices that ask for a confirmation, with proof of who acknowledged',
+                'A grievance workflow aligned with the UGC 2023 timelines',
+                'Attendance students can see, and an evidence pack for your IQAC',
               ].map((t) => (
                 <li key={t} className="flex items-start gap-2.5">
                   <Check size={18} className="mt-0.5 shrink-0 text-[#1d4ed8]" aria-hidden /> {t}
@@ -51,7 +51,17 @@ export function AudienceSplit() {
               ))}
             </ul>
             <p className="mt-8 max-w-[440px] text-[14px] leading-relaxed text-[var(--lp-muted)]">
-              Colleges are set up with the CampusOS team. Already set up?
+              Colleges start with a one-semester pilot, set up with the CampusOS team.{' '}
+              {demo ? (
+                <>
+                  <Link href="/login#demo-h" className="font-bold text-[#1d4ed8] underline-offset-2 hover:underline">
+                    Try the demo college
+                  </Link>{' '}
+                  first, or sign in if you’re already set up.
+                </>
+              ) : (
+                'Already set up?'
+              )}
             </p>
             <Link
               href="/login"

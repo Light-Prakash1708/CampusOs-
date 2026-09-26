@@ -22,7 +22,8 @@ import { db, pool } from '../src/lib/db';
 import * as s from '../src/lib/db/schema';
 import { hashPassword } from '../src/lib/auth/password';
 import { defaultFlags } from '../src/lib/features';
-import { purgeTenant } from './lib/purge';
+import { purgeDemoTenant, purgeTenant } from './lib/purge';
+import { randomBytes } from 'node:crypto';
 import { seedEventsNetwork } from './seed-events';
 import { seedLibrary } from './seed-library';
 import { ensureRetentionPolicies } from '../src/services/privacy/retention';
@@ -92,20 +93,31 @@ async function main() {
   const startedAt = Date.now();
   console.log('CampusOS seed — starting');
 
-  const demoPassword = process.env.DEMO_PASSWORD ?? 'CampusOS!Demo2026';
+  const production = process.env.NODE_ENV === 'production';
+  if (production && process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error('Refusing to seed in production. For the public demo tenant run `npm run demo:reset` (sets ALLOW_DEMO_SEED=true).');
+  }
+  // In production the demo is entered through "Try the demo", never a shared password.
+  const demoPassword = process.env.DEMO_PASSWORD ?? (production ? randomBytes(24).toString('base64url') : 'CampusOS!Demo2026');
+  // The public demo is never listed for real students; locally it stays listed for development.
+  const demoListed = !production && process.env.DEMO_UNLISTED !== 'true';
+  // Flag it as the isolated public demo in production (or when the demo is switched on).
+  // Locally it stays an ordinary college so every feature can be developed against it.
+  const isDemo = production || process.env.DEMO_TENANT_ENABLED === 'true';
   const passwordHash = await hashPassword(demoPassword);
 
   /* ---------- reset the demo tenant ---------- */
   const existing = await db
-    .select({ id: s.institutions.id })
+    .select({ id: s.institutions.id, isDemo: s.institutions.isDemo })
     .from(s.institutions)
     .where(eq(s.institutions.slug, DEMO_SLUG))
     .limit(1);
 
   if (existing[0]) {
     console.log('  · removing previous demo tenant');
-
-    await purgeTenant(db, existing[0].id);
+    if (existing[0].isDemo) await purgeDemoTenant(db, existing[0].id);
+    else if (production) throw new Error(`A non-demo institution already uses the slug ${DEMO_SLUG}; refusing to touch it.`);
+    else await purgeTenant(db, existing[0].id);
   }
 
   /* ---------- institution ---------- */
@@ -124,7 +136,8 @@ async function main() {
       subscriptionTier: 'PROFESSIONAL',
       featureFlags: { ...defaultFlags(), anonymous_grievance_enabled: true, library_enabled: true, personal_tracker_enabled: true, gamification_enabled: true, leaderboards_enabled: true },
       registrationPolicy: { mode: 'ADMIN_APPROVAL' },
-      isListed: true,
+      isListed: demoListed && !isDemo,
+      isDemo,
       setupCompletedAt: new Date(),
     })
     .returning();
@@ -802,7 +815,14 @@ async function main() {
 
   /* ---------- attendance: last 5 teaching weeks ---------- */
   console.log('  · generating attendance…');
-  const today = new Date('2026-08-20T00:00:00.000Z');
+  // Anchor "today" to the real date so the demo always looks current, bounded
+  // by the seeded semester (teaching ends 2026-10-25). DEMO_ANCHOR=fixed keeps
+  // the historical 2026-08-20 anchor for reproducible development data.
+  const midnight = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+  const teachingEnd = new Date('2026-10-25T00:00:00.000Z');
+  const today = process.env.DEMO_ANCHOR === 'fixed' || midnight < new Date('2026-08-20T00:00:00.000Z')
+    ? new Date('2026-08-20T00:00:00.000Z')
+    : midnight > teachingEnd ? teachingEnd : midnight;
   const dayIndex: Record<string, number> = {
     SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6,
   };

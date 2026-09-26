@@ -11,7 +11,7 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as s from '../src/lib/db/schema';
-import { purgeTenant } from './lib/purge';
+import { purgeDemoTenant, purgeTenant } from './lib/purge';
 import { certificateCode, registrationCode, DEMO_SOURCE } from '../src/services/events/rules';
 
 const PARTNERS = [
@@ -42,8 +42,12 @@ export async function seedEventsNetwork(db: DB, ctx: {
   console.log('  · West Bengal events network (demo)…');
 
   // Remove previous partner tenants (development only).
-  const existing = await db.select({ id: s.institutions.id }).from(s.institutions).where(inArray(s.institutions.slug, PARTNERS.map((p) => p.slug)));
-  for (const e of existing) await purgeTenant(db, e.id);
+  const existing = await db.select({ id: s.institutions.id, isDemo: s.institutions.isDemo }).from(s.institutions).where(inArray(s.institutions.slug, PARTNERS.map((p) => p.slug)));
+  for (const e of existing) {
+    if (e.isDemo) await purgeDemoTenant(db, e.id);
+    else if (process.env.NODE_ENV === 'production') throw new Error('A non-demo institution uses a demo partner slug; refusing to touch it.');
+    else await purgeTenant(db, e.id);
+  }
 
   await db
     .update(s.institutions)
@@ -68,6 +72,8 @@ export async function seedEventsNetwork(db: DB, ctx: {
         longitude: String(p.lng),
         subscriptionTier: 'STARTER',
         featureFlags: { events_enabled: true, event_discovery_enabled: true },
+        // Fictional partner colleges exist only inside the demo network.
+        ...(process.env.NODE_ENV === 'production' || process.env.DEMO_TENANT_ENABLED === 'true' ? { isDemo: true, isListed: false } : {}),
         setupCompletedAt: new Date(),
       })
       .returning({ id: s.institutions.id });

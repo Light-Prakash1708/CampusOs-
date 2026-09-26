@@ -28,6 +28,7 @@ export async function listRegistrableInstitutions() {
       and(
         eq(t.institutions.isActive, true),
         eq(t.institutions.isListed, true),
+        eq(t.institutions.isDemo, false),
         isNull(t.institutions.deletedAt),
         sql`${t.institutions.registrationPolicy}->>'mode' <> 'DISABLED'`,
       ),
@@ -40,7 +41,8 @@ export async function getRegistrationStructure(slug: string) {
   const [inst] = await db
     .select({ id: t.institutions.id, name: t.institutions.name, policy: t.institutions.registrationPolicy })
     .from(t.institutions)
-    .where(and(eq(t.institutions.slug, slug), eq(t.institutions.isActive, true), eq(t.institutions.isListed, true), isNull(t.institutions.deletedAt)))
+    .where(and(eq(t.institutions.slug, slug), eq(t.institutions.isActive, true), eq(t.institutions.isListed, true),
+        eq(t.institutions.isDemo, false), isNull(t.institutions.deletedAt)))
     .limit(1);
   if (!inst || inst.policy.mode === 'DISABLED') throw new NotFoundError('College');
 

@@ -101,7 +101,7 @@ describe('tool registry', () => {
     const jobs = resolveTool(byKey('opportunities'), { ...student, featureFlags: { opportunity_hub_enabled: true }, permissions: new Set([...student.permissions, 'opportunity:view']) as typeof student.permissions });
     expect(jobs).toMatchObject({ status: 'AVAILABLE', href: '/student/opportunities' });
     expect(resolveTool(byKey('rooms'), student)).toMatchObject({ status: 'PLANNED', href: undefined });
-    expect(resolveTool(byKey('cgpa'), student)).toMatchObject({ status: 'PLANNED', statusLabel: 'Coming in Phase 10' });
+    expect(resolveTool(byKey('cgpa'), student)).toMatchObject({ status: 'PLANNED', statusLabel: 'Planned' });
     expect(resolveTool(byKey('events'), { ...student, featureFlags: { events_enabled: false } })).toMatchObject({
       status: 'DISABLED',
       statusLabel: 'Off at your college',

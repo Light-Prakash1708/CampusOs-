@@ -21,6 +21,7 @@ import { db, pool } from '../src/lib/db';
 import * as t from '../src/lib/db/schema';
 import { issueToken } from '../src/services/auth/tokens';
 import { appUrl } from '../src/lib/env';
+import { coreFlags } from '../src/lib/features';
 
 async function main() {
   const { values: a } = parseArgs({
@@ -46,7 +47,7 @@ async function main() {
   if (!inst) {
     [inst] = await db
       .insert(t.institutions)
-      .values({ slug: a.slug!, name: a.name!, shortName: a.short ?? null, city: a.city ?? null, state: a.state ?? null, timezone: a.timezone! })
+      .values({ slug: a.slug!, name: a.name!, shortName: a.short ?? null, city: a.city ?? null, state: a.state ?? null, timezone: a.timezone!, featureFlags: coreFlags() })
       .returning();
     console.log(`[provision] created institution ${inst!.name} (${inst!.slug})`);
   } else {

@@ -353,6 +353,7 @@ export async function changePassword(
   ctx: AuthContext,
   input: { currentPassword: string; newPassword: string; meta: RequestMeta },
 ): Promise<{ sessionEpoch: number }> {
+  if (ctx.isDemo) throw new AppError('Demo accounts are shared, so their passwords can’t be changed.', 403, 'DEMO_READ_ONLY');
   const [row] = await db
     .select({ hash: t.users.passwordHash, email: t.users.email, firstName: t.users.firstName })
     .from(t.users)

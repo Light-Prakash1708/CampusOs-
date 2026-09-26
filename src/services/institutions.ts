@@ -34,6 +34,8 @@ export const ONBOARDING_MODULES: FeatureFlag[] = (Object.keys(FEATURE_FLAGS) as 
   (f) => isBuilt(f) && !['email_enabled', 'push_enabled', 'sms_enabled', 'whatsapp_enabled', 'overlay_mode_enabled'].includes(f),
 );
 
+export { CORE_MODULES } from '@/lib/features';
+
 function operatorEmails(): string[] {
   return (process.env.PLATFORM_OPERATOR_EMAILS ?? '')
     .split(',')
@@ -41,8 +43,9 @@ function operatorEmails(): string[] {
     .filter(Boolean);
 }
 
-export function isPlatformOperator(ctx: Pick<AuthContext, 'role' | 'email'> | null): boolean {
-  if (!ctx || ctx.role !== 'SUPER_ADMIN') return false;
+export function isPlatformOperator(ctx: (Pick<AuthContext, 'role' | 'email'> & { isDemo?: boolean }) | null): boolean {
+  // A shared demo account can never operate the platform, whatever the allowlist says.
+  if (!ctx || ctx.role !== 'SUPER_ADMIN' || ctx.isDemo) return false;
   return operatorEmails().includes(ctx.email.trim().toLowerCase());
 }
 

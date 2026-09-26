@@ -80,9 +80,15 @@ export async function PortalLayout({
       badges={badges}
       mobileNav={filterMobileNav(MOBILE_NAV[portal], user)}
       quickCreate={filterQuickCreate(QUICK_CREATE[portal], user)}
-      demoMode={process.env.DEMO_MODE === 'true' && process.env.NODE_ENV !== 'production'}
+      demoMode={!!user.isDemo || (process.env.DEMO_MODE === 'true' && process.env.NODE_ENV !== 'production')}
     >
-      {noticeAccepted ? null : <PrivacyNoticeBanner version={PRIVACY_NOTICE_VERSION} />}
+      {user.isDemo ? (
+        <div role="note" className="mb-4 rounded-xl border border-[hsl(var(--warning-border))] bg-warning-subtle px-4 py-3 text-[13px] leading-relaxed text-default">
+          <strong>You’re exploring the CampusOS demo.</strong> This is a fictional college with sample data, shared with other visitors and reset every night. Nothing here is sent to real people.
+        </div>
+      ) : noticeAccepted ? null : (
+        <PrivacyNoticeBanner version={PRIVACY_NOTICE_VERSION} />
+      )}
       {children}
     </AppShell>
   );
@@ -109,7 +115,7 @@ function filterQuickCreate(items: QuickCreateItem[], user: AuthContext): QuickCr
   const out: QuickCreateEntry[] = [];
   for (const { feature, permissions, plannedPhase, ...item } of items) {
     if (permissions && !permissions.some((p) => user.permissions.has(p as never))) continue;
-    const planned = plannedPhase !== undefined ? `Coming in Phase ${plannedPhase}` : feature ? plannedLabel(feature) : null;
+    const planned = plannedPhase !== undefined ? 'Planned' : feature ? plannedLabel(feature) : null;
     if (!planned && feature && !isEnabled(user.featureFlags, feature)) continue;
     out.push({ ...item, planned });
   }

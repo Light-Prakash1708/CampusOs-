@@ -10,11 +10,15 @@ import { HowItWorks } from '@/components/landing/HowItWorks';
 import { AudienceSplit } from '@/components/landing/AudienceSplit';
 import { FinalCTA, LandingFooter } from '@/components/landing/FinalCTA';
 import s from '@/components/landing/landing.module.css';
+import { demoSignInEnabled } from '@/lib/demo';
+
+// Rendered per request so the "Try the demo" link follows DEMO_TENANT_ENABLED at runtime.
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'CampusOS — Your campus. One place.',
   description:
-    'Classes, attendance, notices, events, library and opportunities in one place for students — instead of WhatsApp groups, spreadsheets and five different portals.',
+    'Notices, attendance, grievances and opportunities in one place for students — working alongside the ERP your college already has, instead of WhatsApp groups and scattered portals.',
 };
 
 /**
@@ -34,7 +38,7 @@ export default function LandingPage() {
         <EventsShowcase />
         <PersonalDashboard />
         <HowItWorks />
-        <AudienceSplit />
+        <AudienceSplit demo={demoSignInEnabled()} />
         <FinalCTA />
       </main>
       <LandingFooter />

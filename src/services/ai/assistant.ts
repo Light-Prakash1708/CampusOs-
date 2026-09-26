@@ -92,7 +92,7 @@ export async function askAssistant(
   options: { feature?: AiFeature; history?: AiMessage[]; conversationId?: string | null } = {},
 ): Promise<AssistantAnswer> {
   const feature = options.feature ?? 'CAMPUS_ASSISTANT';
-  const provider = aiProviderFor(user.featureFlags);
+  const provider = aiProviderFor(user);
   const startedAt = Date.now();
 
   const budgetExceeded = await isOverMonthlyBudget(user.institutionId);
@@ -277,7 +277,7 @@ export async function generateLessonPlan(
   user: AuthContext,
   params: { subjectId: string; topic: string; durationMinutes: number; offeringId?: string },
 ): Promise<{ content: Record<string, unknown>; isLanguageModel: boolean; provider: string }> {
-  const provider = aiProviderFor(user.featureFlags);
+  const provider = aiProviderFor(user);
 
   const [subject] = await db
     .select()

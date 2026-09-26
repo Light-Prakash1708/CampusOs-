@@ -298,6 +298,7 @@ export type DeletionScope = 'ACCOUNT' | 'PERSONAL_TRACKER' | 'AI_MEMORY';
 export const PERSONAL_TRACKER_ERASERS: ((tx: typeof db, ctx: AuthContext) => Promise<number>)[] = [(tx, ctx) => eraseTrackerData(tx, ctx)];
 
 export async function requestDeletion(ctx: AuthContext, input: { scope: DeletionScope; reason?: string | null }, meta: Meta) {
+  if (ctx.isDemo && input.scope === 'ACCOUNT') throw new AppError('Demo accounts are shared and reset every night, so they can’t be deleted.', 403, 'DEMO_READ_ONLY');
   if (input.scope === 'ACCOUNT' && (await isPersonalWorkspace(ctx.institutionId))) {
     return deletePersonalWorkspace(ctx, input.reason ?? null, meta);
   }

@@ -27,7 +27,7 @@ export * from './rules';
  * college are never returned — the same answer as "does not exist".
  */
 
-type Ctx = Pick<AuthContext, 'userId' | 'institutionId' | 'permissions' | 'firstName' | 'fullName' | 'featureFlags'>;
+type Ctx = Pick<AuthContext, 'userId' | 'institutionId' | 'permissions' | 'firstName' | 'fullName' | 'featureFlags'> & { isDemo?: boolean };
 
 /** Cross-college discovery is a separate module switch from events themselves. */
 function discoversOtherColleges(ctx: Ctx): boolean {
@@ -44,7 +44,8 @@ function visibleTo(ctx: Ctx): SQL {
     discoversOtherColleges(ctx)
       ? or(
           eq(t.events.institutionId, ctx.institutionId),
-          and(eq(t.events.visibility, 'PUBLIC'), eq(t.institutions.isActive, true)),
+          // The demo and real colleges never see each other's events.
+          and(eq(t.events.visibility, 'PUBLIC'), eq(t.institutions.isActive, true), eq(t.institutions.isDemo, !!ctx.isDemo)),
         )
       : eq(t.events.institutionId, ctx.institutionId),
   )!;
@@ -270,6 +271,7 @@ export async function getEvent(ctx: Ctx, eventId: string) {
       institutionName: t.institutions.name,
       institutionShort: t.institutions.shortName,
       institutionActive: t.institutions.isActive,
+      institutionDemo: t.institutions.isDemo,
       roomCode: t.rooms.code,
       registeredCount: registeredCountSql,
     })
@@ -283,7 +285,7 @@ export async function getEvent(ctx: Ctx, eventId: string) {
   const own = e.institutionId === ctx.institutionId;
   const manager = canManageEvent(ctx, e);
   const published = (VISIBLE_STATUSES as readonly string[]).includes(e.status);
-  const visible = manager || (published && (own || (discoversOtherColleges(ctx) && e.visibility === 'PUBLIC' && row.institutionActive)));
+  const visible = manager || (published && (own || (discoversOtherColleges(ctx) && e.visibility === 'PUBLIC' && row.institutionActive && row.institutionDemo === !!ctx.isDemo)));
   if (!visible) throw new NotFoundError('Event');
 
   const [reg] = await db

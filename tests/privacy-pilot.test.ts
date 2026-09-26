@@ -102,13 +102,15 @@ describe('external AI processing (CAMPUSOS-019)', () => {
 
   it('uses the offline assistant unless the college turns external AI on', () => {
     __setAiProvider(external);
-    expect(aiProviderFor({}).isLanguageModel).toBe(false);
-    expect(aiProviderFor({ ai_external_processing_enabled: false }).isLanguageModel).toBe(false);
-    expect(aiProviderFor({ ai_external_processing_enabled: true })).toBe(external);
+    expect(aiProviderFor({ featureFlags: {} }).isLanguageModel).toBe(false);
+    expect(aiProviderFor({ featureFlags: { ai_external_processing_enabled: false } }).isLanguageModel).toBe(false);
+    expect(aiProviderFor({ featureFlags: { ai_external_processing_enabled: true } })).toBe(external);
+    // …but never in the public demo.
+    expect(aiProviderFor({ featureFlags: { ai_external_processing_enabled: true }, isDemo: true }).isLanguageModel).toBe(false);
   });
 
   it('the offline provider is used as-is when no language model is configured', () => {
     __setAiProvider(null);
-    expect(aiProviderFor({ ai_external_processing_enabled: true }).isLanguageModel).toBe(false);
+    expect(aiProviderFor({ featureFlags: { ai_external_processing_enabled: true } }).isLanguageModel).toBe(false);
   });
 });

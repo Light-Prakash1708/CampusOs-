@@ -552,10 +552,11 @@ let offline: AiProvider | null = null;
  * that sends data off CampusOS is used only when the institution has turned
  * on `ai_external_processing_enabled`; otherwise the offline provider answers.
  */
-export function aiProviderFor(featureFlags: Record<string, boolean> | undefined): AiProvider {
+export function aiProviderFor(ctx: { featureFlags?: Record<string, boolean>; isDemo?: boolean }): AiProvider {
   const configured = getAiProvider();
   if (!configured.isLanguageModel) return configured;
-  if (isEnabled(featureFlags, 'ai_external_processing_enabled')) return configured;
+  // The public demo never calls a paid external model (no uncontrolled cost).
+  if (!ctx.isDemo && isEnabled(ctx.featureFlags, 'ai_external_processing_enabled')) return configured;
   offline ??= new LocalProvider();
   return offline;
 }

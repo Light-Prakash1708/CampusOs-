@@ -37,3 +37,21 @@ export async function purgeTenant(db: NodePgDatabase<any>, institutionId: string
     }
   }
 }
+
+/**
+ * Removes a DEMO tenant (institutions.is_demo = true). Safe in production:
+ * the append-only guard permits deleting demo rows only (migration 0016), so
+ * no trigger is disabled and a real college can never be touched.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function purgeDemoTenant(db: NodePgDatabase<any>, institutionId: string): Promise<void> {
+  const [inst] = await db.select({ isDemo: s.institutions.isDemo }).from(s.institutions).where(eq(s.institutions.id, institutionId)).limit(1);
+  if (!inst) return;
+  if (!inst.isDemo) throw new Error('Refusing to purge a tenant that is not flagged as a demo.');
+  await db.transaction(async (tx) => {
+    for (const [table] of APPEND_ONLY) {
+      await tx.execute(sql`DELETE FROM ${sql.raw(table)} WHERE institution_id = ${institutionId}`);
+    }
+    await tx.delete(s.institutions).where(eq(s.institutions.id, institutionId));
+  });
+}

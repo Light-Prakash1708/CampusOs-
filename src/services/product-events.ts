@@ -76,6 +76,8 @@ export interface Actor {
   userId: string;
   institutionId: string;
   role: string;
+  /** Demo activity is never counted as product usage. */
+  isDemo?: boolean;
 }
 
 let cachedKey: string | null = null;
@@ -119,7 +121,7 @@ export function isProductEvent(name: string): name is ProductEvent {
 /** Record an event. Never throws. */
 export async function track(actor: Actor, event: ProductEvent, props?: Record<string, unknown>): Promise<void> {
   try {
-    if (!isProductEvent(event)) return;
+    if (!isProductEvent(event) || actor.isDemo) return;
     await db.insert(t.productEvents).values({
       institutionId: actor.institutionId,
       actorHash: actorHash(actor.userId),
@@ -134,6 +136,7 @@ export async function track(actor: Actor, event: ProductEvent, props?: Record<st
 
 /** Mark the actor active today (idempotent). Never throws. */
 export async function markActive(actor: Actor): Promise<void> {
+  if (actor.isDemo) return;
   try {
     await db
       .insert(t.productActiveDays)

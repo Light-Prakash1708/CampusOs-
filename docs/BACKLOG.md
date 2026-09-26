@@ -32,15 +32,15 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 012 | DONE | Built with 003; warm campuses on /admin/metrics |
 | 013 | DONE | `get_at_risk_students` removed; student card + staff scoping |
 | 014 | DONE | ZIP pack; reconciled with receipts and Campus Insights |
-| 015 | TODO | |
-| 016 | TODO | |
+| 015 | DONE | Isolated demo; `npm run demo:reset`; nightly reset is an owner step |
+| 016 | DONE | Core modules for new colleges; student nav regrouped |
 | 017 | TODO | |
 | 018 | TODO | |
 | 019 | DONE | `ai_external_processing_enabled`, off by default |
 | 020 | TODO | |
 | 021 | TODO | |
 | 022 | DONE | Productivity score and "time saved" removed |
-| 030 | TODO | |
+| 030 | DONE | Copy-only changes |
 | 023–029 | DEFERRED | V1.5, only after pilot evidence |
 | 031–039 | DEFERRED | V2/V3 |
 
@@ -735,3 +735,37 @@ These can be revisited only with pilot evidence:
   - "Working days" uses Sundays plus the college's holidays.
   - Attendance is a current snapshot, not period-bounded.
   - NAAC criterion mapping is intentionally not claimed.
+
+### 2026-09-27: CAMPUSOS-015 demo, CAMPUSOS-016 focus, CAMPUSOS-030 landing copy
+
+- **015 public demo:**
+  - **Database:** migration `0016_demo_tenant` adds `institutions.is_demo`. It also narrows the append-only guard so rows of a **demo** tenant may be deleted, for resets. UPDATE is still never allowed, and real colleges are unchanged; a test proves both.
+  - **Isolation**, enforced by the flag:
+    - never listed and never in the join or registration directories;
+    - cross-college event discovery never mixes demo and real colleges;
+    - outbound email, push, SMS and WhatsApp are always SKIPPED (`demo_tenant`);
+    - external AI is never used;
+    - uploads, password changes and account deletion are refused;
+    - activity is excluded from product analytics;
+    - a demo account can never be a platform operator, whatever the allowlist says. This came from the visual check, which caught `/admin/metrics` open to the allowlisted demo registrar.
+  - **"Try the demo":** `POST /api/auth/demo` for student, faculty or admin. It is rate-limited and off unless `DEMO_TENANT_ENABLED=true`. Buttons appear on `/login` and a link on the landing college card. A banner inside the demo portals explains it.
+  - **Reset:** `npm run demo:reset` reuses the realistic seed.
+    - In production it refuses unless it is the demo command.
+    - It never touches a non-demo tenant with the same slug.
+    - It uses a random password (entry is through "Try the demo").
+    - Dates are anchored to today, bounded by the seeded semester.
+- **016 focus:**
+  - `CORE_MODULES` and `coreFlags()`: new colleges (operator wizard and `npm run provision`) start with the pilot core set. Library, leaderboards, gamification, the timetable optimizer, Copilot and external AI stay available but off. Existing colleges are untouched.
+  - Stale "Coming in Phase N" labels now read "Planned".
+  - Student navigation is regrouped into Home, Schedule, Attendance and Notices, then Work, Growth, Campus and More. Mobile shows Home, Attendance, Create, Notices and More. Nothing was removed.
+- **030 landing:** copy only.
+  - The hero kicker, paragraph and bullets now say it works alongside the ERP.
+  - The college card is now "Run a pilot alongside your ERP", with the four value points and a demo link.
+  - The meta description is updated.
+  - The landing page is rendered per request, so the demo link follows the runtime flag.
+- **Also:** the student "Needs your attention" card shows 2 signals on phones and 4 on larger screens, with a link to everything.
+- **Tests:** `tests/demo-tenant.test.ts` (8). Suite: all pass except when the local seed is run *as the demo*: `integration.test.ts` deliberately checks append-only behaviour on the seeded college, so seed locally without `DEMO_TENANT_ENABLED`.
+- **Owner steps:**
+  - set `DEMO_TENANT_ENABLED=true` on the web service;
+  - run `npm run demo:reset` once from the Render shell;
+  - add a nightly cron for it (paid plan), or re-run it before sales demos.

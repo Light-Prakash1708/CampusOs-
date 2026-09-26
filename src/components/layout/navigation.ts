@@ -28,18 +28,29 @@ export interface NavGroup {
  * as dead links.
  */
 export const STUDENT_NAV: NavGroup[] = [
+  // Focused for the pilot (CAMPUSOS-016): what do I need to know or do today?
+  // Nothing was removed — secondary pages moved into their own groups.
   {
     items: [
       { label: 'Home', href: '/student', icon: 'home' },
       { label: 'Schedule', href: '/student/schedule', icon: 'calendar' },
       { label: 'Attendance', href: '/student/attendance', icon: 'check' },
+      { label: 'Notices', href: '/student/announcements', icon: 'megaphone' },
+    ],
+  },
+  {
+    label: 'Work',
+    items: [
       { label: 'Assignments', href: '/student/assignments', icon: 'clipboard' },
-      { label: 'Events', href: '/student/events', icon: 'ticket', feature: 'events_enabled' },
-      { label: 'Communities', href: '/student/communities', icon: 'users', feature: 'clubs_enabled' },
-      { label: 'Library', href: '/student/library', icon: 'library', feature: 'resource_hub_enabled' },
+      { label: 'Exams & Results', href: '/student/assessments', icon: 'graduation' },
+      { label: 'Calendar', href: '/student/calendar', icon: 'calendarClock' },
+    ],
+  },
+  {
+    label: 'Growth',
+    items: [
       { label: 'Opportunities', href: '/student/opportunities', icon: 'briefcase', feature: 'opportunity_hub_enabled' },
-      { label: 'Tools & Utilities', href: '/tools', icon: 'tools' },
-      { label: 'Career', href: '/student/skills', icon: 'career', feature: 'skill_engine_enabled' },
+      { label: 'Career & Skills', href: '/student/skills', icon: 'career', feature: 'skill_engine_enabled' },
       { label: 'Tracker', href: '/student/tracker', icon: 'tracker', feature: 'personal_tracker_enabled' },
       { label: 'Progress', href: '/student/progress', icon: 'trophy', feature: 'gamification_enabled' },
       {
@@ -54,10 +65,10 @@ export const STUDENT_NAV: NavGroup[] = [
   {
     label: 'Campus',
     items: [
-      { label: 'Notices', href: '/student/announcements', icon: 'megaphone' },
-      { label: 'Exams & Results', href: '/student/assessments', icon: 'graduation' },
-      { label: 'Calendar', href: '/student/calendar', icon: 'calendarClock' },
+      { label: 'Events', href: '/student/events', icon: 'ticket', feature: 'events_enabled' },
       { label: 'Certificates', href: '/student/certificates', icon: 'shield', feature: 'events_enabled' },
+      { label: 'Library', href: '/student/library', icon: 'library', feature: 'resource_hub_enabled' },
+      { label: 'Communities', href: '/student/communities', icon: 'users', feature: 'clubs_enabled' },
       { label: 'Host an event', href: '/organize', icon: 'plus', feature: 'events_enabled', permissions: ['event:create'] },
       {
         label: 'Redressal',
@@ -67,6 +78,10 @@ export const STUDENT_NAV: NavGroup[] = [
         badgeKey: 'grievances',
       },
     ],
+  },
+  {
+    label: 'More',
+    items: [{ label: 'Tools & Utilities', href: '/tools', icon: 'tools' }],
   },
   {
     position: 'bottom',
@@ -278,22 +293,10 @@ export interface MobileNavItem {
 export const MOBILE_NAV: Record<'student' | 'faculty' | 'admin', MobileNavItem[]> = {
   student: [
     { label: 'Home', href: '/student', icon: 'home' },
-    {
-      label: 'Explore',
-      href: '/student/events',
-      icon: 'compass',
-      feature: 'events_enabled',
-      fallback: { label: 'Schedule', href: '/student/schedule', icon: 'calendar' },
-    },
+    { label: 'Attendance', href: '/student/attendance', icon: 'check' },
     { label: 'Create', href: '#create', icon: 'plus', kind: 'create' },
-    {
-      label: 'Tracker',
-      href: '/student/tracker',
-      icon: 'tracker',
-      feature: 'personal_tracker_enabled',
-      fallback: { label: 'Notices', href: '/student/announcements', icon: 'megaphone' },
-    },
-    { label: 'Profile', href: '/student/profile', icon: 'user' },
+    { label: 'Notices', href: '/student/announcements', icon: 'megaphone' },
+    { label: 'More', href: '/student/more', icon: 'boxes' },
   ],
   faculty: [
     { label: 'Home', href: '/faculty', icon: 'home' },

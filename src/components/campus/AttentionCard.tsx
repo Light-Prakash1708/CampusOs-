@@ -21,6 +21,8 @@ export function AttentionCard({ signals }: { signals: AttentionSignal[] }) {
           <li
             key={`${s.kind}-${i}`}
             className={cn(
+              // Phones show the two most important; tablets and up show four.
+              i >= 2 && 'hidden md:flex',
               'flex h-full flex-col gap-1.5 rounded-xl border-[1.5px] p-3',
               s.severity === 'critical' ? 'border-coral-ink bg-coral/40' : 'border-[hsl(var(--border-strong))] bg-surface',
             )}
@@ -37,6 +39,13 @@ export function AttentionCard({ signals }: { signals: AttentionSignal[] }) {
           </li>
         ))}
       </ul>
+      {signals.length > 2 ? (
+        <p className="mt-2 text-[12.5px] text-muted">
+          <span className="md:hidden">{signals.length - 2} more · </span>
+          {signals.length > 4 ? <span className="hidden md:inline">{signals.length - 4} more · </span> : null}
+          <Link href="/student/attendance" className="font-bold text-brand hover:underline">See everything in Attendance</Link>
+        </p>
+      ) : null}
     </CampusCard>
   );
 }

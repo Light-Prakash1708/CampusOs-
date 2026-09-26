@@ -94,6 +94,13 @@ export const institutions = pgTable(
      *             administrators; the tenant boundary isolates the student.
      */
     kind: text('kind').$type<'COLLEGE' | 'PERSONAL'>().notNull().default('COLLEGE'),
+    /**
+     * The public sales demo (CAMPUSOS-015). Isolated from real colleges:
+     * never listed, never in discovery for real tenants, no outbound email,
+     * no external AI, no uploads, and resettable (its append-only history
+     * may be purged — see migration 0016).
+     */
+    isDemo: boolean('is_demo').notNull().default(false),
     /** Setup wizard progress; the institution is not "live" until completed. */
     setupCompletedAt: timestamp('setup_completed_at', { withTimezone: true }),
     isActive: boolean('is_active').notNull().default(true),

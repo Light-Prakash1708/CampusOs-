@@ -1,7 +1,7 @@
 {
   "name": "campusos",
   "version": "0.1.0",
-  "description": "CampusOS — the operating system for college life",
+  "description": "CampusOS \u2014 the operating system for college life",
   "main": "index.js",
   "scripts": {
     "dev": "next dev -p 3000",
@@ -20,7 +20,8 @@
     "lint": "eslint .",
     "provision": "tsx --conditions=react-server scripts/provision.ts",
     "xp:backfill": "tsx --conditions=react-server scripts/backfill-xp.ts",
-    "brand:assets": "tsx scripts/brand/generate-assets.ts"
+    "brand:assets": "tsx scripts/brand/generate-assets.ts",
+    "demo:reset": "ALLOW_DEMO_SEED=true tsx scripts/seed.ts"
   },
   "keywords": [],
   "author": "",

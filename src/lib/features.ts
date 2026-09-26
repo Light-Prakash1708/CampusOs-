@@ -229,6 +229,29 @@ export const UNBUILT_MODULES: Partial<Record<FeatureFlag, number | 'later'>> = {
   virtual_lab_enabled: 'later',
 };
 
+/**
+ * The pilot's core set (CAMPUSOS-016): what a new college gets switched on
+ * unless the operator changes it in the wizard. Everything else stays built
+ * and available in Settings → Modules — hidden, not removed. Existing
+ * colleges keep whatever they had: this only affects new institutions.
+ */
+export const CORE_MODULES: FeatureFlag[] = [
+  'ai_assistant_enabled',
+  'grievance_enabled',
+  'events_enabled',
+  'attendance_planner_enabled',
+  'resource_hub_enabled',
+  'skill_engine_enabled',
+  'opportunity_hub_enabled',
+  'personal_tracker_enabled',
+  'advanced_analytics_enabled',
+];
+
+/** Explicit flags for a new college: the core set on, every other built module off. */
+export function coreFlags(): Record<string, boolean> {
+  return Object.fromEntries((Object.keys(FEATURE_FLAGS) as FeatureFlag[]).filter(isBuilt).map((f) => [f, CORE_MODULES.includes(f)]));
+}
+
 export function isBuilt(flag: FeatureFlag): boolean {
   return !(flag in UNBUILT_MODULES);
 }
@@ -237,7 +260,8 @@ export function isBuilt(flag: FeatureFlag): boolean {
 export function plannedLabel(flag: FeatureFlag): string | null {
   const phase = UNBUILT_MODULES[flag];
   if (phase === undefined) return null;
-  return phase === 'later' ? 'Planned' : `Coming in Phase ${phase}`;
+  // Roadmap phase numbers went stale as priorities changed; users just see "Planned".
+  return 'Planned';
 }
 
 export function isEnabled(

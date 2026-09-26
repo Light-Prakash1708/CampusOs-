@@ -51,6 +51,7 @@ export async function updateRegistrationPolicy(
   meta: { ipAddress: string | null; userAgent: string | null },
 ) {
   if (!ctx.permissions.has('institution:manage')) throw new ForbiddenError();
+  if (ctx.isDemo && policy.isListed) throw new ForbiddenError('The demo college cannot be listed publicly.');
   const [inst] = await db
     .select({ policy: t.institutions.registrationPolicy, isListed: t.institutions.isListed })
     .from(t.institutions)
