@@ -13,7 +13,7 @@ export function studentOnly(user: AuthContext): AuthContext {
   return user;
 }
 
-export { idParam } from '@/lib/http';
+export { idParam } from '@/lib/api';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-10-01');
 export const Title = z.string().trim().min(1, 'Give it a name').max(120);

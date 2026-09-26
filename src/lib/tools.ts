@@ -70,12 +70,14 @@ export const TOOLS: readonly ToolDefinition[] = [
   {
     key: 'opportunities',
     title: 'Internships & Jobs',
-    description: 'Verified internship and job listings with source, deadline and eligibility — matched to your skills.',
+    description: 'Internship and job listings your college approved, with source, deadline and eligibility — matched to your skills.',
     icon: 'jobs',
     tone: 'lavender',
     featured: true,
+    href: '/student/opportunities',
+    cta: 'Browse',
     feature: 'opportunity_hub_enabled',
-    plannedPhase: 5,
+    permissions: ['opportunity:view'],
   },
   {
     key: 'events',
@@ -136,7 +138,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     description: 'Keep marksheets, certificates and your resume in private folders with expiring share links.',
     icon: 'documents',
     tone: 'mint',
-    plannedPhase: 6,
+    plannedPhase: 10,
   },
   {
     key: 'reminders',
@@ -144,7 +146,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     description: 'Nudges before class, before deadlines, and when a subject’s attendance needs attention.',
     icon: 'reminders',
     tone: 'lavender',
-    plannedPhase: 3,
+    plannedPhase: 10,
   },
   {
     key: 'tracker',
@@ -162,7 +164,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     description: 'Find any room by code or name: building, floor, whether it is free now, and its next class.',
     icon: 'rooms',
     tone: 'sun',
-    plannedPhase: 3,
+    plannedPhase: 10,
   },
   {
     key: 'study-planner',
@@ -170,7 +172,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     description: 'A realistic revision plan built from your exams, timetable and free hours.',
     icon: 'planner',
     tone: 'peach',
-    plannedPhase: 7,
+    plannedPhase: 10,
   },
   {
     key: 'cgpa',
@@ -178,7 +180,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     description: 'SGPA and CGPA on your college’s grading scale, and what you need next semester to hit a target.',
     icon: 'cgpa',
     tone: 'sky',
-    plannedPhase: 8,
+    plannedPhase: 10,
   },
   {
     key: 'assistant',

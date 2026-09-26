@@ -97,9 +97,11 @@ describe('tool registry', () => {
 
   it('resolves available, planned, disabled and hidden tools', () => {
     expect(resolveTool(byKey('attendance'), student)?.status).toBe('AVAILABLE');
-    const jobs = resolveTool(byKey('opportunities'), { ...student, featureFlags: { opportunity_hub_enabled: true } });
-    expect(jobs).toMatchObject({ status: 'PLANNED', statusLabel: 'Coming in Phase 5', href: undefined });
-    expect(resolveTool(byKey('cgpa'), student)).toMatchObject({ status: 'PLANNED', statusLabel: 'Coming in Phase 8' });
+    // Built in Phase 9: live when the college switches the hub on and the student may view it.
+    const jobs = resolveTool(byKey('opportunities'), { ...student, featureFlags: { opportunity_hub_enabled: true }, permissions: new Set([...student.permissions, 'opportunity:view']) as typeof student.permissions });
+    expect(jobs).toMatchObject({ status: 'AVAILABLE', href: '/student/opportunities' });
+    expect(resolveTool(byKey('rooms'), student)).toMatchObject({ status: 'PLANNED', href: undefined });
+    expect(resolveTool(byKey('cgpa'), student)).toMatchObject({ status: 'PLANNED', statusLabel: 'Coming in Phase 10' });
     expect(resolveTool(byKey('events'), { ...student, featureFlags: { events_enabled: false } })).toMatchObject({
       status: 'DISABLED',
       statusLabel: 'Off at your college',
@@ -152,9 +154,9 @@ afterAll(async () => {
 });
 
 describe('feature flags cannot switch on unbuilt modules', () => {
-  it('refuses to enable Communities or Opportunities, but allows built modules', async () => {
+  it('refuses to enable Communities or Channels, but allows built modules', async () => {
     const superAdmin = await ctxFor((await createUser(A, { role: 'SUPER_ADMIN' })).id);
-    for (const flag of ['clubs_enabled', 'opportunity_hub_enabled'] as const) {
+    for (const flag of ['clubs_enabled', 'campus_channels_enabled'] as const) {
       await expect(updateFeatureFlags(superAdmin, { [flag]: true }, meta())).rejects.toMatchObject({ status: 422, code: 'MODULE_NOT_BUILT' });
     }
     // Switching an unbuilt module OFF is always allowed (e.g. clearing old data).

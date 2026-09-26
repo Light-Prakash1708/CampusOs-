@@ -68,6 +68,10 @@ const EnvSchema = z
     /** Where unhandled errors are sent besides the log: none | webhook. */
     ERROR_REPORTER: z.enum(['none', 'webhook']).default('none'),
     ERROR_WEBHOOK_URL: z.string().url().optional(),
+    // Career Mode: an optional feed of opportunities the college subscribes to.
+    OPPORTUNITY_FEED_PROVIDER: z.enum(['none', 'json-feed']).default('none'),
+    OPPORTUNITY_FEED_URL: z.string().url().optional(),
+    OPPORTUNITY_FEED_TOKEN: z.string().optional(),
   })
   .superRefine((env, ctx) => {
     const need = (cond: boolean, key: string, why: string) => {
@@ -90,6 +94,8 @@ const EnvSchema = z
     need(fcm && !env.FCM_PRIVATE_KEY, 'FCM_PRIVATE_KEY', 'required when PUSH_PROVIDER=fcm');
     need(env.SMS_PROVIDER === 'msg91' && !env.MSG91_AUTH_KEY, 'MSG91_AUTH_KEY', 'required when SMS_PROVIDER=msg91');
     need(env.ERROR_REPORTER === 'webhook' && !env.ERROR_WEBHOOK_URL, 'ERROR_WEBHOOK_URL', 'required when ERROR_REPORTER=webhook');
+    need(env.OPPORTUNITY_FEED_PROVIDER === 'json-feed' && !env.OPPORTUNITY_FEED_URL, 'OPPORTUNITY_FEED_URL', 'required when OPPORTUNITY_FEED_PROVIDER=json-feed');
+    need(env.OPPORTUNITY_FEED_PROVIDER === 'json-feed' && !!env.OPPORTUNITY_FEED_URL && !env.OPPORTUNITY_FEED_URL.startsWith('https://') && env.NODE_ENV === 'production', 'OPPORTUNITY_FEED_URL', 'must be https in production');
 
     if (env.NODE_ENV === 'production') {
       need(env.DEMO_MODE, 'DEMO_MODE', 'must be false in production');

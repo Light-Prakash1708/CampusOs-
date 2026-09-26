@@ -58,6 +58,7 @@ import { getAttendanceOverview } from '@/services/attendance';
 import { trackerForToday } from '@/services/tracker';
 import { levelOf } from '@/services/gamification';
 import { loansDueSoon } from '@/services/library';
+import { applicationDeadlinesSoon } from '@/services/opportunities';
 import { buildToday, type TodayItem } from '@/lib/today';
 import { categoryTone, EventCoverArt, formatEventDates } from '@/components/campus/events';
 import { findNextClass, occurrencesForDate, type ClassOccurrence } from './_lib/schedule';
@@ -99,13 +100,14 @@ export default async function StudentHome() {
       : Promise.resolve([]),
   ]);
   const eventsOnForDay = isEnabled(user.featureFlags, 'events_enabled');
-  const [myEvents, savedEvents, attendanceOverview, trackerToday, level, loansDue] = await Promise.all([
+  const [myEvents, savedEvents, attendanceOverview, trackerToday, level, loansDue, applicationsDue] = await Promise.all([
     eventsOnForDay ? listEvents(user, { mine: 'registered', when: 'upcoming', sort: 'date', limit: 10 }) : Promise.resolve([]),
     eventsOnForDay ? listEvents(user, { mine: 'saved', when: 'upcoming', sort: 'date', limit: 20 }) : Promise.resolve([]),
     user.permissions.has('attendance:view_own') ? getAttendanceOverview(user) : Promise.resolve(null),
     trackerForToday(user),
     isEnabled(user.featureFlags, 'gamification_enabled') ? levelOf(user.userId) : Promise.resolve(null),
     user.permissions.has('library:borrow') ? loansDueSoon(user) : Promise.resolve([]),
+    user.permissions.has('opportunity:view') ? applicationDeadlinesSoon(user) : Promise.resolve([]),
   ]);
 
   const holidayToday = holidays.find((h) => h.date === now.today) ?? null;
@@ -194,6 +196,7 @@ export default async function StudentHome() {
     tasks: trackerToday.tasks,
     goals: trackerToday.goals,
     loans: loansDue,
+    applications: applicationsDue,
   });
 
   // Events 2.0: includes other colleges' public events when discovery is on,

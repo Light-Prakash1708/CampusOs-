@@ -37,6 +37,8 @@ export interface TodayInputs {
   goals?: { id: string; title: string; streak: number; href: string; doneToday: boolean }[];
   /** Library books due by tomorrow, or overdue. */
   loans?: { id: string; title: string; dueAt: Date }[];
+  /** Saved opportunities whose application deadline is near. */
+  applications?: { id: string; title: string; organization: string; deadline: Date | null }[];
 }
 
 const toMin = (hhmm: string) => {
@@ -156,6 +158,23 @@ export function buildToday(input: TodayInputs, limit = 7): TodayItem[] {
     } else if (due.date === input.today || due.date === tomorrow) {
       out.push({ key: `lib-${l.id}`, kind: 'library', when: due.date === input.today ? 'Due today' : 'Tomorrow', title: `Return “${l.title}”`, detail: 'Library book · renew it if you need longer', href: '/student/library?tab=loans', urgent: false, order: due.date === input.today ? 1100 : 2600 });
     }
+  }
+
+  // Opportunities the student saved but hasn't applied to, closing soon.
+  for (const a of input.applications ?? []) {
+    if (!a.deadline || a.deadline.getTime() < Date.now()) continue;
+    const dl = localParts(a.deadline, input.timeZone);
+    if (dl.date !== input.today && dl.date !== tomorrow) continue;
+    out.push({
+      key: `opp-${a.id}`,
+      kind: 'deadline',
+      when: dl.date === input.today ? `Apply by ${dl.hhmm}` : 'Tomorrow',
+      title: `Apply: ${a.title}`,
+      detail: `${a.organization} · applications close ${dl.date === input.today ? 'today' : `tomorrow at ${dl.hhmm}`}`,
+      href: '/student/opportunities?tab=mine',
+      urgent: false,
+      order: dl.date === input.today ? 100 + dl.minutes : 2400,
+    });
   }
 
   return out.sort((a, b) => Number(b.urgent) - Number(a.urgent) || a.order - b.order).slice(0, limit);

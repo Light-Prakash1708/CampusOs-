@@ -21,6 +21,7 @@ import { isEnabled } from '@/lib/features';
 import { mostUsed, type ResolvedTool } from '@/lib/tools';
 import { pluralize } from '@/lib/utils';
 import { listEvents } from '@/services/events';
+import { listForStudent } from '@/services/opportunities';
 import { listToolsFor } from '@/services/tools';
 
 export const dynamic = 'force-dynamic';
@@ -139,10 +140,11 @@ async function loadHighlights(
   const out: Highlights = {};
   const on = (key: string) => tools.get(key)?.status === 'AVAILABLE';
 
-  const [rows, nextClass, events] = await Promise.all([
+  const [rows, nextClass, events, openings] = await Promise.all([
     on('attendance') ? getAttendanceRows(user.institutionId, user.studentProfileId) : Promise.resolve(null),
     on('timetable') ? loadNextClass(user) : Promise.resolve(null),
     on('events') && isEnabled(user.featureFlags, 'events_enabled') ? listEvents(user, { when: 'upcoming', sort: 'date', limit: 60 }) : Promise.resolve(null),
+    on('opportunities') ? listForStudent(user, { limit: 200 }) : Promise.resolve(null),
   ]);
 
   if (rows) {
@@ -207,6 +209,21 @@ async function loadHighlights(
           </>
         ) : (
           'No upcoming events right now.'
+        )}
+      </div>
+    );
+  }
+  if (openings) {
+    const strong = openings.filter((o) => o.skills.length > 0 && o.match.matched.length / o.skills.length >= 0.5).length;
+    out.opportunities = (
+      <div className="rounded-xl border-[1.5px] border-ink bg-surface p-2.5 text-[12px] text-muted">
+        {openings.length ? (
+          <>
+            <span className="font-extrabold text-default">{pluralize(openings.length, 'open listing')}</span> at your college
+            {strong ? <span className="block">{strong} match at least half your skills.</span> : null}
+          </>
+        ) : (
+          'No open listings right now.'
         )}
       </div>
     );

@@ -157,7 +157,7 @@ export const FEATURE_FLAGS = {
   },
   opportunity_hub_enabled: {
     label: 'Opportunity Hub',
-    description: 'Internships, hackathons, competitions and scholarships from verified publishers.',
+    description: 'Internships, jobs, hackathons and scholarships — published by the college, shared by students or imported from a configured feed, always approved first. Private application tracker with skill match.',
     defaultValue: false,
     tier: 'PROFESSIONAL',
   },
@@ -206,14 +206,16 @@ export type FeatureFlag = keyof typeof FEATURE_FLAGS;
  * guarantees a flag can never expose a route that 404s.
  *
  * When a module ships, delete its line here in the same commit.
+ *
+ * Numbers follow the build roadmap after CampusOS 2.0 (Phases 1–9 shipped):
+ * Phase 10 = communities & coaching, Phase 11 = installable app.
  */
 export const UNBUILT_MODULES: Partial<Record<FeatureFlag, number | 'later'>> = {
-  clubs_enabled: 4,
-  campus_channels_enabled: 4,
-  campus_rep_enabled: 4,
-  opportunity_hub_enabled: 5,
-  ai_coach_enabled: 9,
-  ai_memory_enabled: 9,
+  clubs_enabled: 10,
+  campus_channels_enabled: 10,
+  campus_rep_enabled: 10,
+  ai_coach_enabled: 10,
+  ai_memory_enabled: 10,
   pwa_enabled: 11,
   whatsapp_enabled: 'later',
   billing_enabled: 'later',

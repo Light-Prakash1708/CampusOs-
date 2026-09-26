@@ -157,6 +157,7 @@ anything.
 | `0005_attendance_planner` | `institutions.attendance_policy` jsonb (default `{}`, CHECK object): default minimum, warning margin, optional overall minimum. |
 | `0006_tracker_gamification` | `tracker_goals`, `tracker_goal_steps`, `tracker_checkins` (one row per goal per local day), `tracker_tasks`, `xp_events` (append-only ledger: UPDATE blocked by trigger; unique `(user_id, idempotency_key)`), `user_achievements`. CHECKs on categories, cadences, statuses, targets, amounts and XP sources. See `GAMIFICATION.md`. |
 | `0007_library` | `library_books` (unique ISBN per college), `library_loans` (one open loan per title per person), `library_reservations` (one open reservation per title per person; status CHECK), `resource_saves`. See `LIBRARY.md`. |
+| `0008_opportunities` | `opportunities` (source COLLEGE/STUDENT/FEED; unique feed item per college; CHECKs on kind, status, work mode and http(s) link), `opportunity_tracking` (one private status per student per listing). See `CAREER.md`. |
 
 **Baselining v1 databases.** Databases created by v1 with `db:push` have no
 migration history. The runner detects that (tables present, history empty),

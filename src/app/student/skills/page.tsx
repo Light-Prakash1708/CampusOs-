@@ -11,7 +11,6 @@ import {
 import {
   Alert,
   Badge,
-  Button,
   Card,
   CardBody,
   CardHeader,
@@ -32,6 +31,8 @@ import {
 } from '@/services/skills';
 
 import { requireStudentContext } from '../_lib/auth';
+import { CareerGoalPicker } from '@/components/campus/OpportunityActions';
+import { listCareerRoles, listForStudent } from '@/services/opportunities';
 import { ModuleDisabled } from '../_components/bits';
 
 export const metadata = { title: 'Skills & Career' };
@@ -56,6 +57,16 @@ export default async function SkillsPage() {
   const plan = profile.careerGoal
     ? await buildSkillGapPlan(user.institutionId, user.studentProfileId, profile.careerGoal.roleId)
     : null;
+
+  const [roles, openings] = await Promise.all([
+    listCareerRoles(user),
+    isEnabled(user.featureFlags, 'opportunity_hub_enabled') && user.permissions.has('opportunity:view') ? listForStudent(user, { limit: 200 }) : Promise.resolve(null),
+  ]);
+  // Openings ranked by how many of their listed skills the student already has.
+  const matches = (openings ?? [])
+    .filter((o) => o.skills.length > 0 && o.match.matched.length > 0)
+    .sort((a, b) => b.match.matched.length / b.skills.length - a.match.matched.length / a.skills.length)
+    .slice(0, 3);
 
   const byCategory = new Map<string, SkillProfileEntry[]>();
   for (const skill of profile.skills) {
@@ -152,14 +163,8 @@ export default async function SkillsPage() {
                 <EmptyState
                   icon={Target}
                   title="No career goal set"
-                  description="Your skills are being tracked, but without a target role there is nothing to measure readiness against. The placement cell can set your primary goal."
-                  action={
-                    <Button asChild size="sm" variant="secondary">
-                      <Link href="/student/redressal/new?category=academic">
-                        Ask for a goal to be set
-                      </Link>
-                    </Button>
-                  }
+                  description="Your skills are being tracked, but without a target role there is nothing to measure readiness against. Pick one from your college’s role catalogue — you can change it any time."
+                  action={<CareerGoalPicker roles={roles} current={null} />}
                 />
               </CardBody>
             </Card>
@@ -333,6 +338,52 @@ export default async function SkillsPage() {
           </div>
         </>
       )}
+
+      {profile.careerGoal ? (
+        <details className="mt-6 rounded-xl border border-[hsl(var(--border))] bg-surface p-4">
+          <summary className="flex min-h-[44px] cursor-pointer items-center text-[13px] font-bold text-default">Change target role</summary>
+          <div className="mt-3">
+            <CareerGoalPicker roles={roles} current={profile.careerGoal.roleId} />
+          </div>
+        </details>
+      ) : profile.skills.length === 0 ? (
+        <div className="mt-6 rounded-xl border border-[hsl(var(--border))] bg-surface p-4">
+          <p className="mb-2 text-[13px] font-bold text-default">Set a target role now</p>
+          <CareerGoalPicker roles={roles} current={null} />
+        </div>
+      ) : null}
+
+      {openings ? (
+        <section className="mt-6" aria-labelledby="match-h">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 id="match-h" className="text-[15px] font-bold text-default">
+              Openings that fit your skills
+            </h2>
+            <Link href="/student/opportunities" className="text-[13px] font-bold text-brand hover:underline">
+              All opportunities
+            </Link>
+          </div>
+          {matches.length === 0 ? (
+            <p className="text-[13px] text-subtle">
+              {openings.length ? 'None of the open listings ask for skills in your profile yet.' : 'No open listings at your college right now.'}
+            </p>
+          ) : (
+            <ul className="grid gap-3 md:grid-cols-3">
+              {matches.map((o) => (
+                <li key={o.id}>
+                  <Link href={`/student/opportunities?q=${encodeURIComponent(o.title)}`} className="block h-full rounded-xl border border-[hsl(var(--border))] bg-surface p-3 hover:border-[hsl(var(--border-strong))]">
+                    <span className="block text-[13.5px] font-bold text-default">{o.title}</span>
+                    <span className="block text-[12px] text-muted">{o.organization}</span>
+                    <span className="mt-1 block text-[12px] text-subtle">
+                      You have {o.match.matched.length} of {o.skills.length}: {o.match.matched.join(', ')}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
     </>
   );
 }

@@ -136,7 +136,7 @@ describe('CampusOS 2.0 roles and capabilities', () => {
     }
   });
   it('never lets a flag switch on a module that is not built', () => {
-    for (const m of ['clubs_enabled', 'opportunity_hub_enabled', 'ai_coach_enabled'] as const) {
+    for (const m of ['clubs_enabled', 'campus_channels_enabled', 'ai_coach_enabled'] as const) {
       expect(isBuilt(m)).toBe(false);
       expect(isEnabled({ [m]: true }, m)).toBe(false);
       expect(plannedLabel(m)).toMatch(/^Coming in Phase \d+$/);

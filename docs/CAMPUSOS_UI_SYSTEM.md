@@ -116,6 +116,18 @@ These components share one dialog core, `useDialog`:
 
 - **`ActivityHeatmap`**: one square per day, one hue light→dark, tooltip per square, a spoken summary and an sr-only list of active days.
 
+### Module actions (client)
+
+| File | Components |
+|---|---|
+| `LibraryActions.tsx` | `ReserveButton`, `RenewButton`, `CancelReservationButton` (student); `IssueForm`, `ReturnButton` (with an audited fine waiver), `AddBookForm`, `CopiesEditor` (desk) |
+| `ResourceSave.tsx` | `ResourceSaveToggle`: optimistic bookmark with rollback and `aria-pressed` |
+| `OpportunityActions.tsx` | `TrackSelect` (private application status), `OpportunityForm` (share or publish), `ModerateControls`, `ImportFeedButton` (explains when no feed is configured), `CareerGoalPicker` |
+| `src/app/student/assistant/Chat.tsx` | History sidebar (a drawer on phones), new chat, delete, quick actions, and **confirmation cards** for AI-prepared changes: Confirm / Dismiss, then Done, Dismissed, Expired or "Didn't work" with the reason |
+
+Every action shows its result in an `aria-live` status line, keeps what the
+person typed when something fails, and uses 44px targets.
+
 ### Tools: `src/components/campus/tools.tsx` and `ToolOpenLink.tsx`
 
 - **`CampusToolCard`** (`variant="feature" | "compact"`) renders a resolved tool from `src/lib/tools.ts`:

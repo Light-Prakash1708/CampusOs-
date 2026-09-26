@@ -278,3 +278,9 @@ export async function parseBody<T>(
   }
   return schema.parse(raw);
 }
+
+/** A route's `[id]` segment as a UUID, or a 404 naming what wasn't found. */
+export function idParam(value: string | undefined, what = 'That item'): string {
+  if (!value || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) throw new AppError(`${what} was not found.`, 404, 'NOT_FOUND');
+  return value;
+}

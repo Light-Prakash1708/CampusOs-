@@ -92,11 +92,11 @@ export default async function LibraryDeskPage({ searchParams }: { searchParams: 
           <CampusCard as="section" className="overflow-hidden" aria-labelledby="cat-h">
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
               <CampusSectionHeader id="cat-h" title="Catalogue" />
-              <form action="/admin/library" method="get" role="search" className="flex gap-2">
+              <form action="/admin/library" method="get" role="search" className="flex w-full gap-2 sm:w-auto">
                 <input type="hidden" name="tab" value="catalogue" />
-                <label>
+                <label className="min-w-0 flex-1">
                   <span className="sr-only">Search the catalogue</span>
-                  <input name="q" defaultValue={q} placeholder="Title, author, ISBN" className="h-11 w-56 rounded-xl border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[13px]" />
+                  <input name="q" defaultValue={q} placeholder="Title, author, ISBN" className="h-11 w-full rounded-xl sm:w-56 border-[1.5px] border-[hsl(var(--border-strong))] bg-surface px-3 text-[13px]" />
                 </label>
                 <button type="submit" className="min-h-[44px] rounded-xl border-[1.5px] border-ink bg-surface px-3 text-[13px] font-bold shadow-pop">
                   Search

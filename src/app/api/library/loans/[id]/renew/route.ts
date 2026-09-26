@@ -1,5 +1,5 @@
-import { ok, withAuth } from '@/lib/api';
-import { idParam, metaFrom } from '@/lib/http';
+import { idParam, ok, withAuth } from '@/lib/api';
+import { metaFrom } from '@/lib/http';
 import { renewLoan } from '@/services/library';
 
 /** Renew my own loan (not overdue, under the limit, nobody waiting). */

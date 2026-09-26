@@ -22,3 +22,4 @@ export * from './events';
 export * from './tools';
 export * from './tracker';
 export * from './library';
+export * from './opportunities';

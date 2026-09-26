@@ -57,6 +57,13 @@
       "when": 1790365748731,
       "tag": "0007_library",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790367097579,
+      "tag": "0008_opportunities",
+      "breakpoints": true
     }
   ]
 }
