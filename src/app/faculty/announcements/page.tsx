@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { Megaphone } from 'lucide-react';
 import { db } from '@/lib/db';
@@ -174,7 +175,7 @@ export default async function AnnouncementsPage() {
       </Section>
 
       {mine.length > 0 ? (
-        <Section title="Notices you have written">
+        <Section title="Notices you have written" description="Open one to see who received, opened and acknowledged it.">
           <Card>
             <ul className="divide-y divide-[hsl(var(--border))]">
               {mine.map((a) => (
@@ -183,7 +184,9 @@ export default async function AnnouncementsPage() {
                   className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-[13.5px] font-medium text-default">{a.title}</p>
+                    <Link href={`/faculty/announcements/${a.id}`} className="block truncate text-[13.5px] font-medium text-default hover:text-brand">
+                      {a.title}
+                    </Link>
                     <p className="text-[12.5px] text-muted">
                       {a.reference} ·{' '}
                       {a.publishedAt ? `published ${formatDate(a.publishedAt)}` : 'not published'} ·{' '}

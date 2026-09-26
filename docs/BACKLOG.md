@@ -27,7 +27,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 007 | DONE | Export existed; personal-workspace erasure added |
 | 008 | TODO | |
 | 009 | TODO | |
-| 010 | TODO | |
+| 010 | DONE | Receipts, CSV, reminders, faculty view |
 | 011 | TODO | |
 | 012 | DONE | Built with 003; warm campuses on /admin/metrics |
 | 013 | TODO | |
@@ -630,3 +630,28 @@ These can be revisited only with pilot evidence:
   - legal review of `/privacy` and the age-gate approach;
   - set `PRIVACY_CONTACT_EMAIL`.
 - **Deployment:** no migration.
+
+### 2026-09-27: CAMPUSOS-010 verified communication
+
+- **Already present:** `requires_acknowledgement`, per-recipient read and ack rows, the student's acknowledge action, the "your day" prompt on the student home, and an admin not-acknowledged list.
+- **Added:**
+  - **`services/notice-receipts.ts`:**
+    - the funnel: sent, delivered in-app, opened, acknowledged, pending, overdue;
+    - external channel counts from `notification_deliveries`;
+    - the full pending list;
+    - one authorisation rule (author, or `announcement:view_analytics`, same college).
+  - **CSV export** of who hasn't acknowledged. It is formula-injection safe and audited (`DATA_EXPORTED`).
+  - **`GET /api/announcements/[id]/receipts`** (JSON, or `?format=csv`).
+  - **One pre-deadline reminder** (deadline within 24 hours) to people who haven't acknowledged. The claim is race-safe. It runs as a new tenant job, `ack_reminders`.
+  - **`NoticeReceiptsPanel`**, shared by admin and faculty.
+  - **A new faculty page, `/faculty/announcements/[id]`**, so teachers see proof for their own notices.
+- **Terminology:**
+  - "Communications" → "Verified Communication";
+  - "Analytics" → "Campus Insights";
+  - "Reports" → "Evidence & Reports".
+
+  These are nav labels and page titles only; routes are unchanged.
+- **Database:** migration `0014_ack_reminders` (additive column `announcements.ack_reminder_sent_at`).
+- **Tests:** `tests/verified-communication.test.ts` (4). Full suite 309/309.
+- **Deployment:** the scheduler already runs every tenant job. No new configuration.
+- **Known limits:** email and push delivery still need `EMAIL_PROVIDER` and `PUSH_PROVIDER` configured for pilots (an owner step under CAMPUSOS-004). WhatsApp is deferred (028).

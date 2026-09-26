@@ -99,6 +99,13 @@
       "when": 1790453787935,
       "tag": "0013_product_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790455178759,
+      "tag": "0014_ack_reminders",
+      "breakpoints": true
     }
   ]
 }

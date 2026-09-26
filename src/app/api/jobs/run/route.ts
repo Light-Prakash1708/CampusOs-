@@ -11,6 +11,7 @@ import { sweepRateLimits } from '@/services/rate-limit';
 import { sweepExpiredTokens } from '@/services/auth/tokens';
 import { expireStaleMembershipRequests } from '@/services/membership';
 import { purgeOldProductEvents } from '@/services/product-events';
+import { sendAcknowledgementReminders } from '@/services/notice-receipts';
 import { timingSafeEqual } from 'node:crypto';
 
 /**
@@ -27,7 +28,7 @@ import { timingSafeEqual } from 'node:crypto';
  * administrator (so it can be triggered manually from the UI).
  */
 
-const TENANT_JOBS = ['escalate_grievances', 'publish_scheduled', 'expire_announcements'] as const;
+const TENANT_JOBS = ['escalate_grievances', 'publish_scheduled', 'expire_announcements', 'ack_reminders'] as const;
 /** Platform-wide jobs. Only the scheduler (CRON_SECRET) may run them. */
 const GLOBAL_JOBS = ['plan_notifications', 'deliver_notifications', 'sweep'] as const;
 
@@ -114,6 +115,10 @@ export async function POST(request: Request) {
           )
           .returning({ id: t.announcements.id });
         perTenant.expired = expired.length;
+      }
+
+      if (selected.includes('ack_reminders')) {
+        perTenant.ackReminders = await sendAcknowledgementReminders(institutionId);
       }
 
       results[institutionId] = perTenant;

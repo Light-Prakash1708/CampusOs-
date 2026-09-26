@@ -54,8 +54,8 @@ export default async function CommunicationsPage() {
   return (
     <div>
       <PageHeader
-        title="Communications"
-        description="Official notices, who received them, and who has actually confirmed reading."
+        title="Verified communication"
+        description="Send notices that need a confirmation, and see exactly who received, opened and acknowledged them."
         action={
           <Button asChild variant="primary" icon={Plus}>
             <Link href="/admin/communications/new">New notice</Link>

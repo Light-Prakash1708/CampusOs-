@@ -195,7 +195,7 @@ export const ADMIN_NAV: NavGroup[] = [
     label: 'Operations',
     items: [
       {
-        label: 'Communications',
+        label: 'Verified Communication',
         href: '/admin/communications',
         icon: 'megaphone',
         permissions: ['announcement:create_official', 'announcement:create_informational'],
@@ -223,7 +223,7 @@ export const ADMIN_NAV: NavGroup[] = [
     label: 'Intelligence',
     items: [
       {
-        label: 'Analytics',
+        label: 'Campus Insights',
         href: '/admin/analytics',
         icon: 'chart',
         permissions: ['analytics:view_institution', 'analytics:view_department'],
@@ -236,7 +236,7 @@ export const ADMIN_NAV: NavGroup[] = [
         feature: 'ai_assistant_enabled',
         permissions: ['ai:use_assistant'],
       },
-      { label: 'Reports', href: '/admin/reports', icon: 'file', permissions: ['report:generate'] },
+      { label: 'Evidence & Reports', href: '/admin/reports', icon: 'file', permissions: ['report:generate'] },
     ],
   },
   {

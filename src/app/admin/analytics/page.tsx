@@ -10,7 +10,7 @@ import {
 } from '@/services/analytics';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Analytics · CampusOS' };
+export const metadata = { title: 'Campus Insights · CampusOS' };
 
 /**
  * Institutional analytics.
@@ -39,7 +39,7 @@ export default async function AnalyticsPage() {
   return (
     <div>
       <PageHeader
-        title="Analytics"
+        title="Campus Insights"
         description="Computed live from institutional records. Nothing here is a stored estimate unless labelled as one."
       />
 

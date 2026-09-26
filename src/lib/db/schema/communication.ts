@@ -63,6 +63,8 @@ export const announcements = pgTable(
     /** Acknowledgement turns "I didn't know" into a measurable number. */
     requiresAcknowledgement: boolean('requires_acknowledgement').notNull().default(false),
     acknowledgementDeadline: timestamp('acknowledgement_deadline', { withTimezone: true }),
+    /** Set when the one pre-deadline reminder went to people who had not acknowledged. */
+    ackReminderSentAt: timestamp('ack_reminder_sent_at', { withTimezone: true }),
     /** OFFICIAL announcements from non-authorised roles must be approved first. */
     requiresApproval: boolean('requires_approval').notNull().default(false),
     approvedById: uuid('approved_by_id').references(() => users.id, { onDelete: 'set null' }),

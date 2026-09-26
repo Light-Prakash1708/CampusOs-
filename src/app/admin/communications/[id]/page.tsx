@@ -1,15 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { and, eq } from 'drizzle-orm';
-import { ArrowLeft, CheckCircle2, Users } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import { requireAuth } from '@/lib/auth/context';
-import {
-  Alert, Badge, Card, CardBody, CardHeader, EmptyState, PageHeader, Progress, Stat, Table, Td, Th,
-} from '@/components/ui';
-import { formatDateTime, humanize, pluralize } from '@/lib/utils';
-import { getAcknowledgementStatus } from '@/services/communication';
+import { Badge, Card, CardBody, CardHeader, PageHeader, Stat } from '@/components/ui';
+import { formatDateTime, humanize } from '@/lib/utils';
+import { canSeeReceipts, getNoticeReceipts } from '@/services/notice-receipts';
+import { NoticeReceiptsPanel } from '@/components/campus/NoticeReceiptsPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,18 +40,7 @@ export default async function NoticeDetailPage({
   if (!notice) notFound();
   const a = notice.a;
 
-  const canSeeAnalytics =
-    user.permissions.has('announcement:view_analytics') ||
-    a.authorId === user.userId;
-
-  const status = canSeeAnalytics
-    ? await getAcknowledgementStatus(user.institutionId, id)
-    : null;
-
-  const readPct = a.recipientCount ? Math.round((a.readCount / a.recipientCount) * 100) : 0;
-  const ackPct = a.recipientCount
-    ? Math.round((a.acknowledgedCount / a.recipientCount) * 100)
-    : 0;
+  const receipts = canSeeReceipts(user, a.authorId) ? await getNoticeReceipts(user, id) : null;
 
   return (
     <div>
@@ -64,7 +52,7 @@ export default async function NoticeDetailPage({
             href="/admin/communications"
             className="inline-flex items-center gap-1 text-[12.5px] text-muted hover:text-default"
           >
-            <ArrowLeft size={13} /> Communications
+            <ArrowLeft size={13} /> Verified communication
           </Link>
         }
       />
@@ -93,109 +81,26 @@ export default async function NoticeDetailPage({
             </CardBody>
           </Card>
 
-          {canSeeAnalytics && status ? (
-            <Card>
-              <CardHeader
-                title="Not yet acknowledged"
-                icon={Users}
-                description={
-                  a.requiresAcknowledgement
-                    ? `${status.pending.length} of ${status.total} have not confirmed`
-                    : 'This notice does not require acknowledgement'
-                }
-              />
-              {!a.requiresAcknowledgement ? (
-                <EmptyState
-                  title="Acknowledgement was not required"
-                  description="Read tracking is still recorded, but nobody was asked to confirm."
-                />
-              ) : status.pending.length === 0 ? (
-                <EmptyState
-                  icon={CheckCircle2}
-                  title="Everyone has acknowledged"
-                  description="All recipients confirmed they read this notice."
-                />
-              ) : (
-                <Table>
-                  <thead>
-                    <tr>
-                      <Th>Name</Th>
-                      <Th>Role</Th>
-                      <Th>Section</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {status.pending.slice(0, 60).map((p) => (
-                      <tr key={p.userId}>
-                        <Td>{p.name}</Td>
-                        <Td><span className="text-[12.5px] text-muted">{humanize(p.role)}</span></Td>
-                        <Td><span className="text-[12.5px] text-muted">{p.sectionCode ?? '—'}</span></Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-              {status.pending.length > 60 ? (
-                <CardBody className="pt-0">
-                  <p className="text-[12.5px] text-subtle">
-                    and {status.pending.length - 60} more.
-                  </p>
-                </CardBody>
-              ) : null}
-            </Card>
-          ) : null}
         </div>
 
-        <div className="space-y-5">
-          <Card>
-            <CardHeader title="Reach" />
-            <CardBody className="space-y-4">
-              <Stat label="Recipients" value={a.recipientCount.toLocaleString('en-IN')} />
-              <div>
-                <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-muted">Read</span>
-                  <span className="tabular font-medium text-default">
-                    {a.readCount}/{a.recipientCount}
-                  </span>
-                </div>
-                <Progress
-                  value={readPct}
-                  tone={readPct > 80 ? 'success' : readPct > 55 ? 'warning' : 'danger'}
-                  className="mt-1.5"
-                />
-              </div>
-              {a.requiresAcknowledgement ? (
-                <div>
-                  <div className="flex items-center justify-between text-[13px]">
-                    <span className="text-muted">Acknowledged</span>
-                    <span className="tabular font-medium text-default">
-                      {a.acknowledgedCount}/{a.recipientCount}
-                    </span>
-                  </div>
-                  <Progress
-                    value={ackPct}
-                    tone={ackPct > 80 ? 'success' : ackPct > 55 ? 'warning' : 'danger'}
-                    className="mt-1.5"
-                  />
-                  {a.acknowledgementDeadline ? (
-                    <p className="mt-1.5 text-[12px] text-subtle">
-                      Deadline {formatDateTime(a.acknowledgementDeadline)}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-            </CardBody>
-          </Card>
-
-          {a.requiresAcknowledgement && ackPct < 100 ? (
-            <Alert tone="warning" title="Follow-up needed">
-              {pluralize(a.recipientCount - a.acknowledgedCount, 'person', 'people')} have not
-              confirmed. Their names are listed so you can follow up directly rather than
-              re-broadcasting to everyone.
-            </Alert>
-          ) : null}
+        <div>
+          {receipts ? (
+            <NoticeReceiptsPanel r={receipts} part="delivery" />
+          ) : (
+            <Card>
+              <CardHeader title="Reach" />
+              <CardBody>
+                <Stat label="Recipients" value={a.recipientCount.toLocaleString('en-IN')} />
+              </CardBody>
+            </Card>
+          )}
         </div>
       </div>
+      {receipts ? (
+        <div className="mt-5">
+          <NoticeReceiptsPanel r={receipts} part="pending" />
+        </div>
+      ) : null}
     </div>
   );
 }

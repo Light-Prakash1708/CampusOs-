@@ -23,7 +23,7 @@ export default async function ReportsPage() {
   return (
     <div>
       <PageHeader
-        title="Reports"
+        title="Evidence & Reports"
         description="Download live data as CSV for offline analysis or institutional returns."
       />
 

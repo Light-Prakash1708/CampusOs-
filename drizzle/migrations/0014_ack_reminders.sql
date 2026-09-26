@@ -1,0 +1,1 @@
+ALTER TABLE "announcements" ADD COLUMN "ack_reminder_sent_at" timestamp with time zone;
