@@ -59,7 +59,7 @@ export default async function PrivacyPage() {
 
       <section aria-labelledby="rights">
         <h2 id="rights" className="mb-3 text-[15px] font-semibold text-default">Your data rights</h2>
-        <DataRights />
+        <DataRights personal={user.institutionKind === 'PERSONAL'} />
       </section>
 
       {consents.history.length > 0 ? (

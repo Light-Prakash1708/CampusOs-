@@ -5,6 +5,10 @@ import * as t from '@/lib/db/schema';
 import { AppError, ConflictError, ForbiddenError, NotFoundError, pgErrorOf } from '@/lib/api';
 import type { AuthContext } from '@/lib/auth/context';
 import { recordAudit } from '@/services/audit';
+import { actorHash } from '@/services/product-events';
+import { getStorageProvider } from '@/services/storage/providers';
+import { logger } from '@/lib/logger';
+import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { enforceRateLimit, keyFor, RATE_LIMITS } from '@/services/rate-limit';
 import {
   AI_COACH_SCOPES,
@@ -110,6 +114,35 @@ export async function listConsents(ctx: Pick<AuthContext, 'userId'>) {
   const current = new Map<string, (typeof rows)[number]>();
   for (const r of rows) if (!current.has(r.purpose)) current.set(r.purpose, r);
   return { current: [...current.values()], history: rows };
+}
+
+/* ----------------------------- privacy notice ----------------------------- */
+
+/** Has this user accepted the current privacy notice (CAMPUSOS-006)? */
+export async function hasAcceptedCurrentNotice(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ version: t.consentRecords.noticeVersion, granted: t.consentRecords.granted })
+    .from(t.consentRecords)
+    .where(and(eq(t.consentRecords.userId, userId), eq(t.consentRecords.purpose, 'privacy_notice')))
+    .orderBy(desc(t.consentRecords.createdAt))
+    .limit(1);
+  return !!row && row.granted && row.version === PRIVACY_NOTICE_VERSION;
+}
+
+/** Records acceptance of the current notice. Idempotent. */
+export async function acceptPrivacyNotice(ctx: Pick<AuthContext, 'userId' | 'institutionId' | 'role'>, meta: Meta) {
+  if (await hasAcceptedCurrentNotice(ctx.userId)) return { version: PRIVACY_NOTICE_VERSION, alreadyAccepted: true };
+  await db.insert(t.consentRecords).values({
+    institutionId: ctx.institutionId,
+    userId: ctx.userId,
+    purpose: 'privacy_notice',
+    granted: true,
+    noticeVersion: PRIVACY_NOTICE_VERSION,
+    source: 'notice_banner',
+    ipAddress: meta.ipAddress,
+  });
+  await recordAudit(ctx, { action: 'PRIVACY_NOTICE_ACCEPTED', entityType: 'user', entityId: ctx.userId, after: { privacyNotice: PRIVACY_NOTICE_VERSION }, ...meta });
+  return { version: PRIVACY_NOTICE_VERSION, alreadyAccepted: false };
 }
 
 /* ------------------------------ data export ------------------------------- */
@@ -265,6 +298,9 @@ export type DeletionScope = 'ACCOUNT' | 'PERSONAL_TRACKER' | 'AI_MEMORY';
 export const PERSONAL_TRACKER_ERASERS: ((tx: typeof db, ctx: AuthContext) => Promise<number>)[] = [(tx, ctx) => eraseTrackerData(tx, ctx)];
 
 export async function requestDeletion(ctx: AuthContext, input: { scope: DeletionScope; reason?: string | null }, meta: Meta) {
+  if (input.scope === 'ACCOUNT' && (await isPersonalWorkspace(ctx.institutionId))) {
+    return deletePersonalWorkspace(ctx, input.reason ?? null, meta);
+  }
   if (input.scope === 'ACCOUNT') {
     try {
       const [row] = await db
@@ -360,43 +396,7 @@ export async function decideDeletionRequest(
       .where(eq(t.dataDeletionRequests.id, req.id));
     if (!input.approve) return;
 
-    const uid = req.userId;
-    const convs = await tx.select({ id: t.aiConversations.id }).from(t.aiConversations).where(eq(t.aiConversations.userId, uid));
-    if (convs.length) await tx.delete(t.aiMessages).where(inArray(t.aiMessages.conversationId, convs.map((c) => c.id)));
-    await tx.delete(t.aiConversations).where(eq(t.aiConversations.userId, uid));
-    await tx.delete(t.aiPreferences).where(eq(t.aiPreferences.userId, uid));
-    await tx.delete(t.pushSubscriptions).where(eq(t.pushSubscriptions.userId, uid));
-    await tx.delete(t.toolUsage).where(eq(t.toolUsage.userId, uid));
-    await tx.delete(t.resourceSaves).where(eq(t.resourceSaves.userId, uid));
-    await tx.delete(t.opportunityTracking).where(eq(t.opportunityTracking.userId, uid));
-    // Open reservations are withdrawn; loan records stay with the library (an institutional record).
-    await tx.update(t.libraryReservations).set({ status: 'CANCELLED', closedAt: new Date() }).where(and(eq(t.libraryReservations.userId, uid), inArray(t.libraryReservations.status, ['WAITING', 'READY'])));
-    await tx.delete(t.notificationPreferences).where(eq(t.notificationPreferences.userId, uid));
-    await tx.delete(t.notificationSettings).where(eq(t.notificationSettings.userId, uid));
-    await tx.delete(t.authTokens).where(eq(t.authTokens.userId, uid));
-    await tx.update(t.sessions).set({ revokedAt: new Date() }).where(and(eq(t.sessions.userId, uid), isNull(t.sessions.revokedAt)));
-    // Account deletion removes the whole XP ledger too, verified rows included.
-    await eraseTrackerData(tx as unknown as typeof db, { userId: uid }, { includeVerified: true });
-    await tx
-      .update(t.users)
-      .set({
-        email: `deleted+${uid}@deleted.campusos.invalid`,
-        firstName: 'Deleted',
-        lastName: 'User',
-        displayName: null,
-        phone: null,
-        avatarUrl: null,
-        passwordHash: null,
-        preferences: {},
-        status: 'ARCHIVED',
-        deletedAt: new Date(),
-        sessionEpoch: sql`${t.users.sessionEpoch} + 1`,
-      })
-      .where(and(eq(t.users.id, uid), eq(t.users.institutionId, ctx.institutionId)));
-    await tx
-      .update(t.studentProfiles)
-      .set({ dateOfBirth: null, gender: null, bloodGroup: null, guardianName: null, guardianPhone: null, guardianEmail: null })
-      .where(eq(t.studentProfiles.userId, uid));
+    await anonymizeAccount(tx as unknown as typeof db, req.userId, ctx.institutionId);
   });
 
   await recordAudit(ctx, {
@@ -407,6 +407,106 @@ export async function decideDeletionRequest(
     reason: input.note ?? null,
     ...meta,
   });
+}
+
+
+async function isPersonalWorkspace(institutionId: string) {
+  const [row] = await db.select({ kind: t.institutions.kind }).from(t.institutions).where(eq(t.institutions.id, institutionId)).limit(1);
+  return row?.kind === 'PERSONAL';
+}
+
+/**
+ * Self-service deletion of a personal workspace (CAMPUSOS-007). There is no
+ * college to review it, so it happens immediately: the account is anonymised,
+ * everything the student owns is deleted (tracker, AI history, files — in
+ * storage too — notifications, open join requests, campus interest and
+ * pseudonymous usage rows), and the workspace is closed. Consent and audit
+ * records are append-only legal evidence and stay, attached to the
+ * anonymous identity.
+ */
+async function deletePersonalWorkspace(ctx: AuthContext, reason: string | null, meta: Meta) {
+  const uid = ctx.userId;
+  const files = await db
+    .select({ id: t.storedFiles.id, provider: t.storedFiles.provider, key: t.storedFiles.storageKey })
+    .from(t.storedFiles)
+    .where(eq(t.storedFiles.ownerId, uid));
+
+  const requestId = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(t.dataDeletionRequests)
+      .values({ institutionId: ctx.institutionId, userId: uid, scope: 'ACCOUNT', reason, status: 'COMPLETED', decidedById: uid, decisionNote: 'Personal workspace: deleted by its owner', completedAt: new Date() })
+      .returning({ id: t.dataDeletionRequests.id });
+    await tx
+      .update(t.membershipRequests)
+      .set({ status: 'WITHDRAWN', updatedAt: new Date() })
+      .where(and(eq(t.membershipRequests.userId, uid), inArray(t.membershipRequests.status, ['PENDING', 'UNDER_REVIEW'])));
+    await tx.update(t.membershipRequests).set({ documentFileId: null }).where(eq(t.membershipRequests.userId, uid));
+    await tx.delete(t.notifications).where(eq(t.notifications.userId, uid));
+    await tx.delete(t.campusInterest).where(eq(t.campusInterest.actorHash, actorHash(uid)));
+    await tx.delete(t.productEvents).where(eq(t.productEvents.actorHash, actorHash(uid)));
+    await tx.delete(t.productActiveDays).where(eq(t.productActiveDays.actorHash, actorHash(uid)));
+    await tx.delete(t.storedFiles).where(eq(t.storedFiles.ownerId, uid));
+    await anonymizeAccount(tx as unknown as typeof db, uid, ctx.institutionId);
+    await tx.update(t.institutions).set({ isActive: false, deletedAt: new Date(), name: 'Deleted personal workspace' }).where(and(eq(t.institutions.id, ctx.institutionId), eq(t.institutions.kind, 'PERSONAL')));
+    return row!.id;
+  });
+
+  // Storage objects go after the database commit; a failure is logged, never shown.
+  for (const f of files) {
+    try {
+      const provider = getStorageProvider();
+      if (provider && provider.name === f.provider) await provider.delete(f.key);
+    } catch (error) {
+      logger.warn('personal_workspace_file_delete_failed', { fileId: f.id, error: error instanceof Error ? error.message : 'unknown' });
+    }
+  }
+  await recordAudit(ctx, { action: 'PERSONAL_WORKSPACE_DELETED', entityType: 'data_deletion_request', entityId: requestId, after: { files: files.length }, ...meta });
+  return { status: 'COMPLETED' as const, id: requestId };
+}
+
+/**
+ * Anonymises an account: personal, user-owned data is deleted; institutional
+ * records (attendance, results) stay attached to an anonymous identity; the
+ * account can no longer sign in. Shared by college-reviewed deletion and
+ * self-service deletion of a personal workspace.
+ */
+async function anonymizeAccount(tx: typeof db, uid: string, institutionId: string) {
+  const convs = await tx.select({ id: t.aiConversations.id }).from(t.aiConversations).where(eq(t.aiConversations.userId, uid));
+  if (convs.length) await tx.delete(t.aiMessages).where(inArray(t.aiMessages.conversationId, convs.map((c) => c.id)));
+  await tx.delete(t.aiConversations).where(eq(t.aiConversations.userId, uid));
+  await tx.delete(t.aiPreferences).where(eq(t.aiPreferences.userId, uid));
+  await tx.delete(t.pushSubscriptions).where(eq(t.pushSubscriptions.userId, uid));
+  await tx.delete(t.toolUsage).where(eq(t.toolUsage.userId, uid));
+  await tx.delete(t.resourceSaves).where(eq(t.resourceSaves.userId, uid));
+  await tx.delete(t.opportunityTracking).where(eq(t.opportunityTracking.userId, uid));
+  // Open reservations are withdrawn; loan records stay with the library (an institutional record).
+  await tx.update(t.libraryReservations).set({ status: 'CANCELLED', closedAt: new Date() }).where(and(eq(t.libraryReservations.userId, uid), inArray(t.libraryReservations.status, ['WAITING', 'READY'])));
+  await tx.delete(t.notificationPreferences).where(eq(t.notificationPreferences.userId, uid));
+  await tx.delete(t.notificationSettings).where(eq(t.notificationSettings.userId, uid));
+  await tx.delete(t.authTokens).where(eq(t.authTokens.userId, uid));
+  await tx.update(t.sessions).set({ revokedAt: new Date() }).where(and(eq(t.sessions.userId, uid), isNull(t.sessions.revokedAt)));
+  // Account deletion removes the whole XP ledger too, verified rows included.
+  await eraseTrackerData(tx as unknown as typeof db, { userId: uid }, { includeVerified: true });
+  await tx
+    .update(t.users)
+    .set({
+      email: `deleted+${uid}@deleted.campusos.invalid`,
+      firstName: 'Deleted',
+      lastName: 'User',
+      displayName: null,
+      phone: null,
+      avatarUrl: null,
+      passwordHash: null,
+      preferences: {},
+      status: 'ARCHIVED',
+      deletedAt: new Date(),
+      sessionEpoch: sql`${t.users.sessionEpoch} + 1`,
+    })
+    .where(and(eq(t.users.id, uid), eq(t.users.institutionId, institutionId)));
+  await tx
+    .update(t.studentProfiles)
+    .set({ dateOfBirth: null, gender: null, bloodGroup: null, guardianName: null, guardianPhone: null, guardianEmail: null })
+    .where(eq(t.studentProfiles.userId, uid));
 }
 
 export { ensureRetentionPolicies } from './retention';

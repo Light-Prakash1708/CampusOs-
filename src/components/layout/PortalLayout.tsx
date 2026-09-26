@@ -13,6 +13,9 @@ import { requireAuth, type AuthContext } from '@/lib/auth/context';
 import { isEnabled, plannedLabel, type FeatureFlag } from '@/lib/features';
 import { levelOf } from '@/services/gamification';
 import { markActive } from '@/services/product-events';
+import { hasAcceptedCurrentNotice } from '@/services/privacy';
+import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
+import { PrivacyNoticeBanner } from './PrivacyNoticeBanner';
 import { humanize } from '@/lib/utils';
 import { AppShell, type ShellBadges } from './AppShell';
 import {
@@ -52,7 +55,7 @@ export async function PortalLayout({
 
   const nav = filterNav(navForPortal(portal), user);
   const gamified = portal === 'student' && isEnabled(user.featureFlags, 'gamification_enabled');
-  const [badges, identity, level] = await Promise.all([loadBadges(user), loadIdentity(user), gamified ? levelOf(user.userId) : Promise.resolve(null), markActive(user)]);
+  const [badges, identity, level, noticeAccepted] = await Promise.all([loadBadges(user), loadIdentity(user), gamified ? levelOf(user.userId) : Promise.resolve(null), hasAcceptedCurrentNotice(user.userId), markActive(user)]);
 
   return (
     <AppShell
@@ -79,6 +82,7 @@ export async function PortalLayout({
       quickCreate={filterQuickCreate(QUICK_CREATE[portal], user)}
       demoMode={process.env.DEMO_MODE === 'true' && process.env.NODE_ENV !== 'production'}
     >
+      {noticeAccepted ? null : <PrivacyNoticeBanner version={PRIVACY_NOTICE_VERSION} />}
       {children}
     </AppShell>
   );

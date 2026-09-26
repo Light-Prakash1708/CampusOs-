@@ -14,12 +14,16 @@ const Body = z.object({
   lastName: z.string().trim().min(1, 'Enter your last name.').max(80),
   email: z.string().trim().toLowerCase().email('Enter a valid email address.').max(200),
   password: z.string().min(1, 'Choose a password.').max(200),
+  /** An age band, never a date of birth (CAMPUSOS-005). */
+  ageBand: z.enum(['UNDER_18', '18_OR_OVER'], { message: 'Tell us whether you are 18 or older.' }),
+  acceptPrivacyNotice: z.literal(true, { message: 'Please read and accept the privacy notice.' }),
 });
 
 export const POST = publicRoute(async (request) => {
   const input = await parseBody(request, Body);
   const meta = metaFrom(request);
-  const result = await registerIndependentStudent({ ...input, meta });
+  const { acceptPrivacyNotice: _accepted, ...rest } = input;
+  const result = await registerIndependentStudent({ ...rest, meta });
   await startSession(result.user, meta);
   return ok({ redirectTo: result.redirectTo }, { status: 201 });
 });

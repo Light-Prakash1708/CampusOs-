@@ -17,6 +17,13 @@ export const FEATURE_FLAGS = {
     defaultValue: true,
     tier: 'STARTER',
   },
+  ai_external_processing_enabled: {
+    label: 'External AI processing',
+    description:
+      'Lets the assistant send the data a user is permitted to see to the configured external AI provider (for example Anthropic) to write answers. Off: answers come from the built-in offline assistant and no campus data leaves CampusOS.',
+    defaultValue: false,
+    tier: 'STARTER',
+  },
   teacher_copilot_enabled: {
     label: 'Teacher Copilot',
     description: 'Lesson planning, question generation and submission analysis.',

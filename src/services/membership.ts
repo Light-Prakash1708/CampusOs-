@@ -69,7 +69,7 @@ interface Meta {
  */
 export const TRANSFER_MOVE_TABLES = [
   'ai_actions', 'ai_conversations', 'ai_generations', 'ai_messages', 'ai_preferences',
-  'auth_identities', 'consent_records', 'data_deletion_requests', 'data_export_requests',
+  'auth_identities', 'data_deletion_requests', 'data_export_requests',
   'notification_deliveries', 'notification_preferences', 'notifications',
   'opportunities', 'opportunity_tracking', 'privacy_preferences', 'push_subscriptions',
   'resource_saves', 'stored_files', 'student_certifications', 'time_saved_events', 'tool_usage',
@@ -83,6 +83,8 @@ export const TRANSFER_KEEP_TABLES = [
   'audit_logs', 'auth_tokens', 'sessions', 'job_queue', 'import_jobs',
   // pseudonymous product analytics: history stays where it happened
   'product_events', 'product_active_days', 'campus_interest',
+  // append-only consent evidence stays where it was given (queried by user, not tenant)
+  'consent_records',
   // structure, configuration and catalogues of the workspace
   'academic_years', 'campuses', 'departments', 'programs', 'sections', 'subjects', 'terms', 'time_slots',
   'holidays', 'rooms', 'system_settings', 'notification_settings', 'data_retention_policies',

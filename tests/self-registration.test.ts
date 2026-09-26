@@ -16,6 +16,7 @@ import * as t from '@/lib/db/schema';
 import { authenticate, registerIndependentStudent, registerStudent } from '@/services/auth/accounts';
 import { verifyPassword } from '@/lib/auth/password';
 import { listRegistrableInstitutions } from '@/services/public-directory';
+import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { POST as signUp } from '@/app/api/auth/register/student/route';
 import { createTenant, createUser, dropTenant, meta, TEST_PASSWORD, type TestTenant } from './helpers';
 
@@ -71,14 +72,14 @@ describe('independent student sign-up', () => {
   it('is closed unless SELF_REGISTRATION_ENABLED is set', async () => {
     vi.stubEnv('SELF_REGISTRATION_ENABLED', 'false');
     await expect(
-      registerIndependentStudent({ firstName: 'A', lastName: 'B', email: uniqueEmail('closed'), password: PASSWORD, meta: meta() }),
+      registerIndependentStudent({ firstName: 'A', lastName: 'B', email: uniqueEmail('closed'), password: PASSWORD, ageBand: '18_OR_OVER', meta: meta() }),
     ).rejects.toMatchObject({ status: 403, code: 'REGISTRATION_CLOSED' });
   });
 
   it('creates an active STUDENT in a private, unlisted workspace with a hashed password', async () => {
     vi.stubEnv('SELF_REGISTRATION_ENABLED', 'true');
     const email = uniqueEmail('asha');
-    const res = await registerIndependentStudent({ firstName: 'Asha', lastName: 'Rao', email, password: PASSWORD, meta: meta() });
+    const res = await registerIndependentStudent({ firstName: 'Asha', lastName: 'Rao', email, password: PASSWORD, ageBand: '18_OR_OVER', meta: meta() });
     expect(res.user.role).toBe('STUDENT');
     expect(res.redirectTo).toBe('/student?welcome=1');
 
@@ -102,7 +103,7 @@ describe('independent student sign-up', () => {
   it('refuses a duplicate email, even when two sign-ups race', async () => {
     vi.stubEnv('SELF_REGISTRATION_ENABLED', 'true');
     const email = uniqueEmail('dup');
-    const attempt = () => registerIndependentStudent({ firstName: 'D', lastName: 'U', email, password: PASSWORD, meta: meta() });
+    const attempt = () => registerIndependentStudent({ firstName: 'D', lastName: 'U', email, password: PASSWORD, ageBand: '18_OR_OVER', meta: meta() });
     const results = await Promise.allSettled([attempt(), attempt()]);
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
     const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
@@ -116,7 +117,7 @@ describe('independent student sign-up', () => {
   it('rejects weak passwords and invalid input', async () => {
     vi.stubEnv('SELF_REGISTRATION_ENABLED', 'true');
     await expect(
-      registerIndependentStudent({ firstName: 'W', lastName: 'P', email: uniqueEmail('weak'), password: 'short', meta: meta() }),
+      registerIndependentStudent({ firstName: 'W', lastName: 'P', email: uniqueEmail('weak'), password: 'short', ageBand: '18_OR_OVER', meta: meta() }),
     ).rejects.toMatchObject({ status: 422, code: 'WEAK_PASSWORD' });
     const bad = await signUp(signUpRequest({ firstName: '', lastName: 'X', email: 'not-an-email', password: PASSWORD }), { params: Promise.resolve({}) });
     expect(bad.status).toBe(422);
@@ -134,6 +135,8 @@ describe('sign-up route ignores client-chosen privilege and tenancy', () => {
         lastName: 'Tester',
         email,
         password: PASSWORD,
+        ageBand: '18_OR_OVER',
+        acceptPrivacyNotice: true,
         role,
         institutionId: college.id,
         institutionSlug: college.slug,
@@ -156,6 +159,37 @@ describe('sign-up route ignores client-chosen privilege and tenancy', () => {
       .from(t.users)
       .where(and(eq(t.users.institutionId, college.id), eq(t.users.email, email)));
     expect(inCollege).toHaveLength(0);
+  });
+});
+
+describe('age gate and consent (CAMPUSOS-005/006)', () => {
+  it('refuses under-18 personal sign-up and stores nothing about them', async () => {
+    vi.stubEnv('SELF_REGISTRATION_ENABLED', 'true');
+    const email = uniqueEmail('minor');
+    await expect(
+      registerIndependentStudent({ firstName: 'Young', lastName: 'Student', email, password: PASSWORD, ageBand: 'UNDER_18', meta: meta() }),
+    ).rejects.toMatchObject({ status: 403, code: 'AGE_REQUIREMENT' });
+    expect(await workspaceOf(email)).toBeUndefined();
+  });
+
+  it('requires the age band and the privacy notice at the route', async () => {
+    vi.stubEnv('SELF_REGISTRATION_ENABLED', 'true');
+    const base = { firstName: 'A', lastName: 'B', email: uniqueEmail('consent'), password: PASSWORD };
+    const noAge = await signUp(signUpRequest({ ...base, acceptPrivacyNotice: true }), { params: Promise.resolve({}) });
+    expect(noAge.status).toBe(422);
+    const noNotice = await signUp(signUpRequest({ ...base, ageBand: '18_OR_OVER', acceptPrivacyNotice: false }), { params: Promise.resolve({}) });
+    expect(noNotice.status).toBe(422);
+    expect(jar.size).toBe(0);
+  });
+
+  it('records the accepted notice version and age confirmation', async () => {
+    vi.stubEnv('SELF_REGISTRATION_ENABLED', 'true');
+    const email = uniqueEmail('consented');
+    const res = await registerIndependentStudent({ firstName: 'Ok', lastName: 'Adult', email, password: PASSWORD, ageBand: '18_OR_OVER', meta: meta() });
+    await workspaceOf(email);
+    const rows = await db.select().from(t.consentRecords).where(eq(t.consentRecords.userId, res.user.id));
+    expect(rows.map((r) => r.purpose).sort()).toEqual(['age_18_or_over', 'privacy_notice']);
+    expect(rows.every((r) => r.granted && r.noticeVersion === PRIVACY_NOTICE_VERSION)).toBe(true);
   });
 });
 

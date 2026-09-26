@@ -114,7 +114,7 @@ export function PrivacyControls({ initial, coachScopes }: { initial: PrivacyPref
   );
 }
 
-export function DataRights() {
+export function DataRights({ personal = false }: { personal?: boolean }) {
   const api = useApi<{ status: string; removed?: number }>();
   const [confirm, setConfirm] = React.useState('');
   const [reason, setReason] = React.useState('');
@@ -127,6 +127,11 @@ export function DataRights() {
   async function requestAccountDeletion() {
     const data = await api.call('/api/privacy/deletion', { scope: 'ACCOUNT', reason: reason || null, confirm: 'DELETE' });
     if (data) {
+      if (personal) {
+        // The account is gone and its sessions ended: leave the signed-in area.
+        window.location.assign('/login?deleted=1');
+        return;
+      }
       setMessage('Request sent. Your college will review it; academic records they must keep are anonymised rather than deleted.');
       setConfirm('');
     }
@@ -154,8 +159,9 @@ export function DataRights() {
       <div className="rounded-lg border border-[hsl(var(--danger-border))] bg-surface p-4">
         <p className="text-[13.5px] font-medium text-default">Delete my account</p>
         <p className="text-[12.5px] leading-relaxed text-muted">
-          Your college reviews account deletion because some academic records must legally be kept. If approved,
-          your personal data is deleted and remaining academic records are anonymised.
+          {personal
+            ? 'Your personal workspace and everything in it are deleted straight away, and you are signed out. This cannot be undone. A record that you agreed to the privacy notice is kept, without your name or email.'
+            : 'Your college reviews account deletion because some academic records must legally be kept. If approved, your personal data is deleted and remaining academic records are anonymised.'}
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <Field label="Reason (optional)" htmlFor="reason">
@@ -166,7 +172,7 @@ export function DataRights() {
           </Field>
         </div>
         <Button className="mt-3" size="sm" variant="danger" disabled={confirm !== 'DELETE'} loading={api.loading} onClick={requestAccountDeletion}>
-          Request account deletion
+          {personal ? 'Delete my account now' : 'Request account deletion'}
         </Button>
       </div>
     </div>

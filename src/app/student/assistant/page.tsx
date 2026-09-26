@@ -7,7 +7,7 @@ import {
 } from '../_lib/student';
 import { ModuleDisabled } from '../_components/bits';
 import { Chat, type Turn } from './Chat';
-import { getAiProvider } from '@/services/ai/providers';
+import { aiProviderFor } from '@/services/ai/providers';
 import { getConversation, listConversations } from '@/services/ai/conversations';
 import { actionAvailable } from '@/services/ai/actions';
 
@@ -89,7 +89,7 @@ export default async function AssistantPage({
           studentName={user.firstName}
           conversations={conversations.map((x) => ({ id: x.id, title: x.title, updatedAt: x.updatedAt.toISOString() }))}
           initialConversation={initialConversation}
-          usingLanguageModel={getAiProvider().isLanguageModel}
+          usingLanguageModel={aiProviderFor(user.featureFlags).isLanguageModel}
         />
       </div>
     </>

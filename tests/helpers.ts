@@ -101,6 +101,7 @@ export async function ctxFor(userId: string, sessionId = randomUUID()): Promise<
     institutionSlug: row!.inst.slug,
     institutionLogoUrl: null,
     institutionPrimaryColor: '#4F46E5',
+    institutionKind: row!.inst.kind === 'PERSONAL' ? 'PERSONAL' : 'COLLEGE',
     featureFlags: (row!.inst.featureFlags ?? {}) as Record<string, boolean>,
     email: u.email,
     firstName: u.firstName,

@@ -43,7 +43,7 @@ const personalWorkspaces: string[] = [];
 async function personalStudent(tag: string) {
   vi.stubEnv('SELF_REGISTRATION_ENABLED', 'true');
   const email = `${tag}-${Math.random().toString(36).slice(2, 8)}@example.com`;
-  const res = await registerIndependentStudent({ firstName: 'Priya', lastName: tag, email, password: PASSWORD, meta: meta() });
+  const res = await registerIndependentStudent({ firstName: 'Priya', lastName: tag, email, password: PASSWORD, ageBand: '18_OR_OVER', meta: meta() });
   personalWorkspaces.push(res.user.institutionId);
   return { ctx: await ctxFor(res.user.id), email, userId: res.user.id, personalId: res.user.institutionId };
 }

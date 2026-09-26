@@ -32,6 +32,8 @@ export interface AuthContext {
   institutionSlug: string;
   institutionLogoUrl: string | null;
   institutionPrimaryColor: string;
+  /** COLLEGE, or PERSONAL for a student's own workspace. */
+  institutionKind?: 'COLLEGE' | 'PERSONAL';
   featureFlags: Record<string, boolean>;
   email: string;
   firstName: string;
@@ -85,6 +87,7 @@ export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
       institutionSlug: institutions.slug,
       institutionLogoUrl: institutions.logoUrl,
       institutionPrimaryColor: institutions.primaryColor,
+      institutionKind: institutions.kind,
       featureFlags: institutions.featureFlags,
       studentProfileId: studentProfiles.id,
       sectionId: studentProfiles.sectionId,
@@ -111,6 +114,7 @@ export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
     institutionSlug: row.institutionSlug,
     institutionLogoUrl: row.institutionLogoUrl,
     institutionPrimaryColor: row.institutionPrimaryColor ?? '#4F46E5',
+    institutionKind: row.institutionKind === 'PERSONAL' ? 'PERSONAL' : 'COLLEGE',
     featureFlags: (row.featureFlags ?? {}) as Record<string, boolean>,
     email: row.email,
     firstName: row.firstName,

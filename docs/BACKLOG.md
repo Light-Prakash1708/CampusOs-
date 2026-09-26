@@ -22,9 +22,9 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 002 | DONE | Interview kit ready. The interviews themselves need the founder |
 | 003 | DONE | Operator metrics at /admin/metrics |
 | 004 | TODO | |
-| 005 | TODO | |
-| 006 | TODO | |
-| 007 | TODO | |
+| 005 | DONE (adult-only) | Guardian-consent flow BLOCKED on legal review |
+| 006 | DONE | Notice text needs legal review before public launch |
+| 007 | DONE | Export existed; personal-workspace erasure added |
 | 008 | TODO | |
 | 009 | TODO | |
 | 010 | TODO | |
@@ -36,7 +36,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 016 | TODO | |
 | 017 | TODO | |
 | 018 | TODO | |
-| 019 | TODO | |
+| 019 | DONE | `ai_external_processing_enabled`, off by default |
 | 020 | TODO | |
 | 021 | TODO | |
 | 022 | TODO | |
@@ -596,3 +596,37 @@ These can be revisited only with pilot evidence:
 - **Docs:** `docs/ANALYTICS.md`, `.env.example`.
 - **Known issues:** `profile_completed` is not emitted, because there is no profile-editing flow yet (Growth Profile is V1.5). `career_goal_set` is used instead.
 - **Deployment:** runs the migration automatically. Optionally set `ANALYTICS_HASH_KEY`.
+
+### 2026-09-27: CAMPUSOS-005, 006, 007 and 019 (privacy P0)
+
+- **Correction to the audit.** The repository already had a consent ledger (`consent_records`, append-only), a privacy centre (`/account/privacy`), data export, and deletion requests with college review. The strategy audit under-reported these. This work fills the gaps instead of rebuilding them.
+- **005 age gate:**
+  - personal sign-up requires an age band (never a date of birth);
+  - under-18s are refused before anything is stored;
+  - a guardian-consent flow is **BLOCKED**, pending legal review of the DPDP Rules mechanisms.
+- **006 notice and consents:**
+  - public `/privacy`, versioned;
+  - acceptance required at personal sign-up and recorded (`privacy_notice`, `age_18_or_over`);
+  - a non-blocking portal banner for everyone else, via `POST /api/privacy/notice`;
+  - new audit action `PRIVACY_NOTICE_ACCEPTED`.
+- **007 erasure:** deletion of a personal-workspace account is now immediate and self-service. It:
+  - anonymises the account and ends its sessions;
+  - deletes files (database rows and storage objects), notifications, open requests, campus interest and usage rows;
+  - closes the workspace.
+
+  College accounts still go to the college for review. The anonymisation code is shared (`anonymizeAccount`).
+- **019 external AI processing:**
+  - new module flag, off by default;
+  - `aiProviderFor()` falls back to the offline provider unless the flag is on;
+  - used by the assistant, Teacher Copilot and the assistant page's disclosure.
+- **Also:**
+  - `AuthContext.institutionKind`;
+  - `consent_records` is now KEEP on membership transfer. It is append-only, and moving it broke approval of students who had signed up with consent; a test caught this.
+- **Tests:**
+  - new `tests/privacy-pilot.test.ts` (6);
+  - 3 age/consent tests in `self-registration.test.ts`;
+  - full suite 305/305; typecheck clean; lint has 0 errors.
+- **Owner actions:**
+  - legal review of `/privacy` and the age-gate approach;
+  - set `PRIVACY_CONTACT_EMAIL`.
+- **Deployment:** no migration.

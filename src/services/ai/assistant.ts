@@ -3,7 +3,7 @@ import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import type { AuthContext } from '@/lib/auth/context';
-import { getAiProvider } from './providers';
+import { aiProviderFor } from './providers';
 import { track } from '@/services/product-events';
 import { executeTool, toolsForUser } from './tools';
 import type { AiFeature, AiMessage, Citation, ToolResult } from './types';
@@ -92,7 +92,7 @@ export async function askAssistant(
   options: { feature?: AiFeature; history?: AiMessage[]; conversationId?: string | null } = {},
 ): Promise<AssistantAnswer> {
   const feature = options.feature ?? 'CAMPUS_ASSISTANT';
-  const provider = getAiProvider();
+  const provider = aiProviderFor(user.featureFlags);
   const startedAt = Date.now();
 
   const budgetExceeded = await isOverMonthlyBudget(user.institutionId);
@@ -277,7 +277,7 @@ export async function generateLessonPlan(
   user: AuthContext,
   params: { subjectId: string; topic: string; durationMinutes: number; offeringId?: string },
 ): Promise<{ content: Record<string, unknown>; isLanguageModel: boolean; provider: string }> {
-  const provider = getAiProvider();
+  const provider = aiProviderFor(user.featureFlags);
 
   const [subject] = await db
     .select()

@@ -1,4 +1,5 @@
 import 'server-only';
+import { isEnabled } from '@/lib/features';
 import type {
   AiCompletionRequest,
   AiCompletionResponse,
@@ -535,6 +536,21 @@ export function getAiProvider(): AiProvider {
 
   cached = new LocalProvider();
   return cached;
+}
+
+let offline: AiProvider | null = null;
+
+/**
+ * The provider this tenant may use (CAMPUSOS-019). A language-model provider
+ * that sends data off CampusOS is used only when the institution has turned
+ * on `ai_external_processing_enabled`; otherwise the offline provider answers.
+ */
+export function aiProviderFor(featureFlags: Record<string, boolean> | undefined): AiProvider {
+  const configured = getAiProvider();
+  if (!configured.isLanguageModel) return configured;
+  if (isEnabled(featureFlags, 'ai_external_processing_enabled')) return configured;
+  offline ??= new LocalProvider();
+  return offline;
 }
 
 /** Test seam. */

@@ -10,6 +10,7 @@ import { randomBytes } from 'node:crypto';
 import { appUrl, selfRegistrationEnabled } from '@/lib/env';
 import { humanize } from '@/lib/utils';
 import { recordAudit } from '@/services/audit';
+import { PERSONAL_WORKSPACE_MIN_AGE, PRIVACY_NOTICE_VERSION, type AgeBand } from '@/lib/privacy-notice';
 import { track } from '@/services/product-events';
 import { enforceRateLimit, checkRateLimit, keyFor, RATE_LIMITS } from '@/services/rate-limit';
 import { sendTransactionalEmail } from '@/services/notifications/dispatcher';
@@ -616,6 +617,8 @@ export interface IndependentRegistrationInput {
   lastName: string;
   email: string;
   password: string;
+  /** Declared age band (CAMPUSOS-005); the exact date of birth is never collected. */
+  ageBand: AgeBand;
   meta: RequestMeta;
 }
 
@@ -649,6 +652,16 @@ export async function registerIndependentStudent(
       'If your college uses CampusOS, ask the college office for an invitation.');
   }
   await enforceRateLimit(keyFor('register:ip', input.meta.ipAddress), RATE_LIMITS.registerPerIp, 'Too many registration attempts.');
+  if (input.ageBand !== '18_OR_OVER') {
+    // Nothing about an under-18 is stored: no account, no consent row, no log line with their details.
+    throw new AppError(
+      `Personal CampusOS accounts are for students aged ${PERSONAL_WORKSPACE_MIN_AGE} or over.`,
+      403,
+      'AGE_REQUIREMENT',
+      undefined,
+      'If you are under 18, your college can invite you to its CampusOS — ask the college office.',
+    );
+  }
   assertPolicy(input.password);
   const email = input.email.trim().toLowerCase();
   const firstName = input.firstName.trim();
@@ -711,6 +724,11 @@ export async function registerIndependentStudent(
       currentYear: 1,
       currentSemester: 1,
     });
+    // Consent evidence (CAMPUSOS-006): which notice they accepted, and their age confirmation.
+    await tx.insert(t.consentRecords).values([
+      { institutionId: inst!.id, userId: user!.id, purpose: 'privacy_notice', granted: true, noticeVersion: PRIVACY_NOTICE_VERSION, source: 'onboarding', ipAddress: input.meta.ipAddress },
+      { institutionId: inst!.id, userId: user!.id, purpose: 'age_18_or_over', granted: true, noticeVersion: PRIVACY_NOTICE_VERSION, source: 'onboarding', ipAddress: input.meta.ipAddress },
+    ]);
     return { id: user!.id, sessionEpoch: user!.sessionEpoch, institutionId: inst!.id, institutionName: inst!.name };
   });
 
