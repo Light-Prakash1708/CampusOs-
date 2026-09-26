@@ -257,6 +257,20 @@ describe('communication audience', () => {
     expect(minusSection.userIds.length).toBe(all.userIds.length - section!.strength);
   });
 
+  it('never targets a named person at another college (regression)', async () => {
+    const [outsider] = await db
+      .select({ id: t.users.id })
+      .from(t.users)
+      .where(sql`${t.users.institutionId} <> ${institutionId}`)
+      .limit(1);
+    const [insider] = await db.select({ id: t.users.id }).from(t.users).where(and(eq(t.users.institutionId, institutionId), eq(t.users.status, 'ACTIVE'))).limit(1);
+    if (outsider) {
+      const audience = await resolveAudience(institutionId, [{ scope: 'USER', userId: outsider.id }]);
+      expect(audience.userIds).toEqual([]);
+    }
+    expect((await resolveAudience(institutionId, [{ scope: 'USER', userId: insider!.id }])).userIds).toEqual([insider!.id]);
+  });
+
   it('produces no recipients for an empty rule set rather than everyone', async () => {
     const audience = await resolveAudience(institutionId, []);
     expect(audience.userIds).toHaveLength(0);

@@ -19,10 +19,33 @@ secrets, `EMAIL_PROVIDER=none`, `STORAGE_PROVIDER=local` +
   hydration), horizontal overflow, and every internal link on each page.
 - `scripts/smoke/authz.mjs` — signed-out, student, faculty and admin requests
   to other roles' pages and APIs must be refused or redirected.
+- `scripts/smoke/authz-modules.mjs` — the same for the tracker, progress,
+  leaderboard, library desk, opportunities moderation/import, AI actions and
+  conversations, and event edit/cancel APIs.
+- Both need Playwright (not a project dependency); set `PLAYWRIGHT_CHROMIUM`
+  to a Chromium binary if Playwright's own isn't installed.
 - Sign-in/sign-out through the real form (bad password message, return to the
   requested page, protected pages after sign-out).
 
-## Latest run (Phase 4)
+## Latest run (final, after Phase 9)
+
+| Role | Routes | Links checked | Problems |
+|---|---|---|---|
+| Student | 27 | 108 | 0 |
+| Faculty | 18 | 55 | 0 |
+| Admin | 29 | 60 | 0 |
+| Super admin | 29 | 60 | 0 |
+
+Both authorization probes: no leaks (31 module checks). Gate: typecheck clean,
+lint 0 errors, 229 tests, production build OK.
+
+**Found and fixed in the final audit**
+- A notice addressed to a named person (`USER` audience) accepted any user id
+  from the request, so staff could notify someone at another college. It now
+  resolves only people at the sender's own college (regression test added).
+- `/admin/library` catalogue search overflowed at 390px.
+
+## Earlier run (Phase 4)
 
 | Role | Routes | Links checked | Problems |
 |---|---|---|---|

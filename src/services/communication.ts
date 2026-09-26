@@ -127,8 +127,15 @@ async function idsForRule(institutionId: string, rule: AudienceRule): Promise<st
         .where(and(base, eq(t.users.role, rule.role as never)));
       return rows.map((r) => r.id);
     }
-    case 'USER':
-      return rule.userId ? [rule.userId] : [];
+    case 'USER': {
+      // The id comes from the request: only accept someone at the sender's own college.
+      if (!rule.userId) return [];
+      const rows = await db
+        .select({ id: t.users.id })
+        .from(t.users)
+        .where(and(base, eq(t.users.id, rule.userId)));
+      return rows.map((r) => r.id);
+    }
     case 'PROGRAM': {
       const rows = await db
         .select({ id: t.users.id })
