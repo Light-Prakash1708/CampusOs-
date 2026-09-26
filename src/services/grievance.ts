@@ -5,6 +5,7 @@ import * as t from '@/lib/db/schema';
 import type { AuthContext } from '@/lib/auth/context';
 import { recordAudit } from '@/services/audit';
 import { track } from '@/services/product-events';
+import { addWorkingDays, isOmbudsperson, ombudspersonIds, UGC_TIMELINES } from '@/services/grievance-committee';
 import { AppError, ForbiddenError, NotFoundError, requireFeatureEnabled } from '@/lib/api';
 import { permissionsForRoles } from '@/lib/auth/permissions';
 
@@ -41,6 +42,8 @@ const TRANSITIONS: Record<string, string[]> = {
   REOPENED: ['ASSIGNED', 'UNDER_REVIEW', 'WITHDRAWN'],
   CLOSED: ['REOPENED'],
   WITHDRAWN: [],
+  // Only the Ombudsperson decides an appeal (checked in transitionGrievance).
+  APPEALED: ['RESOLVED', 'CLOSED'],
 };
 
 export async function createGrievance(
@@ -91,6 +94,7 @@ export async function createGrievance(
   const caseNumber = await nextCaseNumber(user.institutionId);
   const responseDueAt = addWorkingHours(now, category.responseSlaHours);
   const resolutionDueAt = addWorkingHours(now, category.resolutionSlaHours);
+  const statutoryDueAt = await addWorkingDays(user.institutionId, now, UGC_TIMELINES.sgrcWorkingDays);
 
   const grievanceId = await db.transaction(async (tx) => {
     const [row] = await tx
@@ -110,6 +114,7 @@ export async function createGrievance(
         assignedAt: category.defaultAssigneeId ? now : null,
         responseDueAt,
         resolutionDueAt,
+        statutoryDueAt,
         relatedEntityType: input.relatedEntityType ?? null,
         relatedEntityId: input.relatedEntityId ?? null,
         attachments: input.attachments ?? [],
@@ -216,10 +221,15 @@ export async function transitionGrievance(
     user.permissions.has('grievance:resolve') ||
     (user.permissions.has('grievance:view_assigned') && grievance.assignedToId === user.userId);
 
-  // A raiser may withdraw or reopen their own case; everything else needs a handler.
-  const raiserAllowed = ['WITHDRAWN', 'REOPENED', 'CLOSED'];
-  if (!canHandle && !(isRaiser && raiserAllowed.includes(params.to))) {
-    throw new ForbiddenError('You cannot change the status of this case.');
+  if (grievance.status === 'APPEALED') {
+    // An appeal is decided by the Ombudsperson alone.
+    if (!(await isOmbudsperson(user))) throw new ForbiddenError('Only the Ombudsperson can decide an appeal.');
+  } else {
+    // A raiser may withdraw or reopen their own case; everything else needs a handler.
+    const raiserAllowed = ['WITHDRAWN', 'REOPENED', 'CLOSED'];
+    if (!canHandle && !(isRaiser && raiserAllowed.includes(params.to))) {
+      throw new ForbiddenError('You cannot change the status of this case.');
+    }
   }
 
   const allowed = TRANSITIONS[grievance.status] ?? [];
@@ -452,6 +462,14 @@ export interface GrievanceDetail {
   slaHoursRemaining: number | null;
   resolutionSummary: string | null;
   escalationLevel: number;
+  /** SGRC report due (15 working days, UGC 2023). */
+  statutoryDueAt: Date | null;
+  appealedAt: Date | null;
+  appealReason: string | null;
+  ombudspersonDueAt: Date | null;
+  /** Last day the raiser can appeal; null when not appealable. */
+  appealDeadline: Date | null;
+  canAppeal: boolean;
   messages: {
     id: string;
     body: string;
@@ -500,7 +518,8 @@ export async function getGrievance(
   const isHandler = g.assignedToId === user.userId;
   const canViewAll = user.permissions.has('grievance:view_all');
 
-  if (!isRaiser && !isHandler && !canViewAll) {
+  const ombudsperson = !!g.appealedAt && (await isOmbudsperson(user));
+  if (!isRaiser && !isHandler && !canViewAll && !ombudsperson) {
     throw new ForbiddenError('You do not have access to this case.');
   }
 
@@ -587,6 +606,12 @@ export async function getGrievance(
       : null,
     resolutionSummary: g.resolutionSummary,
     escalationLevel: g.escalationLevel,
+    statutoryDueAt: g.statutoryDueAt,
+    appealedAt: g.appealedAt,
+    appealReason: g.appealReason,
+    ombudspersonDueAt: g.ombudspersonDueAt,
+    appealDeadline: appealDeadlineFor(g),
+    canAppeal: isRaiser && canAppealNow(g),
     messages: messageRows
       // Internal notes are invisible to the raiser.
       .filter((m) => !m.isInternalNote || isHandler || canViewAll)
@@ -616,8 +641,108 @@ export async function getGrievance(
       isSystemGenerated: e.isSystemGenerated,
       createdAt: e.createdAt,
     })),
-    allowedTransitions: TRANSITIONS[g.status] ?? [],
+    allowedTransitions: g.status === 'APPEALED' && !ombudsperson ? [] : (TRANSITIONS[g.status] ?? []),
   };
+}
+
+/* ------------------------- appeal to the Ombudsperson ---------------------- */
+
+type GrievanceRow = typeof t.grievances.$inferSelect;
+
+/** The SGRC decision date: when the case was resolved (or closed). */
+function decisionAt(g: Pick<GrievanceRow, 'resolvedAt' | 'closedAt'>): Date | null {
+  return g.resolvedAt ?? g.closedAt ?? null;
+}
+
+export function appealDeadlineFor(g: Pick<GrievanceRow, 'status' | 'resolvedAt' | 'closedAt' | 'appealedAt'>): Date | null {
+  if (g.appealedAt || (g.status !== 'RESOLVED' && g.status !== 'CLOSED')) return null;
+  const at = decisionAt(g);
+  return at ? new Date(at.getTime() + UGC_TIMELINES.appealWindowDays * 86_400_000) : null;
+}
+
+function canAppealNow(g: Pick<GrievanceRow, 'status' | 'resolvedAt' | 'closedAt' | 'appealedAt'>, now = new Date()): boolean {
+  const deadline = appealDeadlineFor(g);
+  return !!deadline && now <= deadline;
+}
+
+/**
+ * The student appeals the SGRC decision to the Ombudsperson — within 15 days
+ * of the decision, as the 2023 regulations describe. The Ombudsperson then
+ * has 30 days; both dates are recorded and reported.
+ */
+export async function appealGrievance(user: AuthContext, grievanceId: string, input: { reason: string }): Promise<{ ombudspersonDueAt: Date }> {
+  requireFeatureEnabled(user, 'grievance_enabled');
+  const [g] = await db
+    .select()
+    .from(t.grievances)
+    .where(and(eq(t.grievances.id, grievanceId), eq(t.grievances.institutionId, user.institutionId)))
+    .limit(1);
+  if (!g) throw new NotFoundError('Case');
+  if (g.raisedById !== user.userId) throw new ForbiddenError('Only the person who raised this case can appeal it.');
+  if (!canAppealNow(g)) {
+    throw new AppError(
+      g.appealedAt ? 'This case has already been appealed.' : 'This case cannot be appealed now.',
+      409,
+      'APPEAL_NOT_ALLOWED',
+      undefined,
+      `An appeal can be made within ${UGC_TIMELINES.appealWindowDays} days of the committee’s decision.`,
+    );
+  }
+  const reason = input.reason.replace(/\s+/g, ' ').trim().slice(0, 2000);
+  if (reason.length < 10) throw new AppError('Please explain why you are appealing.', 422, 'REASON_REQUIRED');
+
+  const now = new Date();
+  const ombudspersonDueAt = new Date(now.getTime() + UGC_TIMELINES.ombudspersonDays * 86_400_000);
+  const reviewers = await ombudspersonIds(user.institutionId);
+
+  await db.transaction(async (tx) => {
+    const updated = await tx
+      .update(t.grievances)
+      .set({ status: 'APPEALED', appealedAt: now, appealReason: reason, ombudspersonDueAt, escalationLevel: sql`${t.grievances.escalationLevel} + 1`, lastEscalatedAt: now, updatedAt: now })
+      .where(and(eq(t.grievances.id, g.id), isNull(t.grievances.appealedAt)))
+      .returning({ id: t.grievances.id });
+    if (!updated.length) throw new AppError('This case has already been appealed.', 409, 'APPEAL_NOT_ALLOWED');
+    await tx.insert(t.grievanceEvents).values({
+      institutionId: user.institutionId,
+      grievanceId: g.id,
+      kind: 'APPEALED',
+      fromValue: g.status,
+      toValue: 'APPEALED',
+      note: 'Appealed to the Ombudsperson.',
+      actorId: g.isAnonymous ? null : user.userId,
+    });
+    if (reviewers.length) {
+      await tx.insert(t.notifications).values(
+        reviewers.map((userId) => ({
+          institutionId: user.institutionId,
+          userId,
+          title: `Appeal received: ${g.caseNumber}`,
+          body: `Please decide within ${UGC_TIMELINES.ombudspersonDays} days.`,
+          priority: 'IMPORTANT' as never,
+          category: 'ADMINISTRATIVE' as never,
+          actionUrl: `/admin/redressal/${g.id}`,
+          groupKey: 'grievances',
+          sourceType: 'grievance',
+          sourceId: g.id,
+        })),
+      );
+    }
+  });
+
+  await recordAudit(user, { action: 'GRIEVANCE_ESCALATED', entityType: 'grievance', entityId: g.id, after: { appeal: true, ombudspersonConfigured: reviewers.length > 0 } });
+  await track(user, 'grievance_escalated', { level: g.escalationLevel + 1 });
+  return { ombudspersonDueAt };
+}
+
+/** Appeals an Ombudsperson can see (their inbox). */
+export async function listAppealsForOmbudsperson(user: AuthContext) {
+  if (!(await isOmbudsperson(user))) throw new ForbiddenError();
+  return db
+    .select({ id: t.grievances.id, caseNumber: t.grievances.caseNumber, subject: t.grievances.subject, status: t.grievances.status, appealedAt: t.grievances.appealedAt, ombudspersonDueAt: t.grievances.ombudspersonDueAt })
+    .from(t.grievances)
+    .where(and(eq(t.grievances.institutionId, user.institutionId), sql`${t.grievances.appealedAt} is not null`))
+    .orderBy(desc(t.grievances.appealedAt))
+    .limit(200);
 }
 
 /**

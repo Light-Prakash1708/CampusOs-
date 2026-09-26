@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
-import { requireAnyPermission } from '@/lib/auth/context';
+import { redirect } from 'next/navigation';
+import { requireAuth } from '@/lib/auth/context';
+import { isOmbudsperson } from '@/services/grievance-committee';
 import { Alert, Badge, Card, CardBody, CardHeader, PageHeader } from '@/components/ui';
 import { formatDateTime, humanize, relativeTime } from '@/lib/utils';
 import { getGrievance } from '@/services/grievance';
@@ -14,7 +16,11 @@ export default async function CaseDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const user = await requireAnyPermission(['grievance:view_all', 'grievance:view_assigned']);
+  const user = await requireAuth();
+  const ombudsperson = await isOmbudsperson(user);
+  if (!ombudsperson && !user.permissions.has('grievance:view_all') && !user.permissions.has('grievance:view_assigned')) {
+    redirect('/forbidden?permission=grievance%3Aview_assigned');
+  }
   const { id } = await params;
 
   const detail = await getGrievance(user, id);
@@ -50,6 +56,27 @@ export default async function CaseDetailPage({
         </Alert>
       ) : null}
 
+      {detail.statutoryDueAt || detail.appealedAt ? (
+        <Card className="mb-4">
+          <CardHeader title="UGC 2023 timelines" description="Tracked to support your committee; not a compliance certificate." />
+          <CardBody className="grid gap-2 text-[13px] sm:grid-cols-3">
+            <div>
+              <p className="text-subtle">SGRC report due</p>
+              <p className="font-medium text-default">{detail.statutoryDueAt ? formatDateTime(detail.statutoryDueAt) : '—'}</p>
+            </div>
+            <div>
+              <p className="text-subtle">Appeal</p>
+              <p className="font-medium text-default">{detail.appealedAt ? `Appealed ${formatDateTime(detail.appealedAt)}` : detail.appealDeadline ? `Open until ${formatDateTime(detail.appealDeadline)}` : '—'}</p>
+            </div>
+            <div>
+              <p className="text-subtle">Ombudsperson decision due</p>
+              <p className="font-medium text-default">{detail.ombudspersonDueAt ? formatDateTime(detail.ombudspersonDueAt) : '—'}</p>
+            </div>
+            {detail.appealReason ? <p className="sm:col-span-3 text-muted">Appeal reason: {detail.appealReason}</p> : null}
+          </CardBody>
+        </Card>
+      ) : null}
+
       <CaseWorkbench
         detail={{
           ...detail,
@@ -61,7 +88,7 @@ export default async function CaseDetailPage({
           timeline: detail.timeline.map((e) => ({ ...e, createdAt: e.createdAt.toISOString() })),
         }}
         canAssign={user.permissions.has('grievance:assign')}
-        canResolve={user.permissions.has('grievance:resolve')}
+        canResolve={detail.status === 'APPEALED' ? ombudsperson : user.permissions.has('grievance:resolve')}
         staff={staff.map((s) => ({
           id: s.id,
           name: `${s.firstName} ${s.lastName}`,

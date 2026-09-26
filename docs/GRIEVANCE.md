@@ -87,3 +87,22 @@ A case can reference the record it is about (`related_entity_type` /
 `related_entity_id`). An attendance dispute links to the attendance record, so
 resolving it can correct the record and the correction carries the case number
 in `correction_grievance_id`. The dispute and its outcome stay connected.
+
+## SGRC, Ombudsperson and UGC 2023 timelines (CAMPUSOS-011)
+
+CampusOS **supports** a structured grievance workflow aligned with the UGC (Redressal of Grievances of Students) Regulations, 2023. It does not certify compliance; the college remains responsible for meeting the regulations. Timelines were verified against the regulation text; see strategy audit §10a.
+
+| Step | Regulation | What CampusOS does |
+|---|---|---|
+| SGRC report | "preferably within 15 working days" | `grievances.statutory_due_at` is computed at creation. Sundays and the college's own holidays are excluded, so the result is an approximation of working days. It is shown to the student, the handler and the evidence pack. |
+| Appeal | Student may appeal to the Ombudsperson "within 15 days" of the decision | The raiser sees **Appeal to the Ombudsperson** for 15 days after the case is resolved or closed. `appealGrievance()` records the reason (plain text, 2,000 characters maximum), sets status `APPEALED` and notifies the Ombudsperson. |
+| Ombudsperson | Resolves "within 30 days" of the appeal | `ombudsperson_due_at` is set. **Only a user listed as Ombudsperson** can move an `APPEALED` case to `RESOLVED` or `CLOSED`. Ordinary handlers cannot. |
+
+**Committee** (`/admin/redressal/committee`, permission `grievance:configure`):
+
+- Positions are chairperson, member, student special invitee and Ombudsperson. The chairperson and members must be staff; the invitee must be a student. There is one chair.
+- A checklist shows whether the chair, four members, the invitee and the Ombudsperson are in place.
+- The regulation's representation rules (at least one woman; at least one SC/ST/OBC member) are **confirmed by the college as an audited attestation**. CampusOS never collects or stores anyone's gender or social category for this.
+- An external Ombudsperson (for example, a retired judge) is invited as a **Management** user, then added here. They can open appealed cases through their notification, even without other redressal permissions.
+
+Every change to committee membership or attestations is audited as `GRIEVANCE_COMMITTEE_UPDATED`. Appeals are audited as `GRIEVANCE_ESCALATED` and appear in the case's immutable timeline as `APPEALED`.

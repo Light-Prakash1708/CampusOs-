@@ -12,7 +12,8 @@ const Body = z.object({
   assignToId: z.string().uuid().optional(),
 });
 
-export const POST = withAuth('grievance:view_own', async (request, { user, params }) => {
+// Authorisation is decided per case in the service (raiser, handler, or the Ombudsperson on an appeal).
+export const POST = withAuth(null, async (request, { user, params }) => {
   const input = await parseBody(request, Body);
 
   // Reassignment and transition can arrive together (the usual admin action).

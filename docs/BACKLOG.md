@@ -28,7 +28,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 008 | TODO | |
 | 009 | TODO | |
 | 010 | DONE | Receipts, CSV, reminders, faculty view |
-| 011 | TODO | |
+| 011 | DONE | Committee, statutory dates, Ombudsperson appeal |
 | 012 | DONE | Built with 003; warm campuses on /admin/metrics |
 | 013 | DONE | `get_at_risk_students` removed; student card + staff scoping |
 | 014 | TODO | |
@@ -675,3 +675,31 @@ These can be revisited only with pilot evidence:
   - faculty and admin copy changed from "at risk" to "below minimum" or "Needs attention", described as "a rule, not a prediction".
 - **Tests:** `tests/attention-signals.test.ts` (4) checks the explanation fields, no score or prediction language, scoping, cross-tenant denial, and the tool registry.
 - **Deployment:** none.
+
+### 2026-09-27: CAMPUSOS-011 SGRC-aligned grievance workflow
+
+- **Database:** migration `0015_sgrc_workflow`, additive:
+  - enum value `grievance_status.APPEALED`;
+  - `grievances.statutory_due_at`, `appealed_at`, `appeal_reason` and `ombudsperson_due_at`;
+  - table `grievance_committee_members`, with CHECK constraints on body and position. It is classified KEEP for membership transfer.
+- **Services:**
+  - `grievance-committee.ts`: membership rules, an attestation instead of any gender or category data, a working-day calculator using the college's holidays, and Ombudsperson lookups;
+  - `grievance.ts`:
+    - statutory date on creation;
+    - `appealGrievance()`: raiser only, within 15 days of the decision, once, and race-safe;
+    - an `APPEALED` case can be decided only by the Ombudsperson;
+    - the Ombudsperson can read appealed cases.
+- **API:**
+  - `POST /api/grievances/[id]/appeal`;
+  - `GET/POST /api/admin/grievance-committee`;
+  - the transition route now leaves authorisation to the service, which decides per case.
+- **UI:**
+  - `/admin/redressal/committee` (checklist, members, attestation);
+  - an "Appeals" filter and a committee link on the Redressal centre;
+  - a timelines card on the case page;
+  - the student sees the statutory date, their appeal status, and an appeal panel while it is allowed.
+- **Wording:** "supports a structured workflow aligned with the UGC 2023 regulations". There is no compliance claim.
+- **Tests:** `tests/grievance-sgrc.test.ts` (4).
+- **Known limits:**
+  - "Working days" excludes Sundays and the college's holidays only. Colleges on a five-day week will see a slightly later date.
+  - The Ombudsperson portal is the admin portal (invite them as Management).

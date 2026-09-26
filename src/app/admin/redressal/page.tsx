@@ -48,7 +48,9 @@ export default async function AdminRedressalPage({
           )
         : filter === 'resolved'
           ? inArray(t.grievances.status, ['RESOLVED', 'CLOSED'])
-          : inArray(t.grievances.status, OPEN_STATES);
+          : filter === 'appeals'
+            ? sql`${t.grievances.appealedAt} is not null`
+            : inArray(t.grievances.status, OPEN_STATES);
 
   const [cases, health] = await Promise.all([
     db
@@ -75,11 +77,17 @@ export default async function AdminRedressalPage({
     computeGrievanceHealth(user.institutionId),
   ]);
 
+  const [{ n: appeals }] = (await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(t.grievances)
+    .where(and(scope, sql`${t.grievances.appealedAt} is not null`, eq(t.grievances.status, 'APPEALED')))) as [{ n: number }];
+
   const filters = [
     { key: 'open', label: 'Open', count: health.open },
     { key: 'due', label: 'Due soon', count: health.approachingSla },
     { key: 'breached', label: 'Past SLA', count: health.breached },
     { key: 'resolved', label: 'Resolved', count: health.resolvedLast30Days },
+    { key: 'appeals', label: 'Appeals', count: appeals },
   ];
 
   return (
@@ -87,6 +95,13 @@ export default async function AdminRedressalPage({
       <PageHeader
         title="Redressal centre"
         description="Structured issue resolution. Nothing here can be deleted, and every deadline escalates automatically."
+        action={
+          user.permissions.has('grievance:configure') ? (
+            <Link href="/admin/redressal/committee" className="inline-flex h-9 items-center rounded-lg border border-[hsl(var(--border-strong))] bg-surface px-3 text-[13px] font-medium text-default hover:bg-surface-sunken">
+              SGRC &amp; Ombudsperson
+            </Link>
+          ) : undefined
+        }
       />
 
       <Section title="Case health">

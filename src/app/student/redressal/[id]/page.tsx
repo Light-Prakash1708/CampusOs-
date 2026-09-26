@@ -30,6 +30,7 @@ import { requireStudentContext } from '../../_lib/auth';
 import { slaState } from '../../_lib/sla';
 import { grievanceStatusTone, ModuleDisabled, ProseBody, urgencyTone } from '../../_components/bits';
 import { ReplyBox } from './ReplyBox';
+import { AppealPanel } from './AppealPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,6 +113,20 @@ export default async function CaseDetailPage({ params }: { params: Promise<{ id:
           need to chase it — but you can add a reply if there is anything new.
         </Alert>
       ) : null}
+
+      {detail.statutoryDueAt && !detail.appealedAt && !['RESOLVED', 'CLOSED', 'WITHDRAWN'].includes(detail.status) ? (
+        <p className="mb-4 text-[12.5px] text-muted">
+          Your college’s grievance committee aims to report on this by {formatDateTime(detail.statutoryDueAt)} (15 working days).
+        </p>
+      ) : null}
+
+      {detail.appealedAt ? (
+        <Alert className="mb-5" tone="info" title="Appealed to the Ombudsperson">
+          You appealed on {formatDateTime(detail.appealedAt)}.{detail.ombudspersonDueAt ? ` The Ombudsperson aims to decide by ${formatDateTime(detail.ombudspersonDueAt)}.` : ''}
+        </Alert>
+      ) : null}
+
+      {detail.canAppeal && detail.appealDeadline ? <AppealPanel grievanceId={detail.id} deadline={detail.appealDeadline.toISOString()} /> : null}
 
       {detail.resolutionSummary ? (
         <Alert className="mb-5" tone="success" icon={CircleCheck} title="Resolution">

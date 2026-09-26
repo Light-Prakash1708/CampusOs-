@@ -204,6 +204,8 @@ export const grievanceStatusEnum = pgEnum('grievance_status', [
   'CLOSED',
   'REOPENED',
   'WITHDRAWN',
+  /** Appealed to the Ombudsperson after the SGRC decision (CAMPUSOS-011). */
+  'APPEALED',
 ]);
 
 export const grievanceUrgencyEnum = pgEnum('grievance_urgency', [

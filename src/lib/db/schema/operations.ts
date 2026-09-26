@@ -209,6 +209,17 @@ export const grievances = pgTable(
     /** SLA tracking. */
     responseDueAt: timestamp('response_due_at', { withTimezone: true }),
     resolutionDueAt: timestamp('resolution_due_at', { withTimezone: true }),
+    /**
+     * UGC (Redressal of Grievances of Students) Regulations, 2023: the SGRC
+     * reports "preferably within 15 working days". Computed at creation
+     * (Sundays and the college's holidays excluded). CAMPUSOS-011.
+     */
+    statutoryDueAt: timestamp('statutory_due_at', { withTimezone: true }),
+    /** Appeal to the Ombudsperson (within 15 days of the decision). */
+    appealedAt: timestamp('appealed_at', { withTimezone: true }),
+    appealReason: text('appeal_reason'),
+    /** The Ombudsperson resolves "within 30 days" of the appeal. */
+    ombudspersonDueAt: timestamp('ombudsperson_due_at', { withTimezone: true }),
     firstResponseAt: timestamp('first_response_at', { withTimezone: true }),
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     closedAt: timestamp('closed_at', { withTimezone: true }),
@@ -287,4 +298,33 @@ export const grievanceEvents = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('grievance_events_grievance_idx').on(t.grievanceId, t.createdAt)],
+);
+
+/**
+ * Students' Grievance Redressal Committee (SGRC) and Ombudsperson (CAMPUSOS-011).
+ * Who sits on them — never their gender or social category: the college
+ * attests the composition rules instead (see services/grievance-committee.ts).
+ */
+export const grievanceCommitteeMembers = pgTable(
+  'grievance_committee_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    institutionId: uuid('institution_id')
+      .notNull()
+      .references(() => institutions.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** SGRC | OMBUDSPERSON */
+    body: text('body').notNull(),
+    /** CHAIR | MEMBER | STUDENT_INVITEE | OMBUDSPERSON */
+    position: text('position').notNull(),
+    termEndsOn: date('term_ends_on'),
+    createdById: uuid('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('grievance_committee_member_uq').on(t.institutionId, t.userId, t.body),
+    index('grievance_committee_body_idx').on(t.institutionId, t.body),
+  ],
 );
