@@ -1,3 +1,4 @@
+/* global self, caches, fetch, URL */
 /*
  * CampusOS service worker (CAMPUSOS-017).
  *
