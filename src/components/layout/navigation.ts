@@ -202,7 +202,7 @@ export const ADMIN_NAV: NavGroup[] = [
       },
       // v1 listed "Assessments" → /admin/assessments here, but that page never
       // existed (a 404). Removed in Phase 1; an admin exam-scheduling screen is
-      // tracked in docs/CAMPUSOS_PRODUCT_AUDIT.md. tests/phase1-tools.test.ts
+      // tracked in docs/archive/CAMPUSOS_PRODUCT_AUDIT.md. tests/phase1-tools.test.ts
       // now fails the build if any nav entry points at a missing page.
     ],
   },

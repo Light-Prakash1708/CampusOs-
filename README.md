@@ -79,6 +79,11 @@ solver really does produce a clash-free 90-session week.
 
 | Document | Contents |
 |---|---|
+| [PRODUCT.md](docs/PRODUCT.md) | What CampusOS is (and isn't), V1 scope, principles, pricing hypotheses |
+| [PILOT_GUIDE.md](docs/PILOT_GUIDE.md) | Demo story, pilot setup, weekly metrics, review |
+| [ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) / [STUDENT_GUIDE.md](docs/STUDENT_GUIDE.md) | How to use it |
+| [PILOT_READINESS_REPORT.md](docs/PILOT_READINESS_REPORT.md) | What is done, verified and still open before a pilot |
+| [CAMPUSOS_STRATEGY_AUDIT.md](docs/CAMPUSOS_STRATEGY_AUDIT.md) / [BACKLOG.md](docs/BACKLOG.md) | Strategy (business source of truth) and the execution backlog |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System shape, module boundaries, technology decisions and their rationale |
 | [DATABASE.md](docs/DATABASE.md) | Schema, multi-tenancy, integrity guarantees, concurrency |
 | [AUTH.md](docs/AUTH.md) | Sessions, capability-based authorization, tenant scoping |
@@ -91,9 +96,9 @@ solver really does produce a clash-free 90-session week.
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production deployment and operations |
 | [LOCAL_DEVELOPMENT.md](docs/LOCAL_DEVELOPMENT.md) | Getting set up |
 | [PRODUCT_ROADMAP.md](docs/PRODUCT_ROADMAP.md) | What is built, what is scaffolded, what is next |
-| [CAMPUSOS_2_AUDIT.md](docs/CAMPUSOS_2_AUDIT.md) | 2.0 audit: what worked, defects found, migration plan, phase roadmap |
 | [PRIVACY.md](docs/PRIVACY.md) | Data catalogue, consent ledger, export and erasure (DPDP-aligned) |
-| [PHASE_1_REPORT.md](docs/PHASE_1_REPORT.md) | 2.0 Phase 1: what changed, APIs, tests, remaining work |
+| [BILLING.md](docs/BILLING.md) / [ANALYTICS.md](docs/ANALYTICS.md) | Manual invoicing; privacy-safe product analytics |
+| [archive/](docs/archive/) | Earlier phase reports and audits (historical) |
 | [CONVENTIONS.md](docs/CONVENTIONS.md) | Engineering conventions for contributors |
 
 ## Honest status

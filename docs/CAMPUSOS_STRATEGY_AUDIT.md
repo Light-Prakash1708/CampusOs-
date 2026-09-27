@@ -230,7 +230,7 @@
 
 ## 9. Security risks
 
-Current posture is strong for its stage [REPO: see `docs/SECURITY.md`, `docs/PRODUCTION_READINESS_AUDIT.md`]. Residual risks:
+Current posture is strong for its stage [REPO: see `docs/SECURITY.md`, `docs/archive/PRODUCTION_READINESS_AUDIT.md`]. Residual risks:
 
 1. **CSP lacks `script-src`.** XSS impact is not contained by CSP. `dangerouslySetInnerHTML` is used in two places: a theme bootstrap in `layout.tsx` and a server-generated QR SVG. Both carry fixed or server-generated content, so risk is low.
 2. **`SameSite=Lax` plus an origin check** protects mutations. Keep the origin check covered by tests.

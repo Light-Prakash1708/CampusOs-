@@ -207,7 +207,7 @@ export type FeatureFlag = keyof typeof FEATURE_FLAGS;
  * ---------------------------------------------------------------------------
  * A flag may only switch on a module that actually exists. Flags for modules
  * that are not built yet are listed here with the roadmap phase that delivers
- * them (docs/CAMPUSOS_PRODUCT_AUDIT.md §14). For these, `isEnabled` is always
+ * them (docs/archive/CAMPUSOS_PRODUCT_AUDIT.md §14). For these, `isEnabled` is always
  * false — whatever is stored for the tenant — the settings API refuses to turn
  * them on, and the UI shows "Coming in Phase N" instead of a link. This is what
  * guarantees a flag can never expose a route that 404s.

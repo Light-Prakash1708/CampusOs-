@@ -41,7 +41,7 @@ export interface ToolDefinition {
   feature?: FeatureFlag;
   /** User needs at least one of these. */
   permissions?: Permission[];
-  /** Roadmap phase that delivers the tool (docs/CAMPUSOS_PRODUCT_AUDIT.md §14). */
+  /** Roadmap phase that delivers the tool (docs/archive/CAMPUSOS_PRODUCT_AUDIT.md §14). */
   plannedPhase?: number;
 }
 
