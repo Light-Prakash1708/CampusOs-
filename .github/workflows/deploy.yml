@@ -61,7 +61,7 @@ jobs:
             sleep 20
           done
           echo "::error::Release $want did not become healthy within 20 minutes."; echo "$body"; exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.cfg.outputs.enabled == 'true'
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
