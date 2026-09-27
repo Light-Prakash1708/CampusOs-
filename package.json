@@ -13,7 +13,7 @@
     "db:constraints": "echo \"db:constraints is superseded: constraints are migration 0001. Run npm run db:migrate.\"",
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "tsx scripts/reset.ts && npm run db:seed",
-    "test": "vitest run",
+    "test": "vitest run --exclude tests/foundation-integration.test.ts --exclude tests/notification-drain.test.ts && npm run test:queue",
     "test:watch": "vitest",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
@@ -23,7 +23,8 @@
     "brand:assets": "tsx scripts/brand/generate-assets.ts",
     "demo:reset": "ALLOW_DEMO_SEED=true tsx scripts/seed.ts",
     "test:e2e": "playwright test",
-    "db:verify": "tsx scripts/verify-restore.ts"
+    "db:verify": "tsx scripts/verify-restore.ts",
+    "test:queue": "vitest run --no-file-parallelism tests/foundation-integration.test.ts tests/notification-drain.test.ts"
   },
   "keywords": [],
   "author": "",

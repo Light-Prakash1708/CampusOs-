@@ -405,6 +405,15 @@ describe('notification delivery', () => {
     const muted = await createUser(A);
     await db.insert(t.notificationSettings).values({ institutionId: A.id, userId: muted.id, emailEnabled: false });
 
+    // Precondition: the planner is platform-wide and takes the oldest 500
+    // unplanned rows per call. Earlier test files leave their own rows behind,
+    // so plan those first; otherwise this test's three rows (the newest) may
+    // not be in the first batch. (npm test runs this file with no other file
+    // in parallel, so nothing new arrives between the calls below.)
+    while ((await planPendingNotifications()).notifications > 0) {
+      /* drain earlier tests' backlog */
+    }
+
     const [n1, n2, n3] = await db
       .insert(t.notifications)
       .values([

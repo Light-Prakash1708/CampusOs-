@@ -94,7 +94,10 @@ jobs:
       APP_URL: http://localhost:3000
       DEMO_PASSWORD: CampusOS!Demo2026
       AI_PROVIDER: local
-      EMAIL_PROVIDER: console
+      # A production server refuses DEMO_MODE and the console mailer at boot
+      # (src/lib/env.ts), so the E2E server runs with email off.
+      DEMO_MODE: 'false'
+      EMAIL_PROVIDER: none
       STORAGE_PROVIDER: local
       ALLOW_LOCAL_STORAGE: 'true'
       SELF_REGISTRATION_ENABLED: 'true'
