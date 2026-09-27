@@ -117,7 +117,8 @@ test('an independent student signs up and asks to join a college', async ({ page
   expect(minor.status).toBeGreaterThanOrEqual(400);
 
   await page.goto('/student/join');
-  await page.getByLabel('Find your college').fill('Demo');
+  // The seeded college (slug demo-university) is "Kolkata Business Institute".
+  await page.getByLabel('Find your college').fill('Kolkata Business');
   const request = page.getByRole('button', { name: 'Request to join' }).first();
   await expect(request).toBeVisible();
   await request.click();
