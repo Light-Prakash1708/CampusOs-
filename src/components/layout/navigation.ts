@@ -210,7 +210,7 @@ export const ADMIN_NAV: NavGroup[] = [
     label: 'Operations',
     items: [
       {
-        label: 'Verified Communication',
+        label: 'Verified Notices',
         href: '/admin/communications',
         icon: 'megaphone',
         permissions: ['announcement:create_official', 'announcement:create_informational'],

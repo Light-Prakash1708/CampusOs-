@@ -1730,6 +1730,8 @@ async function main() {
           assignedAt: def.assignee ? createdAt : null,
           responseDueAt: new Date(createdAt.getTime() + cat.responseSlaHours * 3600_000),
           resolutionDueAt: resolutionDue,
+          // SGRC report date (≈15 working days; Sundays skipped) — CAMPUSOS-011.
+          statutoryDueAt: addDays(createdAt, 17),
           firstResponseAt: def.status === 'SUBMITTED' ? null : createdAt,
           resolvedAt: def.status === 'RESOLVED' ? addDays(today, -1) : null,
           resolutionSummary: def.resolution ?? null,
@@ -1802,6 +1804,38 @@ async function main() {
         });
       }
     }
+
+    /* ---------- SGRC & Ombudsperson (CAMPUSOS-011) ---------- */
+    const [ombudsperson] = await db
+      .insert(s.users)
+      .values({
+        institutionId: inst,
+        email: 'ombudsperson@demo.campusos.local',
+        passwordHash,
+        firstName: 'Justice (Retd.) Asha',
+        lastName: 'Menon',
+        role: 'MANAGEMENT',
+        status: 'ACTIVE',
+        emailVerifiedAt: new Date(),
+      })
+      .returning();
+    const committee = [
+      { userId: facultyUsers[0]!.id, body: 'SGRC', position: 'CHAIR' },
+      ...facultyUsers.slice(1, 5).map((f) => ({ userId: f.id, body: 'SGRC', position: 'MEMBER' })),
+      { userId: demoStudent.userId, body: 'SGRC', position: 'STUDENT_INVITEE' },
+      { userId: ombudsperson!.id, body: 'OMBUDSPERSON', position: 'OMBUDSPERSON' },
+    ];
+    await db.insert(s.grievanceCommitteeMembers).values(
+      committee.map((c) => ({ institutionId: inst, userId: c.userId, body: c.body, position: c.position, termEndsOn: dateOnly(addDays(today, 700)), createdById: registrar.id })),
+    );
+    await db.insert(s.systemSettings).values({
+      institutionId: inst,
+      key: 'sgrc_composition_attestation',
+      value: { attestedAt: addDays(today, -20).toISOString(), attestedById: registrar.id },
+      updatedById: registrar.id,
+      description: 'College confirmed the SGRC composition rules it must follow (gender and category representation).',
+    });
+    console.log('  · SGRC committee and Ombudsperson');
   }
 
   async function seedSkills() {
