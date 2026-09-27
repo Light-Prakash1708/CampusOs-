@@ -122,7 +122,7 @@ export default async function MetricsPage({ searchParams }: { searchParams: Prom
           ) : (
             <Table>
               <thead>
-                <tr><Th>College</Th><Th align="right">Students active</Th><Th align="right">Staff active</Th><Th align="right">Notices</Th><Th align="right">Ack rate</Th></tr>
+                <tr><Th>College</Th><Th align="right">Students active</Th><Th align="right">Staff active</Th><Th align="right">Notices</Th><Th align="right">Ack rate</Th><Th align="right">Pilot evidence</Th></tr>
               </thead>
               <tbody>
                 {m.byInstitution.map((i) => (
@@ -132,6 +132,11 @@ export default async function MetricsPage({ searchParams }: { searchParams: Prom
                     <Td align="right">{i.activeStaff7d}</Td>
                     <Td align="right">{i.notices}</Td>
                     <Td align="right">{fmtPct(i.ackRate)}</Td>
+                    <Td align="right">
+                      <a className="font-medium text-brand hover:underline" href={`/api/admin/institutions/${i.id}/pilot-metrics`} download>
+                        Weekly CSV
+                      </a>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
