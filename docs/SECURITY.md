@@ -171,3 +171,28 @@ nonce-based `script-src` is planned for Phase 9.
 pre-fill that header, so the address is read from the right:
 `TRUSTED_PROXY_HOPS` (default 1) is the number of proxies that append to it
 (Render alone = 1; Cloudflare in front of Render = 2).
+
+## Two-step sign-in (CAMPUSOS-018)
+
+- **Method:** TOTP (RFC 6238; 6 digits, 30 s, SHA-1), which works with any authenticator app. It is implemented with `node:crypto` in `src/lib/auth/totp.ts`, and the RFC test vector is covered by a test.
+- **Storage:**
+  - The secret is encrypted at rest with AES-256-GCM. The key is `MFA_ENCRYPTION_KEY`, or is derived from `AUTH_SECRET` when that isn't set.
+  - Ten recovery codes are stored as SHA-256 hashes, and each works once.
+  - The table is `user_mfa`.
+- **Replay protection:** a TOTP time-step is accepted once (`last_used_step`), with ±1 step of clock drift.
+- **Login:**
+  1. A correct password returns a signed challenge that is valid for 5 minutes. It is bound to the user, the tenant and the session epoch. No session is started yet.
+  2. `POST /api/auth/mfa` with a code or a recovery code starts the session.
+  3. Attempts are rate-limited per user (10 per 15 minutes) and failures are audited.
+- **Policy:**
+  - `MFA_REQUIRED_ROLES` defaults to `SUPER_ADMIN`.
+  - `MFA_ENFORCE` defaults to on in production and off elsewhere.
+  - A required user without MFA is redirected to `/account/security` by every portal, and every API returns `403 MFA_SETUP_REQUIRED` except the account, auth and notice endpoints.
+  - Platform operators **must** have MFA wherever it is enforced.
+  - Required roles cannot switch it off.
+  - Demo accounts cannot enrol.
+- **Recovery:**
+  - Users regenerate recovery codes with a current code.
+  - An administrator with `institution:manage` can reset someone else's MFA in the same college, never their own. The reset is audited as `MFA_RESET` and ends that person's sessions.
+- **Audit actions:** `MFA_ENROLLED`, `MFA_DISABLED`, `MFA_RECOVERY_USED`, `MFA_RESET`.
+- **Owner step:** set `MFA_ENCRYPTION_KEY` (32+ characters) in production, and don't rotate it; rotating it makes enrolled secrets unreadable. Enrol the first operator right after provisioning.

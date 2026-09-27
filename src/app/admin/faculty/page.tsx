@@ -1,11 +1,11 @@
-import { and, asc, eq, ilike, isNull, or, type SQL } from 'drizzle-orm';
+import { and, asc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { UserCog } from 'lucide-react';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
 import { can, requirePermission } from '@/lib/auth/context';
 import { Avatar, Badge, Card, CardHeader, EmptyState, PageHeader, Table, Td, Th } from '@/components/ui';
 import { num } from '@/lib/utils';
-import { AccessToggle, InviteActions } from '../_components/PeopleActions';
+import { AccessToggle, InviteActions, MfaResetButton } from '../_components/PeopleActions';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Faculty · CampusOS' };
@@ -31,6 +31,7 @@ export default async function FacultyPage({ searchParams }: { searchParams: Prom
       id: t.facultyProfiles.id,
       userId: t.users.id,
       accountStatus: t.users.status,
+      mfaOn: sql<boolean>`exists (select 1 from user_mfa m where m.user_id = "users"."id" and m.enabled_at is not null)`,
       firstName: t.users.firstName,
       lastName: t.users.lastName,
       email: t.users.email,
@@ -159,6 +160,7 @@ export default async function FacultyPage({ searchParams }: { searchParams: Prom
                       </Badge>
                       {f.accountStatus === 'INVITED' && canInvite ? <InviteActions userId={f.userId} email={f.email} /> : null}
                       {canManage ? <AccessToggle userId={f.userId} status={f.accountStatus} name={`${f.firstName} ${f.lastName}`} /> : null}
+                      {f.mfaOn && can(user, 'institution:manage') ? <MfaResetButton userId={f.userId} name={`${f.firstName} ${f.lastName}`} /> : null}
                     </span>
                   </Td>
                 </tr>

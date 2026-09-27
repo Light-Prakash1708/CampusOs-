@@ -49,6 +49,36 @@ export function LoginForm({
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<{ message: string; hint?: string; code?: string } | null>(null);
   const [resent, setResent] = React.useState(false);
+  // Two-step sign-in (CAMPUSOS-018): set once the password was accepted.
+  const [challenge, setChallenge] = React.useState<string | null>(null);
+  const [code, setCode] = React.useState('');
+  const [useRecovery, setUseRecovery] = React.useState(false);
+
+  async function submitCode(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/mfa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(useRecovery ? { challenge, recoveryCode: code } : { challenge, code }),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        if (json.error?.code === 'CHALLENGE_EXPIRED') setChallenge(null);
+        setError({ message: json.error?.message ?? 'That code isn’t right.', hint: json.error?.hint, code: json.error?.code });
+        setLoading(false);
+        return;
+      }
+      const safeNext = safeReturnPath(nextUrl, window.location.origin);
+      router.push(safeNext ?? json.data.redirectTo);
+      router.refresh();
+    } catch {
+      setError({ message: 'Could not reach the server.', hint: 'Check your connection and try again.' });
+      setLoading(false);
+    }
+  }
 
   async function resendVerification() {
     await fetch('/api/auth/verify-email/resend', {
@@ -78,6 +108,13 @@ export function LoginForm({
         return;
       }
 
+      if (json.data.mfaRequired) {
+        setChallenge(json.data.challenge);
+        setPassword('');
+        setLoading(false);
+        return;
+      }
+
       // Only same-site relative paths are honoured ("//evil.com" is protocol-relative).
       const safeNext = safeReturnPath(nextUrl, window.location.origin);
       router.push(json.data.mustChangePassword ? json.data.redirectTo : (safeNext ?? json.data.redirectTo));
@@ -95,6 +132,43 @@ export function LoginForm({
     setEmail(demoEmail);
     setPassword(demoPassword);
     setError(null);
+  }
+
+  if (challenge) {
+    return (
+      <form onSubmit={submitCode} className="space-y-4" noValidate>
+        {error ? (
+          <div className="flex gap-2.5 rounded-lg border border-[hsl(var(--danger-border))] bg-danger-subtle p-3" role="alert">
+            <AlertCircle size={15} className="mt-0.5 shrink-0 text-danger" />
+            <div>
+              <p className="text-[13px] font-medium text-danger">{error.message}</p>
+              {error.hint ? <p className="mt-0.5 text-[12.5px] text-muted">{error.hint}</p> : null}
+            </div>
+          </div>
+        ) : null}
+        <Field
+          label={useRecovery ? 'Recovery code' : 'Code from your authenticator app'}
+          htmlFor="mfa-code"
+          hint={useRecovery ? 'Each recovery code works once.' : 'Six digits. A new code appears every 30 seconds.'}
+        >
+          <Input
+            id="mfa-code"
+            autoFocus
+            autoComplete="one-time-code"
+            inputMode={useRecovery ? 'text' : 'numeric'}
+            maxLength={useRecovery ? 24 : 6}
+            value={code}
+            onChange={(e) => setCode(useRecovery ? e.target.value : e.target.value.replace(/\D/g, ''))}
+          />
+        </Field>
+        <Button type="submit" variant="primary" size="lg" className="w-full" loading={loading} disabled={useRecovery ? code.length < 8 : code.length !== 6}>
+          Verify
+        </Button>
+        <button type="button" className="text-[12.5px] font-medium text-brand hover:underline" onClick={() => { setUseRecovery((v) => !v); setCode(''); setError(null); }}>
+          {useRecovery ? 'Use a code from your app instead' : 'Lost your phone? Use a recovery code'}
+        </button>
+      </form>
+    );
   }
 
   return (

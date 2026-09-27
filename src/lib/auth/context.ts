@@ -4,7 +4,7 @@ import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { users, studentProfiles, facultyProfiles, institutions } from '@/lib/db/schema';
+import { users, studentProfiles, facultyProfiles, institutions, userMfa } from '@/lib/db/schema';
 import { SESSION_COOKIE, verifySessionToken } from './session';
 import {
   type Permission,
@@ -36,6 +36,8 @@ export interface AuthContext {
   institutionKind?: 'COLLEGE' | 'PERSONAL';
   /** The public sales demo tenant: outbound email, external AI and uploads are off. */
   isDemo?: boolean;
+  /** Two-step sign-in is set up for this account. */
+  mfaEnabled?: boolean;
   featureFlags: Record<string, boolean>;
   email: string;
   firstName: string;
@@ -91,6 +93,7 @@ export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
       institutionPrimaryColor: institutions.primaryColor,
       institutionKind: institutions.kind,
       isDemo: institutions.isDemo,
+      mfaEnabledAt: userMfa.enabledAt,
       featureFlags: institutions.featureFlags,
       studentProfileId: studentProfiles.id,
       sectionId: studentProfiles.sectionId,
@@ -101,6 +104,7 @@ export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
     .innerJoin(institutions, eq(institutions.id, users.institutionId))
     .leftJoin(studentProfiles, eq(studentProfiles.userId, users.id))
     .leftJoin(facultyProfiles, eq(facultyProfiles.userId, users.id))
+    .leftJoin(userMfa, eq(userMfa.userId, users.id))
     .where(and(eq(users.id, payload.userId), eq(users.institutionId, payload.institutionId)))
     .limit(1);
 
@@ -119,6 +123,7 @@ export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
     institutionPrimaryColor: row.institutionPrimaryColor ?? '#4F46E5',
     institutionKind: row.institutionKind === 'PERSONAL' ? 'PERSONAL' : 'COLLEGE',
     isDemo: row.isDemo,
+    mfaEnabled: !!row.mfaEnabledAt,
     featureFlags: (row.featureFlags ?? {}) as Record<string, boolean>,
     email: row.email,
     firstName: row.firstName,

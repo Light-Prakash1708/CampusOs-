@@ -4,6 +4,8 @@ import { publicRoute } from '@/lib/api';
 import { metaFrom } from '@/lib/http';
 import { startSession } from '@/lib/auth/session';
 import { authenticate } from '@/services/auth/accounts';
+import { hasMfa } from '@/services/auth/mfa';
+import { signChallenge } from '@/lib/auth/totp';
 
 const LoginSchema = z.object({
   email: z.string().trim().toLowerCase().email('Enter a valid email address.'),
@@ -36,6 +38,14 @@ export const POST = publicRoute(async (request) => {
       { ok: false, error: { code: result.code, message: result.message, hint: result.hint } },
       { status: result.status },
     );
+  }
+
+  // Two-step sign-in: the password was right, but no session until the second factor.
+  if (await hasMfa(result.user.id)) {
+    return NextResponse.json({
+      ok: true,
+      data: { mfaRequired: true, challenge: signChallenge({ uid: result.user.id, iid: result.user.institutionId, epoch: result.user.sessionEpoch }) },
+    });
   }
 
   await startSession(result.user, meta);

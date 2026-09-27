@@ -35,7 +35,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 015 | DONE | Isolated demo; `npm run demo:reset`; nightly reset is an owner step |
 | 016 | DONE | Core modules for new colleges; student nav regrouped |
 | 017 | TODO | |
-| 018 | TODO | |
+| 018 | DONE | TOTP + recovery codes; enforced for SUPER_ADMIN in production |
 | 019 | DONE | `ai_external_processing_enabled`, off by default |
 | 020 | DONE (tax BLOCKED) | Manual invoicing; GST treatment needs an accountant |
 | 021 | TODO | |
@@ -794,3 +794,27 @@ These can be revisited only with pilot evidence:
 - **Tests:** `tests/billing.test.ts` (6): sequencing under concurrency, arithmetic, access, status rules, PDF.
 - **Blocked:** GST rate, SAC code, registration and CGST/SGST/IGST split need a chartered accountant (docs/BILLING.md).
 - **Dependency:** `pdf-lib`.
+
+### 2026-09-27: CAMPUSOS-018 two-step sign-in
+
+- **Database:** migration `0019_user_mfa`, additive. The `user_mfa` table is classified MOVE for membership transfer.
+- **TOTP:** implemented in-house with `node:crypto` and checked against the RFC 6238 test vector.
+  - The secret is encrypted with AES-GCM.
+  - Recovery codes are hashed.
+  - Each code works once (replay protection).
+- **Login:** the flow is password → signed 5-minute challenge → code → session. The challenge is bound to the session epoch; attempts are rate-limited and failures audited.
+- **Login UI:** a code step with a recovery-code option.
+- **Account → Security:**
+  - set up with a QR code or a key you type in;
+  - recovery codes are shown once;
+  - you can regenerate codes, or turn MFA off if your role isn't required.
+- **Admins:** administrators can reset another person's MFA (institution:manage, same college, not themselves), which ends that person's sessions.
+- **Enforcement:**
+  - `MFA_REQUIRED_ROLES` (default SUPER_ADMIN) and `MFA_ENFORCE` (default on in production).
+  - Blocks the portals (redirect) and the APIs (403) until MFA is set up.
+  - Platform operators require MFA.
+  - Demo accounts are exempt and cannot enrol.
+- **Tests:** `tests/mfa.test.ts` (6).
+- **Owner steps:**
+  - set `MFA_ENCRYPTION_KEY`;
+  - after deploying, the first operator signs in and is sent to set up MFA.

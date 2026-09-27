@@ -111,3 +111,25 @@ export function AccessToggle({ userId, status, name }: { userId: string; status:
     </span>
   );
 }
+
+/** Reset someone's two-step sign-in after they lose their phone and codes (institution:manage). */
+export function MfaResetButton({ userId, name }: { userId: string; name: string }) {
+  const router = useRouter();
+  const api = useApi();
+  return (
+    <span className="inline-flex items-center gap-2">
+      {api.error ? <span className="text-[12px] text-danger">{api.error.message}</span> : null}
+      <Button
+        size="sm"
+        variant="ghost"
+        loading={api.loading}
+        onClick={async () => {
+          if (!window.confirm(`Reset two-step sign-in for ${name}? Only do this after confirming who they are. They will be signed out and must set it up again.`)) return;
+          if (await api.call(`/api/admin/users/${userId}/mfa-reset`, {})) router.refresh();
+        }}
+      >
+        Reset 2-step
+      </Button>
+    </span>
+  );
+}

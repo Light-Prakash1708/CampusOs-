@@ -13,6 +13,7 @@ import { requireAuth, type AuthContext } from '@/lib/auth/context';
 import { isEnabled, plannedLabel, type FeatureFlag } from '@/lib/features';
 import { levelOf } from '@/services/gamification';
 import { markActive } from '@/services/product-events';
+import { mfaSetupBlocking } from '@/lib/auth/mfa-policy';
 import { hasAcceptedCurrentNotice } from '@/services/privacy';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { PrivacyNoticeBanner } from './PrivacyNoticeBanner';
@@ -52,6 +53,8 @@ export async function PortalLayout({
   if (user.portal !== portal) redirect(`/${user.portal}`);
   // Temporary passwords (imports, admin resets) must be replaced before use.
   if (user.mustChangePassword) redirect('/account/security?required=1');
+  // Roles that must use two-step sign-in set it up before anything else (CAMPUSOS-018).
+  if (mfaSetupBlocking(user)) redirect('/account/security?mfa=required');
 
   const nav = filterNav(navForPortal(portal), user);
   const gamified = portal === 'student' && isEnabled(user.featureFlags, 'gamification_enabled');

@@ -4,6 +4,7 @@ import { getCurrentUser, type AuthContext } from '@/lib/auth/context';
 import type { Permission } from '@/lib/auth/permissions';
 import { FEATURE_FLAGS, isEnabled, type FeatureFlag } from '@/lib/features';
 import { reportError } from '@/lib/logger';
+import { MFA_SETUP_ALLOWED_API, mfaSetupBlocking } from '@/lib/auth/mfa-policy';
 
 /**
  * API route helpers.
@@ -210,6 +211,17 @@ export function withAuth(permission: Permission | Permission[] | null, handler: 
           },
           { status: 401 },
         );
+      }
+
+      // Accounts that must use two-step sign-in can only finish setting it up.
+      if (mfaSetupBlocking(user)) {
+        const path = new URL(request.url).pathname;
+        if (!MFA_SETUP_ALLOWED_API.some((p) => path.startsWith(p))) {
+          return NextResponse.json(
+            { ok: false, error: { code: 'MFA_SETUP_REQUIRED', message: 'Set up two-step sign-in to continue.', hint: 'Open Account → Security.' } },
+            { status: 403 },
+          );
+        }
       }
 
       if (permission) {

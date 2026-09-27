@@ -69,7 +69,7 @@ interface Meta {
  */
 export const TRANSFER_MOVE_TABLES = [
   'ai_actions', 'ai_conversations', 'ai_generations', 'ai_messages', 'ai_preferences',
-  'auth_identities', 'data_deletion_requests', 'data_export_requests',
+  'auth_identities', 'user_mfa', 'data_deletion_requests', 'data_export_requests',
   'notification_deliveries', 'notification_preferences', 'notifications',
   'opportunities', 'opportunity_tracking', 'privacy_preferences', 'push_subscriptions',
   'resource_saves', 'stored_files', 'student_certifications', 'time_saved_events', 'tool_usage',

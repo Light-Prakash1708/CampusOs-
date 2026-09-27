@@ -6,18 +6,20 @@ import { Alert, PageHeader } from '@/components/ui';
 import { listSessions } from '@/services/auth/accounts';
 import { formatDateTime } from '@/lib/utils';
 import { ChangePasswordForm, SessionList } from './SecurityForms';
+import { MfaPanel } from './MfaPanel';
+import { mfaStatus } from '@/services/auth/mfa';
 
 export const metadata = { title: 'Security · CampusOS' };
 export const dynamic = 'force-dynamic';
 
-export default async function SecurityPage({ searchParams }: { searchParams: Promise<{ required?: string }> }) {
+export default async function SecurityPage({ searchParams }: { searchParams: Promise<{ required?: string; mfa?: string }> }) {
   const user = await requireAuth();
   const { required } = await searchParams;
   const [row] = await db
     .select({ mustChange: t.users.mustChangePassword, changedAt: t.users.passwordChangedAt, verifiedAt: t.users.emailVerifiedAt })
     .from(t.users)
     .where(eq(t.users.id, user.userId));
-  const sessions = await listSessions(user);
+  const [sessions, mfa] = await Promise.all([listSessions(user), mfaStatus(user)]);
 
   return (
     <div className="space-y-6">
@@ -34,6 +36,12 @@ export default async function SecurityPage({ searchParams }: { searchParams: Pro
         </p>
         <div className="mt-4 max-w-sm">
           <ChangePasswordForm />
+        </div>
+      </section>
+      <section id="mfa" className="rounded-xl border border-[hsl(var(--border))] bg-surface p-5">
+        <h2 className="text-[15px] font-semibold text-default">Two-step sign-in</h2>
+        <div className="mt-3">
+          <MfaPanel status={{ enabled: mfa.enabled, recoveryRemaining: mfa.recoveryRemaining, required: mfa.required, enforced: mfa.enforced }} demo={!!user.isDemo} />
         </div>
       </section>
       <section className="rounded-xl border border-[hsl(var(--border))] bg-surface p-5">

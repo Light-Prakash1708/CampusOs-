@@ -1,4 +1,5 @@
 import 'server-only';
+import { mfaEnforced } from '@/lib/auth/mfa-policy';
 import { and, asc, count, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import * as t from '@/lib/db/schema';
@@ -43,9 +44,11 @@ function operatorEmails(): string[] {
     .filter(Boolean);
 }
 
-export function isPlatformOperator(ctx: (Pick<AuthContext, 'role' | 'email'> & { isDemo?: boolean }) | null): boolean {
+export function isPlatformOperator(ctx: (Pick<AuthContext, 'role' | 'email'> & { isDemo?: boolean; mfaEnabled?: boolean }) | null): boolean {
   // A shared demo account can never operate the platform, whatever the allowlist says.
   if (!ctx || ctx.role !== 'SUPER_ADMIN' || ctx.isDemo) return false;
+  // Where MFA is enforced, operators must have it (CAMPUSOS-018).
+  if (mfaEnforced() && !ctx.mfaEnabled) return false;
   return operatorEmails().includes(ctx.email.trim().toLowerCase());
 }
 

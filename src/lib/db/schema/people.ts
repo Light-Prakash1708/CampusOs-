@@ -6,6 +6,7 @@ import {
   boolean,
   integer,
   jsonb,
+  bigint,
   index,
   uniqueIndex,
   date,
@@ -183,4 +184,31 @@ export const sessions = pgTable(
     index('sessions_user_idx').on(t.userId),
     index('sessions_expiry_idx').on(t.expiresAt),
   ],
+);
+
+/**
+ * Two-step sign-in (TOTP, RFC 6238) — CAMPUSOS-018. The secret is encrypted at
+ * rest (AES-256-GCM, key from MFA_ENCRYPTION_KEY or derived from
+ * AUTH_SECRET); recovery codes are stored only as SHA-256 hashes.
+ */
+export const userMfa = pgTable(
+  'user_mfa',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    institutionId: uuid('institution_id')
+      .notNull()
+      .references(() => institutions.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    secretEnc: text('secret_enc').notNull(),
+    /** Null until the first code is confirmed. */
+    enabledAt: timestamp('enabled_at', { withTimezone: true }),
+    /** Last accepted time-step: a code can never be used twice. */
+    lastUsedStep: bigint('last_used_step', { mode: 'number' }),
+    recoveryCodes: jsonb('recovery_codes').$type<{ hash: string; usedAt: string | null }[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('user_mfa_user_uq').on(t.userId)],
 );

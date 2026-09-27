@@ -103,6 +103,7 @@ export async function ctxFor(userId: string, sessionId = randomUUID()): Promise<
     institutionPrimaryColor: '#4F46E5',
     institutionKind: row!.inst.kind === 'PERSONAL' ? 'PERSONAL' : 'COLLEGE',
     isDemo: row!.inst.isDemo,
+    mfaEnabled: !!(await db.select({ at: t.userMfa.enabledAt }).from(t.userMfa).where(eq(t.userMfa.userId, u.id)).limit(1))[0]?.at,
     featureFlags: (row!.inst.featureFlags ?? {}) as Record<string, boolean>,
     email: u.email,
     firstName: u.firstName,

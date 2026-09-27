@@ -134,6 +134,13 @@
       "when": 1790485060565,
       "tag": "0018_billing_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790485457613,
+      "tag": "0019_user_mfa",
+      "breakpoints": true
     }
   ]
 }
