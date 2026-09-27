@@ -8,8 +8,15 @@ This guide is for the academic office, the IQAC and the college's super admin. E
    - Go to Account → Security (`/account/security`) and turn on two-step sign-in with any authenticator app.
    - Save the 10 recovery codes somewhere safe.
    - Super admins must do this in production before anything else works.
-2. **Import your data** (Admin → Data Import).
-   - Upload CSVs for departments, programmes, sections, faculty and students.
+2. **Set up the structure, then import** (in this order):
+   1. Admin → **Structure**: create the departments and programmes, each with a short code such as `MGMT` or `BBA-FIN`. These are entered on screen, not imported.
+   2. Admin → **Data Import**, in order: sections → faculty → students (optionally subjects and rooms).
+      - Header-only templates are in [`pilot/csv-templates/`](pilot/csv-templates/). Common ERP column names such as `roll_no`, `branch` and `email_id` are recognised automatically.
+      - **Required columns:**
+        - sections: `code`, `programCode`, `year`, `semester`;
+        - faculty: `employeeCode`, `firstName`, `email`, `departmentCode`;
+        - students: `rollNumber`, `firstName`, `email`, `programCode`.
+      - Every import shows a preview with per-row errors, and nothing is written until you confirm.
    - Overlay mode keeps your ERP as the source of truth. Re-import whenever it changes.
 3. **Settings.** Set the minimum attendance percentage, the grievance categories and the working days.
 4. **Grievance committee** (Admin → Redressal → Committee).

@@ -51,7 +51,7 @@ Use the public demo (`/login` → "Try the demo"). It is an isolated, shared ten
 | 1. Create the institution (core modules only) | Operator | `/admin/institutions` (platform operator) |
 | 2. Pilot subscription: plan PILOT, seat count, end date | Operator | Institution → Billing |
 | 3. The college's super admin signs in and enrols in two-step sign-in | College | `/account/security` |
-| 4. Import departments, programmes, sections, faculty and students from CSV (overlay mode) | College + us | Admin → Data Import |
+| 4. Create departments and programmes on screen, then import sections → faculty → students from CSV (overlay mode; templates in `pilot/csv-templates/`) | College + us | Admin → Structure, then Data Import |
 | 5. Minimum attendance percentage, grievance categories, SGRC members + Ombudsperson + attestation | College | Admin → Settings, Redressal → Committee |
 | 6. Email sender configured (`EMAIL_PROVIDER`), so reminders arrive | Operator | Environment |
 | 7. Send invitations; share the student join link | College | Admin → Students / Verification |

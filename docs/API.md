@@ -146,4 +146,4 @@ curl -X POST https://campus.example.edu/api/jobs/run -H "x-cron-secret: $CRON_SE
 | GET/POST | `/api/admin/institutions/[id]/billing` | platform operator | Subscription, invoices |
 | GET/POST | `/api/invoices/[id]` | platform operator (checked in the service) | PDF download; status changes |
 | POST | `/api/csp-report` | — | CSP violation reports (rate-limited, no personal data stored) |
-
+| GET | `/api/admin/institutions/[id]/pilot-metrics?from&to` | platform operator (404 to anyone else) | Weekly pilot evidence CSV; aggregates only; audited (`PILOT_METRICS_EXPORTED`) |

@@ -895,3 +895,27 @@ These can be revisited only with pilot evidence:
   - PWA re-verified.
 - **Docs:** PRODUCT, PILOT_GUIDE, ADMIN_GUIDE, STUDENT_GUIDE and PILOT_READINESS_REPORT written; API, AI, DEPLOYMENT and PRODUCT_ROADMAP updated; phase reports moved to `docs/archive/`.
 - **V1 software scope is complete.** Remaining work is owner, legal, tax and customer evidence. See [PILOT_READINESS_REPORT.md](PILOT_READINESS_REPORT.md).
+
+---
+
+## Pilot guardian mode (from 2026-09-27)
+
+V1 is complete. New work is classified A–F in [pilot/ISSUE_LOG.md](pilot/ISSUE_LOG.md), and feature requests go through the gate in [pilot/FEATURE_REQUESTS.md](pilot/FEATURE_REQUESTS.md). V1.5 does not start without pilot evidence.
+
+### 2026-09-27: Deployment readiness (guardian session 1)
+
+- **Push:** BLOCKED from this session: the git proxy has no credential for the repository.
+  - `origin/main` had advanced to `5ef88c3`, and local `main` is a fast-forward on top of it. No rewrite is needed.
+  - The gitleaks scan of the commits being pushed is clean.
+  - The commits are delivered as a verified git bundle for the owner to fast-forward and push; see [GO_LIVE_RUNBOOK.md](GO_LIVE_RUNBOOK.md) §1.
+- **I-001 (C):** `render.yaml` now generates `MFA_ENCRYPTION_KEY` and `ANALYTICS_HASH_KEY`. It also sets `MFA_ENFORCE`, `CSP_ENFORCE` and `DEMO_TENANT_ENABLED=false` explicitly, adds the `BILLING_SELLER_*` prompts, and the env schema declares all of these. Regression tests are in `render-blueprint.test.ts`.
+- **I-002 (B):** the import instructions were corrected (structure first, on screen), and header-only CSV templates were added.
+- **Read-only production smoke:** `scripts/smoke/production.mjs`, anonymous and never writes. The deploy workflow runs it after the health wait.
+- **Signed-in production checklist:** `docs/PRODUCTION_SMOKE_TEST.md`, run in a dedicated test college, never the pilot college.
+- **Pilot evidence instrumentation:** `src/services/pilot-metrics.ts`.
+  - Covers weekly activation, active students and staff, acknowledgement within 48 h, median time to acknowledge, pending acknowledgements, reminders, grievances, SLA breaches, appeals, evidence packs and signal views.
+  - Read-only and aggregate. Reconciled with the evidence pack.
+  - Operator-only CSV at `/api/admin/institutions/[id]/pilot-metrics`, linked from `/admin/metrics`; audited.
+- **Pilot records:** issue, feedback, feature-request and metrics logs in `docs/pilot/`, with no invented entries.
+- **Runbook:** [GO_LIVE_RUNBOOK.md](GO_LIVE_RUNBOOK.md) sets out go-live steps 1–19, with owner and Claude split and the exact values needed.
+- **I-003 (B):** the scheduler now drains notifications within one call, so required-notice emails reach a whole college in one run instead of 100 per 10 minutes. Regression test added.

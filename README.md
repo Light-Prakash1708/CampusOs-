@@ -83,6 +83,8 @@ solver really does produce a clash-free 90-session week.
 | [PILOT_GUIDE.md](docs/PILOT_GUIDE.md) | Demo story, pilot setup, weekly metrics, review |
 | [ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) / [STUDENT_GUIDE.md](docs/STUDENT_GUIDE.md) | How to use it |
 | [PILOT_READINESS_REPORT.md](docs/PILOT_READINESS_REPORT.md) | What is done, verified and still open before a pilot |
+| [GO_LIVE_RUNBOOK.md](docs/GO_LIVE_RUNBOOK.md) / [PRODUCTION_SMOKE_TEST.md](docs/PRODUCTION_SMOKE_TEST.md) | Deployment steps (owner vs repository) and post-deploy checks |
+| [pilot/](docs/pilot/) | Pilot issue, feedback, feature-request and metrics logs |
 | [CAMPUSOS_STRATEGY_AUDIT.md](docs/CAMPUSOS_STRATEGY_AUDIT.md) / [BACKLOG.md](docs/BACKLOG.md) | Strategy (business source of truth) and the execution backlog |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System shape, module boundaries, technology decisions and their rationale |
 | [DATABASE.md](docs/DATABASE.md) | Schema, multi-tenancy, integrity guarantees, concurrency |
