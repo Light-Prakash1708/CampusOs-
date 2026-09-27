@@ -43,6 +43,19 @@ const EnvSchema = z
      */
     PLATFORM_OPERATOR_EMAILS: z.string().optional(),
     CRON_SECRET: z.string().min(16).optional(),
+    /** Encrypts two-step sign-in secrets at rest. Set once; never rotate casually. */
+    MFA_ENCRYPTION_KEY: z.string().min(32, 'MFA_ENCRYPTION_KEY must be at least 32 characters').optional(),
+    MFA_ENFORCE: z.enum(['true', 'false']).optional(),
+    MFA_REQUIRED_ROLES: z.string().optional(),
+    /** Keys the pseudonymous analytics actor hash. Set once; never rotate casually. */
+    ANALYTICS_HASH_KEY: z.string().min(32, 'ANALYTICS_HASH_KEY must be at least 32 characters').optional(),
+    CSP_ENFORCE: z.enum(['true', 'false']).optional(),
+    /** Only on a dedicated demo service — never on a pilot college's server. */
+    DEMO_TENANT_ENABLED: z.enum(['true', 'false']).optional(),
+    BILLING_SELLER_NAME: z.string().optional(),
+    BILLING_SELLER_ADDRESS: z.string().optional(),
+    BILLING_SELLER_EMAIL: z.string().optional(),
+    BILLING_SELLER_STATE: z.string().optional(),
 
     AI_PROVIDER: z.enum(['local', 'anthropic']).default('local'),
     ANTHROPIC_API_KEY: z.string().optional(),

@@ -61,3 +61,19 @@ jobs:
             sleep 20
           done
           echo "::error::Release $want did not become healthy within 20 minutes."; echo "$body"; exit 1
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.enabled == 'true'
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        if: steps.cfg.outputs.enabled == 'true'
+        with:
+          node-version: 22
+      - name: Production smoke (read-only, anonymous)
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          if [ -z "$APP_URL" ]; then echo "APP_URL secret not set; skipping smoke."; exit 0; fi
+          node scripts/smoke/production.mjs "$APP_URL" "${SHA:0:12}"

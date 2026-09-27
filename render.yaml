@@ -60,6 +60,21 @@ services:
         generateValue: true
       - key: CRON_SECRET
         generateValue: true
+      # Encryption key for two-step sign-in secrets, and the analytics hash key.
+      # Generated once and NEVER rotated casually: without their own keys both
+      # derive from AUTH_SECRET, so rotating AUTH_SECRET (e.g. after an incident)
+      # would lock out every administrator using two-step sign-in and break
+      # analytics continuity.
+      - key: MFA_ENCRYPTION_KEY
+        generateValue: true
+      - key: ANALYTICS_HASH_KEY
+        generateValue: true
+      - key: MFA_ENFORCE
+        value: "true"        # SUPER_ADMIN must use two-step sign-in
+      - key: CSP_ENFORCE
+        value: "true"
+      - key: DEMO_TENANT_ENABLED
+        value: "false"       # never true on a pilot college's server
       - key: SESSION_MAX_AGE
         value: "28800"
       - key: DEMO_MODE
@@ -134,6 +149,17 @@ services:
         sync: false
       - key: WHATSAPP_PROVIDER
         value: none
+
+      # --- Billing (operator invoices; see docs/BILLING.md) ------------------------
+      # GST fields stay blank until an accountant confirms the treatment.
+      - key: BILLING_SELLER_NAME
+        sync: false
+      - key: BILLING_SELLER_ADDRESS
+        sync: false
+      - key: BILLING_SELLER_EMAIL
+        sync: false
+      - key: BILLING_SELLER_STATE
+        sync: false
 
       # --- Error reporting (optional) --------------------------------------------------
       - key: ERROR_REPORTER

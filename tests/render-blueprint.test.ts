@@ -133,3 +133,17 @@ describe('container builds without runtime secrets', () => {
     }
   });
 });
+
+describe('render.yaml pilot hardening (guardian mode)', () => {
+  it('gives two-step sign-in and analytics their own generated keys', () => {
+    // Without these, rotating AUTH_SECRET would lock out every MFA user.
+    expect(web.get('MFA_ENCRYPTION_KEY')).toEqual({ kind: 'generated' });
+    expect(web.get('ANALYTICS_HASH_KEY')).toEqual({ kind: 'generated' });
+  });
+
+  it('keeps the demo off and MFA and CSP enforced on the pilot service', () => {
+    expect(web.get('DEMO_TENANT_ENABLED')).toEqual({ kind: 'value', value: 'false' });
+    expect(web.get('MFA_ENFORCE')).toEqual({ kind: 'value', value: 'true' });
+    expect(web.get('CSP_ENFORCE')).toEqual({ kind: 'value', value: 'true' });
+  });
+});
