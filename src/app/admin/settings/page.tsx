@@ -36,6 +36,13 @@ export default async function SettingsPage() {
       <PageHeader
         title="Settings"
         description={`${institution?.name ?? 'Institution'} · ${institution?.subscriptionTier ?? 'STARTER'} plan`}
+        action={
+          user.permissions.has('institution:manage') ? (
+            <a href="/admin/billing" className="inline-flex h-9 items-center rounded-lg border border-[hsl(var(--border-strong))] bg-surface px-3 text-[13px] font-medium text-default hover:bg-surface-sunken">
+              Plan &amp; invoices
+            </a>
+          ) : undefined
+        }
       />
 
       <Section title="Institution">

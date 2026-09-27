@@ -53,6 +53,7 @@ export default async function InstitutionsPage() {
                     <Td>
                       <span className="block text-[13.5px] font-medium text-default">{i.name}</span>
                       <span className="block text-[11.5px] text-subtle">{i.slug}{i.city ? ` · ${i.city}` : ''}</span>
+                      <a href={`/admin/institutions/${i.id}/billing`} className="text-[11.5px] font-medium text-brand hover:underline">Billing</a>
                     </Td>
                     <Td>
                       {!i.isActive ? (

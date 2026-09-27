@@ -97,7 +97,7 @@ export const TRANSFER_KEEP_TABLES = [
   'assessments', 'assessment_allocations', 'assessment_results', 'assignments', 'submissions',
   'attendance_records', 'attendance_sessions', 'attendance_summaries',
   'course_offerings', 'enrollments', 'faculty_profiles', 'lesson_plans', 'leave_requests',
-  'grievances', 'grievance_events', 'grievance_messages', 'grievance_committee_members',
+  'grievances', 'grievance_events', 'grievance_messages', 'grievance_committee_members', 'subscriptions', 'invoices',
   'library_books', 'library_loans', 'library_reservations',
   'resources', 'resource_shares', 'resource_tags',
   'schedule_exceptions', 'timetable_entries', 'timetable_versions', 'workload_records', 'workload_summaries',

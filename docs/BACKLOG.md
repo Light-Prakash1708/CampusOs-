@@ -37,7 +37,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 017 | TODO | |
 | 018 | TODO | |
 | 019 | DONE | `ai_external_processing_enabled`, off by default |
-| 020 | TODO | |
+| 020 | DONE (tax BLOCKED) | Manual invoicing; GST treatment needs an accountant |
 | 021 | TODO | |
 | 022 | DONE | Productivity score and "time saved" removed |
 | 030 | DONE | Copy-only changes |
@@ -769,3 +769,28 @@ These can be revisited only with pilot evidence:
   - set `DEMO_TENANT_ENABLED=true` on the web service;
   - run `npm run demo:reset` once from the Render shell;
   - add a nightly cron for it (paid plan), or re-run it before sales demos.
+
+### 2026-09-27: CAMPUSOS-020 billing records and manual invoicing
+
+- **Database:** additive migrations:
+  - `0017_billing`: tables `subscriptions` and `invoices`;
+  - `0018_billing_checks`: CHECKs on plan, status and money, including that the total equals subtotal plus tax.
+
+  `invoices` restricts deletion of an institution.
+- **`services/billing.ts`:**
+  - operator-only writes; the college reads its own records; other colleges get 404;
+  - demo and personal workspaces are not billable;
+  - prices are per college, with plan ranges shown as hypotheses;
+  - gap-free financial-year numbering under concurrency;
+  - seller and buyer snapshots;
+  - PAID or VOID, once;
+  - A4 PDF via `pdf-lib`, titled "Tax Invoice" only with a seller GSTIN configured;
+  - the college's tier is synced to its plan.
+- **UI and API:**
+  - `/admin/institutions/[id]/billing` (operator);
+  - `/admin/billing` ("Plan & invoices", linked from Settings);
+  - `GET/POST /api/admin/institutions/[id]/billing`;
+  - `GET/POST /api/invoices/[id]`.
+- **Tests:** `tests/billing.test.ts` (6): sequencing under concurrency, arithmetic, access, status rules, PDF.
+- **Blocked:** GST rate, SAC code, registration and CGST/SGST/IGST split need a chartered accountant (docs/BILLING.md).
+- **Dependency:** `pdf-lib`.

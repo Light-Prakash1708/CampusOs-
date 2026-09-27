@@ -1,7 +1,7 @@
 {
   "name": "campusos",
   "version": "0.1.0",
-  "description": "CampusOS \u2014 the operating system for college life",
+  "description": "CampusOS — the operating system for college life",
   "main": "index.js",
   "scripts": {
     "dev": "next dev -p 3000",
@@ -50,6 +50,7 @@
     "jose": "^6.2.9",
     "lucide-react": "^1.33.0",
     "next": "^15.5.23",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.23.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",

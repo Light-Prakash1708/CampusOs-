@@ -25,3 +25,4 @@ export * from './library';
 export * from './opportunities';
 export * from './membership';
 export * from './analytics';
+export * from './billing';
