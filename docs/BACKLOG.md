@@ -884,3 +884,14 @@ These can be revisited only with pilot evidence:
   - A commented demo-reset cron template in `render.yaml`.
 - **Tests:** rehearsed the drill locally (dump → restore into a scratch database → `db:verify` passed); YAML validates; typecheck and lint pass.
 - **BLOCKED on owner accounts and budget:** paid Postgres with PITR, nightly off-site dump, first recorded drill, uptime monitor, error webhook, email domain (SPF/DKIM), custom domain. See the checklist.
+
+### 2026-09-27: V1 close-out
+
+- **Final checks:**
+  - 343/343 unit and integration tests pass;
+  - 10/10 E2E pass against the final production build;
+  - 0 type errors and 0 lint errors (the service-worker globals were declared after 017 slipped a lint error through);
+  - the build is OK;
+  - PWA re-verified.
+- **Docs:** PRODUCT, PILOT_GUIDE, ADMIN_GUIDE, STUDENT_GUIDE and PILOT_READINESS_REPORT written; API, AI, DEPLOYMENT and PRODUCT_ROADMAP updated; phase reports moved to `docs/archive/`.
+- **V1 software scope is complete.** Remaining work is owner, legal, tax and customer evidence. See [PILOT_READINESS_REPORT.md](PILOT_READINESS_REPORT.md).
