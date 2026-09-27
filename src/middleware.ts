@@ -34,6 +34,7 @@ const PUBLIC_PATHS = [
   '/icon.svg',
   '/apple-icon.png',
   '/api/client-errors',
+  '/api/csp-report',
 ];
 
 const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/illustrations', '/branding/', '/verify/', '/api/auth/', '/api/public/'];
@@ -43,12 +44,49 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
+/**
+ * Nonce-based script CSP (CAMPUSOS-021). Next.js reads the nonce from the
+ * request's CSP header and applies it to its own scripts; the root layout
+ * applies it to the theme bootstrap. Violations are reported to
+ * /api/csp-report. Enforced unless CSP_ENFORCE=false (report-only). The static
+ * baseline in next.config.mjs stays as a second layer.
+ */
+function scriptPolicy(nonce: string): string {
+  const dev = process.env.NODE_ENV !== 'production';
+  return [
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    `connect-src 'self'${dev ? ' ws:' : ''}`,
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    'report-uri /api/csp-report',
+  ].join('; ');
+}
+
+function withCsp(response: NextResponse, policy: string): NextResponse {
+  // Enforced by default (verified report-free across the portals); CSP_ENFORCE=false
+  // falls back to report-only if a deployment ever needs an escape hatch.
+  response.headers.set(process.env.CSP_ENFORCE === 'false' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy', policy);
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const requestId = crypto.randomUUID();
+  const nonce = btoa(crypto.randomUUID()).replace(/=+$/, '');
+  const policy = scriptPolicy(nonce);
 
   const forward = new Headers(request.headers);
   forward.set('x-request-id', requestId);
+  forward.set('x-nonce', nonce);
+  // Next.js takes the nonce for its own <script> tags from this header.
+  forward.set('content-security-policy', policy);
 
   // CSRF defence in depth (cookies are already SameSite=Lax): a browser
   // mutation must come from our own origin. See src/lib/http.ts.
@@ -75,7 +113,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isPublic(pathname)) {
-    return NextResponse.next({ request: { headers: forward } });
+    return withCsp(NextResponse.next({ request: { headers: forward } }), policy);
   }
 
   const token = request.cookies.get('campusos_session')?.value;
@@ -98,7 +136,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  return NextResponse.next({ request: { headers: forward } });
+  return withCsp(NextResponse.next({ request: { headers: forward } }), policy);
 }
 
 function redirectToLogin(request: NextRequest) {

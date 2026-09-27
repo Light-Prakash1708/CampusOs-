@@ -38,7 +38,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 018 | DONE | TOTP + recovery codes; enforced for SUPER_ADMIN in production |
 | 019 | DONE | `ai_external_processing_enabled`, off by default |
 | 020 | DONE (tax BLOCKED) | Manual invoicing; GST treatment needs an accountant |
-| 021 | TODO | |
+| 021 | DONE | Nonce CSP enforced; verified on 27 routes |
 | 022 | DONE | Productivity score and "time saved" removed |
 | 030 | DONE | Copy-only changes |
 | 023–029 | DEFERRED | V1.5, only after pilot evidence |
@@ -818,3 +818,10 @@ These can be revisited only with pilot evidence:
 - **Owner steps:**
   - set `MFA_ENCRYPTION_KEY`;
   - after deploying, the first operator signs in and is sent to set up MFA.
+
+### 2026-09-27: CAMPUSOS-021 nonce-based CSP
+
+- **Middleware:** generates a per-request nonce and a strict `script-src` with `strict-dynamic`. The root layout nonces the theme script.
+- **`/api/csp-report`:** privacy-safe logging and rate-limited.
+- **Verified:** the policy was run **enforced** on a production build across 27 routes in all three portals plus the public, auth, account and tools pages. There were no console errors, no violations, and hydration and interactions worked. It is therefore enforced by default, with `CSP_ENFORCE=false` falling back to report-only.
+- **Trade-off:** every page now renders dynamically, because the nonce is read per request. This is acceptable because pages are session-dependent anyway.

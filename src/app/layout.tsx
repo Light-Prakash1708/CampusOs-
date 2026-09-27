@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 // Self-hosted fonts (no request to Google at runtime or build time).
 import '@fontsource-variable/plus-jakarta-sans';
 import '@fontsource/pixelify-sans/500.css';
@@ -35,7 +36,9 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Per-request CSP nonce from middleware (CAMPUSOS-021).
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -44,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           flash of the wrong colour scheme. Kept inline and tiny on purpose.
         */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('campusos-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||(!t&&d)){document.documentElement.classList.add('dark')}}catch(e){}})();`,
           }}

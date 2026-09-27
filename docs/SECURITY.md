@@ -196,3 +196,15 @@ pre-fill that header, so the address is read from the right:
   - An administrator with `institution:manage` can reset someone else's MFA in the same college, never their own. The reset is audited as `MFA_RESET` and ends that person's sessions.
 - **Audit actions:** `MFA_ENROLLED`, `MFA_DISABLED`, `MFA_RECOVERY_USED`, `MFA_RESET`.
 - **Owner step:** set `MFA_ENCRYPTION_KEY` (32+ characters) in production, and don't rotate it; rotating it makes enrolled secrets unreadable. Enrol the first operator right after provisioning.
+
+## Content Security Policy (CAMPUSOS-021)
+
+- **Per request:** `src/middleware.ts` sends
+  `script-src 'self' 'nonce-…' 'strict-dynamic'`, together with `object-src 'none'`, `base-uri 'self'`, `frame-ancestors 'none'`, `form-action 'self'`, and self-only `connect-src`, `worker-src` and `manifest-src`. It also sets `report-uri /api/csp-report`.
+- **The nonce:** Next.js applies it to its own scripts. The root layout applies it to the theme bootstrap.
+- **Enforced by default.** Set `CSP_ENFORCE=false` to fall back to report-only.
+- **Verification:** the policy was run enforced against the landing, auth, student, faculty, admin, account and tools pages (27 routes). There were zero console errors and zero reported violations, and hydration and client actions (demo sign-in, navigation) worked.
+- **What's still allowed, and why:**
+  - `style-src 'unsafe-inline'`: React style attributes need it.
+  - `img-src https:`: organisation logos and cover images.
+- **Violation reports** are logged as `csp.violation` with the directive and blocked origin only. Query strings are stripped. Reports are rate-limited per IP.

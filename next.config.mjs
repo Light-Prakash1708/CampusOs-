@@ -48,8 +48,8 @@ const nextConfig = {
       { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
       { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
       // A baseline CSP that cannot break Next.js hydration: it forbids framing,
-      // plugins, <base> hijacking and off-site form posts. A nonce-based
-      // script-src is tracked for Phase 9.
+      // plugins, <base> hijacking and off-site form posts. The nonce-based
+      // script-src is added per request by src/middleware.ts (CAMPUSOS-021).
       {
         key: 'Content-Security-Policy',
         value: "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
