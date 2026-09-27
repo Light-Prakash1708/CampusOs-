@@ -126,3 +126,24 @@ Runs SLA escalation, scheduled publishing and expiry. Idempotent.
 ```bash
 curl -X POST https://campus.example.edu/api/jobs/run -H "x-cron-secret: $CRON_SECRET"
 ```
+
+### Pilot additions (CAMPUSOS V1, Sept 2026)
+
+| Method | Path | Capability | Notes |
+|---|---|---|---|
+| POST | `/api/auth/register/student` | — | Personal workspace. `ageBand` required; `UNDER_18` is refused. `acceptPrivacyNotice: true` is required. |
+| POST | `/api/auth/mfa` | signed challenge | Second step of sign-in: TOTP code or recovery code |
+| GET/POST | `/api/account/mfa` | authenticated | Status; enrol, confirm, regenerate recovery codes, disable (refused for required roles) |
+| POST | `/api/admin/users/[id]/mfa-reset` | `institution:manage` | Not yourself; ends the person's sessions |
+| POST | `/api/auth/demo` | — | Only when `DEMO_TENANT_ENABLED=true`; signs in to the shared demo tenant |
+| POST | `/api/privacy/notice` | authenticated | Records acceptance of the current privacy notice version |
+| GET | `/api/announcements/[id]/receipts[?format=csv]` | notice managers | Delivered, read and acknowledged counts; pending list (CSV is injection-safe) |
+| POST | `/api/grievances/[id]/appeal` | raiser | Within 15 days of the decision; routes to the Ombudsperson |
+| GET/POST | `/api/admin/grievance-committee` | `grievance:configure` | SGRC members, Ombudsperson, attestation |
+| GET | `/api/reports/evidence?from&to[&individual=1]` | `report:generate` (+ `data:export` for individual rows) | ZIP: `summary.html` + CSVs; audited |
+| POST | `/api/product-events` | authenticated | Allowlisted event names only; the actor is HMAC-hashed; demo accounts are skipped |
+| GET/POST | `/api/student/campus-interest` | authenticated (personal workspace) | "College not listed?" demand signal |
+| GET/POST | `/api/admin/institutions/[id]/billing` | platform operator | Subscription, invoices |
+| GET/POST | `/api/invoices/[id]` | platform operator (checked in the service) | PDF download; status changes |
+| POST | `/api/csp-report` | — | CSP violation reports (rate-limited, no personal data stored) |
+

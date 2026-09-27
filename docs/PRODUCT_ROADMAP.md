@@ -77,16 +77,12 @@ per-tenant feature flags. White-labelling (logo, colour, terminology, grievance
 categories, SLA) is configuration, not a fork. Adding a tenant is inserting a
 row.
 
-Not built: billing, self-service signup, a tenant-provisioning UI. These are
-deliberate — they are the easiest part and the least useful to demonstrate.
+Since then: manual billing records and invoices (CAMPUSOS-020), student
+self-service sign-up (adults only) and an operator provisioning wizard exist.
 
-## The productivity metric
+## The productivity metric (removed)
 
-The "Campus Productivity Score" is an **internal product metric, not an
-accreditation standard**, and the interface states that. Each dimension is
-displayed with the data it came from so the number can be interrogated rather
-than trusted.
-
-"Time saved" figures are **estimates** against configured manual baselines,
-labelled as estimates everywhere, with the basis shown on hover. They are not
-measured timings and are not presented as such.
+The "Campus Productivity Score" and the "time saved" estimates were **removed** in
+CAMPUSOS-022. They implied a causal effect that the data can't support.
+Campus Insights now shows descriptive, pooled rates only. For current status see
+[BACKLOG.md](BACKLOG.md) and [PILOT_READINESS_REPORT.md](PILOT_READINESS_REPORT.md).

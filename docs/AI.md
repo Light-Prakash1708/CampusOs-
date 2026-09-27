@@ -14,6 +14,13 @@
 5. **Everything is metered.** Tokens, cost, latency and grounding are logged per
    call, with a monthly ceiling.
 6. **AI output is labelled** until a human approves it.
+7. **No risk scores.** `get_attention_signals` (which replaced
+   `get_at_risk_students`) returns rule-based signals, each with its reason and
+   the scope the caller may see. There is no hidden score and no ranking.
+8. **External processing is opt-in per college.** Unless the tenant flag
+   `ai_external_processing_enabled` is on (default off), and always for demo
+   tenants, the assistant uses the offline provider and no data leaves the
+   server (`aiProviderFor` in `providers.ts`).
 
 ## Layering
 
