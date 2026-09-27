@@ -21,7 +21,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 001 | IN PROGRESS | Verification round 1 done (strategy §10a). Remaining: AISHE college split, private share, Indian ERP per-student prices (need demo calls) |
 | 002 | DONE | Interview kit ready. The interviews themselves need the founder |
 | 003 | DONE | Operator metrics at /admin/metrics |
-| 004 | TODO | |
+| 004 | DONE in repo (owner steps BLOCKED) | Paid plan, pre-deploy migrations, health gate configured; PITR, uptime, error sink need accounts |
 | 005 | DONE (adult-only) | Guardian-consent flow BLOCKED on legal review |
 | 006 | DONE | Notice text needs legal review before public launch |
 | 007 | DONE | Export existed; personal-workspace erasure added |
@@ -869,3 +869,18 @@ These can be revisited only with pilot evidence:
 - `.env` has never been committed; only `.env.example` is tracked.
 - **CI:** the existing `gitleaks/gitleaks-action@v2` step picks up `.gitleaks.toml` automatically.
 - **Owner step:** if the repository becomes private under an organisation, gitleaks-action needs a `GITLEAKS_LICENSE` secret. It is free for personal accounts.
+
+### 2026-09-27: CAMPUSOS-004 production hosting (repository side)
+
+- **Already configured and confirmed:** in `render.yaml`:
+  - `plan: starter` (no cold starts);
+  - `preDeployCommand: npm run db:migrate`;
+  - a `/api/health` gate that returns 503 until migrations are applied;
+  - `autoDeployTrigger: checksPass`;
+  - the `ERROR_REPORTER=webhook` seam.
+- **Added:**
+  - `npm run db:verify` (`scripts/verify-restore.ts`): a read-only restore check. It reports migrations, core-table row counts and the newest audit timestamp; counts only, no personal data.
+  - A restore-drill runbook and a pilot production checklist in `docs/DEPLOYMENT.md`.
+  - A commented demo-reset cron template in `render.yaml`.
+- **Tests:** rehearsed the drill locally (dump → restore into a scratch database → `db:verify` passed); YAML validates; typecheck and lint pass.
+- **BLOCKED on owner accounts and budget:** paid Postgres with PITR, nightly off-site dump, first recorded drill, uptime monitor, error webhook, email domain (SPF/DKIM), custom domain. See the checklist.

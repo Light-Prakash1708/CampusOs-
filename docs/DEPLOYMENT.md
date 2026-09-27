@@ -213,8 +213,41 @@ The container runs migrations on start. With a persistent volume you may use
 - **Schema:** migrations are additive, so the previous release runs against the newer schema. There are no down-migrations. To undo one, write a new forward migration.
 - **Data:** restore from backup (below). Test restores periodically.
 
-## Backups
+## Backups and restore drill
 
-Supabase and Render Postgres take daily backups on paid plans; enable
-point-in-time recovery for production. Also keep your own nightly
-`pg_dump`, and enable bucket versioning for S3 or Supabase Storage.
+- **Managed backups:** Supabase and Render Postgres take daily backups on paid plans. Turn on point-in-time recovery (PITR) for production, and confirm the retention window in the provider's dashboard. Retention differs by plan, so don't assume it.
+- **Your own copy:** keep a nightly `pg_dump -Fc` in storage you control (a different provider or account from the database).
+- **Files:** turn on bucket versioning for S3 or Supabase Storage.
+
+**Restore drill (before the first pilot, then each term).** A backup you have never restored is a hope, not a backup. Never restore over production; restore into a new database.
+
+1. **Create a copy.** In Render or Supabase, restore (or use PITR) to a **new** database. Alternatively: `pg_restore --no-owner -d <new-db-url> nightly.dump`.
+2. **Check the copy (read-only):** `DATABASE_URL=<new-db-url> npm run db:verify`.
+   - It prints applied/expected migrations, row counts for the core tables and the newest audit timestamp. It prints counts only, never personal data.
+   - It exits 1 if anything is missing.
+3. **Record the drill.** Write down the restore point, how long the restore took, and the `db:verify` output in the operations log.
+4. **Delete the copy.**
+
+Rehearsed locally on 2026-09-27 (dump → restore into a scratch database → `db:verify`), and it passed.
+
+## Pilot production checklist (CAMPUSOS-004)
+
+These are owner steps. They need an account, a budget or a DNS decision, so they can't be done from the repository.
+
+| Step | Where | Status |
+|---|---|---|
+| Web service on a paid instance (`plan: starter` or higher; no cold starts) | `render.yaml` | Configured |
+| Migrations before traffic (`preDeployCommand: npm run db:migrate`) | `render.yaml` | Configured |
+| Health check gates traffic (`/api/health`, 503 until migrated) | `render.yaml` | Configured |
+| Deploy only after CI passes (`autoDeployTrigger: checksPass`) | `render.yaml` | Configured |
+| Paid Postgres with daily backups; turn on PITR and note its retention | Provider dashboard | **Owner** |
+| Nightly `pg_dump` to separate storage | Provider cron or GitHub Action with a secret | **Owner** |
+| First restore drill recorded (above) | Operations log | **Owner** |
+| Error reports: `ERROR_REPORTER=webhook` + `ERROR_WEBHOOK_URL` | Render env | **Owner** |
+| Uptime monitor on `GET /api/health` every 1–5 minutes, alerting on 503 or timeout | Any uptime service | **Owner** |
+| Email sender domain verified (SPF/DKIM), `EMAIL_PROVIDER=resend` | Resend + DNS | **Owner** |
+| Custom domain + `APP_URL` | Render + DNS | **Owner** |
+| `PLATFORM_OPERATOR_EMAILS` set; those accounts enrol in two-step sign-in | Render env / app | **Owner** |
+| Public demo: `DEMO_TENANT_ENABLED=true` on a **separate** service or database, with a nightly `npm run demo:reset` | Render | Optional |
+
+After the first deploy, sign in as a platform operator, open `/admin/metrics` and confirm events are arriving.

@@ -175,6 +175,26 @@ services:
       - key: APP_URL
         sync: false
 
+  # Optional public demo (CAMPUSOS-015). Run the demo on its OWN service and
+  # database with DEMO_TENANT_ENABLED=true, never on a pilot tenant's server.
+  # A nightly reset keeps its dates current and discards visitors' changes:
+  #
+  # - type: cron
+  #   name: campusos-demo-reset
+  #   runtime: node
+  #   plan: starter
+  #   region: singapore
+  #   schedule: "30 20 * * *"   # 02:00 IST
+  #   buildCommand: npm ci --include=dev
+  #   startCommand: npm run demo:reset
+  #   envVars:
+  #     - key: DATABASE_URL
+  #       sync: false           # the DEMO database, not production
+  #     - key: DEMO_TENANT_ENABLED
+  #       value: "true"
+  #     - key: DEMO_PASSWORD
+  #       sync: false
+
 databases:
   - name: campusos-db
     databaseName: campusos

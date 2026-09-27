@@ -22,7 +22,8 @@
     "xp:backfill": "tsx --conditions=react-server scripts/backfill-xp.ts",
     "brand:assets": "tsx scripts/brand/generate-assets.ts",
     "demo:reset": "ALLOW_DEMO_SEED=true tsx scripts/seed.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:verify": "tsx scripts/verify-restore.ts"
   },
   "keywords": [],
   "author": "",
