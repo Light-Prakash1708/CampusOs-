@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, FileCheck2, Search, ShieldCheck, Upload } from 'lucide-react';
+import { ArrowLeft, Clock, FileCheck2, Search, ShieldCheck, Upload } from 'lucide-react';
 import { Badge, Button, Card, CardBody, Field, Input, Select } from '@/components/ui';
 import { ErrorBox, useApi } from '@/components/auth/useApi';
 import { formatDate } from '@/lib/utils';
@@ -42,7 +42,8 @@ export function JoinCollegeFlow({ storage }: { storage: boolean }) {
   const [file, setFile] = React.useState<File | null>(null);
   const [fileError, setFileError] = React.useState<string | null>(null);
   const [uploading, setUploading] = React.useState(false);
-  const api = useApi<{ id: string }>();
+  const [sent, setSent] = React.useState<{ institutionName: string } | null>(null);
+  const api = useApi<{ id: string; status: string; institutionName: string }>();
 
   const search = React.useCallback(async (term: string) => {
     setSearching(true);
@@ -122,7 +123,27 @@ export function JoinCollegeFlow({ storage }: { storage: boolean }) {
       rollNumber,
       documentFileId,
     });
-    if (data) router.refresh();
+    if (!data) return;
+    // Confirm from the API's answer right away rather than waiting on the
+    // refreshed page: the router refresh that swaps in the full status panel
+    // can be held back on the client, and the student must never be left
+    // looking at the form they just sent (resending it is refused).
+    setSent({ institutionName: data.institutionName });
+    router.refresh();
+  }
+
+  if (sent) {
+    return (
+      <Card>
+        <CardBody className="flex flex-wrap items-center gap-3">
+          <Clock size={20} className="text-warning" aria-hidden />
+          <div className="min-w-0 flex-1" role="status">
+            <p className="text-[14px] font-semibold text-default">Request sent to {sent.institutionName}</p>
+            <p className="text-[12.5px] text-muted">Waiting for your college to review it. Nothing changes in your account until they approve.</p>
+          </div>
+        </CardBody>
+      </Card>
+    );
   }
 
   if (!college) {

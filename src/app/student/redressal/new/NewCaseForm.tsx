@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Info, Send, ShieldCheck } from 'lucide-react';
 import {
@@ -52,8 +51,6 @@ export function NewCaseForm({
     relatedEntityId: string | null;
   };
 }) {
-  const router = useRouter();
-
   const [categoryId, setCategoryId] = React.useState(initial.categoryId);
   const [subject, setSubject] = React.useState(initial.subject);
   const [description, setDescription] = React.useState(initial.description);
@@ -89,6 +86,7 @@ export function NewCaseForm({
     if (!validate()) return;
 
     setSubmitting(true);
+    let navigating = false;
     try {
       const response = await fetch('/api/grievances', {
         method: 'POST',
@@ -135,15 +133,18 @@ export function NewCaseForm({
       }
 
       const id = payload.data?.id;
-      router.push(id ? `/student/redressal/${id}` : '/student/redressal');
-      router.refresh();
+      // A full page load, not a client router transition: that transition can be
+      // held back after a write, which would leave the student on a form whose
+      // case has already been filed (resubmitting would open a duplicate).
+      navigating = true;
+      window.location.assign(id ? `/student/redressal/${id}` : '/student/redressal');
     } catch {
       setError({
         message: 'Could not reach the server.',
         hint: 'Nothing was submitted. Check your connection and try again.',
       });
     } finally {
-      setSubmitting(false);
+      if (!navigating) setSubmitting(false);
     }
   }
 

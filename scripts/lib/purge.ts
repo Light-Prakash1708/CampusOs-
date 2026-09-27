@@ -8,7 +8,7 @@ import * as s from '../../src/lib/db/schema';
  * `audit_logs`, `grievance_events` and `consent_records` are append-only:
  * triggers reject UPDATE and DELETE so institutional history cannot be
  * rewritten. Purging a demo tenant legitimately needs to delete them, so the
- * triggers are disabled for exactly this operation and restored in `finally`.
+ * triggers are disabled for exactly this operation, inside its transaction.
  * This (and scripts/reset.ts) are the only places that do so, and both refuse
  * to run when NODE_ENV=production.
  */
@@ -23,19 +23,23 @@ export async function purgeTenant(db: NodePgDatabase<any>, institutionId: string
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Refusing to purge a tenant while NODE_ENV=production.');
   }
-  for (const [table, trigger] of APPEND_ONLY) {
-    await db.execute(sql.raw(`ALTER TABLE ${table} DISABLE TRIGGER ${trigger}`));
-  }
-  try {
-    for (const [table] of APPEND_ONLY) {
-      await db.execute(sql`DELETE FROM ${sql.raw(table)} WHERE institution_id = ${institutionId}`);
-    }
-    await db.delete(s.institutions).where(eq(s.institutions.id, institutionId));
-  } finally {
+  // One transaction: Postgres DDL is transactional, so the disabled triggers
+  // are never visible to other sessions, and the lock DISABLE TRIGGER takes
+  // (always in APPEND_ONLY order) serializes concurrent purges. Disabling them
+  // with separate autocommitted statements was a global change — a parallel
+  // purge could re-enable them between another purge's disable and delete.
+  await db.transaction(async (tx) => {
     for (const [table, trigger] of APPEND_ONLY) {
-      await db.execute(sql.raw(`ALTER TABLE ${table} ENABLE TRIGGER ${trigger}`));
+      await tx.execute(sql.raw(`ALTER TABLE ${table} DISABLE TRIGGER ${trigger}`));
     }
-  }
+    for (const [table] of APPEND_ONLY) {
+      await tx.execute(sql`DELETE FROM ${sql.raw(table)} WHERE institution_id = ${institutionId}`);
+    }
+    await tx.delete(s.institutions).where(eq(s.institutions.id, institutionId));
+    for (const [table, trigger] of APPEND_ONLY) {
+      await tx.execute(sql.raw(`ALTER TABLE ${table} ENABLE TRIGGER ${trigger}`));
+    }
+  });
 }
 
 /**
