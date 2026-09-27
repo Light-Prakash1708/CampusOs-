@@ -35,6 +35,8 @@ const PUBLIC_PATHS = [
   '/apple-icon.png',
   '/api/client-errors',
   '/api/csp-report',
+  '/offline',
+  '/sw.js',
 ];
 
 const PUBLIC_PREFIXES = ['/_next', '/favicon', '/icons', '/images', '/illustrations', '/branding/', '/verify/', '/api/auth/', '/api/public/'];

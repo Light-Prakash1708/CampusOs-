@@ -17,6 +17,7 @@ import { mfaSetupBlocking } from '@/lib/auth/mfa-policy';
 import { hasAcceptedCurrentNotice } from '@/services/privacy';
 import { PRIVACY_NOTICE_VERSION } from '@/lib/privacy-notice';
 import { PrivacyNoticeBanner } from './PrivacyNoticeBanner';
+import { ServiceWorker } from './ServiceWorker';
 import { humanize } from '@/lib/utils';
 import { AppShell, type ShellBadges } from './AppShell';
 import {
@@ -85,6 +86,7 @@ export async function PortalLayout({
       quickCreate={filterQuickCreate(QUICK_CREATE[portal], user)}
       demoMode={!!user.isDemo || (process.env.DEMO_MODE === 'true' && process.env.NODE_ENV !== 'production')}
     >
+      {isEnabled(user.featureFlags, 'pwa_enabled') ? <ServiceWorker /> : null}
       {user.isDemo ? (
         <div role="note" className="mb-4 rounded-xl border border-[hsl(var(--warning-border))] bg-warning-subtle px-4 py-3 text-[13px] leading-relaxed text-default">
           <strong>You’re exploring the CampusOS demo.</strong> This is a fictional college with sample data, shared with other visitors and reset every night. Nothing here is sent to real people.

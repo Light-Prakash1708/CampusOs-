@@ -34,7 +34,7 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 014 | DONE | ZIP pack; reconciled with receipts and Campus Insights |
 | 015 | DONE | Isolated demo; `npm run demo:reset`; nightly reset is an owner step |
 | 016 | DONE | Core modules for new colleges; student nav regrouped |
-| 017 | TODO | |
+| 017 | DONE (push opt-in BLOCKED) | Installable, offline page; no personal data cached |
 | 018 | DONE | TOTP + recovery codes; enforced for SUPER_ADMIN in production |
 | 019 | DONE | `ai_external_processing_enabled`, off by default |
 | 020 | DONE (tax BLOCKED) | Manual invoicing; GST treatment needs an accountant |
@@ -825,3 +825,14 @@ These can be revisited only with pilot evidence:
 - **`/api/csp-report`:** privacy-safe logging and rate-limited.
 - **Verified:** the policy was run **enforced** on a production build across 27 routes in all three portals plus the public, auth, account and tools pages. There were no console errors, no violations, and hydration and interactions worked. It is therefore enforced by default, with `CSP_ENFORCE=false` falling back to report-only.
 - **Trade-off:** every page now renders dynamically, because the nonce is read per request. This is acceptable because pages are session-dependent anyway.
+
+### 2026-09-27: CAMPUSOS-017 installable app (PWA)
+
+- **The existing manifest** gains `id` and `scope`.
+- **New `public/sw.js`:**
+  - caches **only** content-hashed build assets, icons, fonts, illustrations and `/offline`;
+  - navigations always go to the network, and fall back to `/offline`;
+  - API and data responses are never cached.
+- **Registration:** by `ServiceWorker` in portals when `pwa_enabled` is on. The module is now built and part of the core set for new colleges.
+- **Verified on a production build:** the worker registered; the caches contained no page other than `/offline`; offline navigation to `/student/attendance` showed the offline page, not stale personal data.
+- **BLOCKED:** web push opt-in needs Firebase web configuration (VAPID key and app config). The server side (`PUSH_PROVIDER=fcm`, `push_subscriptions`) already exists. Owner step: create a Firebase web app and provide the config; then add an opt-in toggle to Settings → Notifications.

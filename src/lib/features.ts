@@ -104,7 +104,7 @@ export const FEATURE_FLAGS = {
   },
   pwa_enabled: {
     label: 'Installable App (PWA)',
-    description: 'Lets students install CampusOS on their phone.',
+    description: 'Lets people install CampusOS on their phone. Only static files and an offline page are stored on the device — never timetables, notices or other personal data.',
     defaultValue: true,
     tier: 'STARTER',
   },
@@ -223,7 +223,6 @@ export const UNBUILT_MODULES: Partial<Record<FeatureFlag, number | 'later'>> = {
   campus_rep_enabled: 10,
   ai_coach_enabled: 10,
   ai_memory_enabled: 10,
-  pwa_enabled: 11,
   whatsapp_enabled: 'later',
   billing_enabled: 'later',
   virtual_lab_enabled: 'later',
@@ -245,6 +244,7 @@ export const CORE_MODULES: FeatureFlag[] = [
   'opportunity_hub_enabled',
   'personal_tracker_enabled',
   'advanced_analytics_enabled',
+  'pwa_enabled',
 ];
 
 /** Explicit flags for a new college: the core set on, every other built module off. */
