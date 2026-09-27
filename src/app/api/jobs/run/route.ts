@@ -6,7 +6,7 @@ import * as t from '@/lib/db/schema';
 import { ok, fail, AppError } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth/context';
 import { runEscalationSweep } from '@/services/grievance';
-import { planPendingNotifications, processDeliveryQueue } from '@/services/notifications/dispatcher';
+import { drainNotifications } from '@/services/notifications/dispatcher';
 import { sweepRateLimits } from '@/services/rate-limit';
 import { sweepExpiredTokens } from '@/services/auth/tokens';
 import { expireStaleMembershipRequests } from '@/services/membership';
@@ -126,8 +126,16 @@ export async function POST(request: Request) {
 
     const platform: Record<string, unknown> = {};
     if (authorisedByCron) {
-      if (selected.includes('plan_notifications')) platform.planned = await planPendingNotifications();
-      if (selected.includes('deliver_notifications')) platform.delivered = await processDeliveryQueue();
+      const plan = selected.includes('plan_notifications');
+      const deliver = selected.includes('deliver_notifications');
+      if (plan || deliver) {
+        // Keep delivering within this call (the scheduler waits up to 120 s).
+        const budgetMs = Math.max(0, Math.min(Number(process.env.JOBS_DRAIN_BUDGET_MS ?? 60_000), 90_000));
+        const drained = await drainNotifications({ plan, deliver, budgetMs });
+        if (plan) platform.planned = drained.planned;
+        if (deliver) platform.delivered = drained.delivered;
+        platform.notificationRounds = drained.rounds;
+      }
       if (selected.includes('sweep')) {
         platform.sweep = {
           rateLimitBuckets: await sweepRateLimits(),

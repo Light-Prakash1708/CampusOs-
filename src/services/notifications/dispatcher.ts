@@ -448,3 +448,31 @@ export async function processDeliveryQueue(opts: { now?: Date; limit?: number } 
 }
 
 export { EXTERNAL_CHANNELS };
+
+/**
+ * Plans and delivers in rounds until the queue is empty or the time budget
+ * is spent (guardian mode, I-003). One scheduler call used to move at most
+ * 100 deliveries, so a required notice to 1,000 students took over an hour and
+ * a half to reach every inbox at a 10-minute cron. Claims are leased and
+ * skip-locked, so overlapping runs never double-send; anything left over is
+ * picked up by the next run.
+ */
+export async function drainNotifications(opts: { budgetMs?: number; maxRounds?: number; plan?: boolean; deliver?: boolean } = {}) {
+  const budgetMs = opts.budgetMs ?? 60_000;
+  const maxRounds = opts.maxRounds ?? 60;
+  const plan = opts.plan ?? true;
+  const deliver = opts.deliver ?? true;
+  const started = Date.now();
+  const planned: PlanSummary = { notifications: 0, queued: 0, skipped: 0, stale: 0 };
+  const delivered: DeliverSummary = { claimed: 0, sent: 0, failed: 0, retrying: 0 };
+  let rounds = 0;
+  do {
+    rounds++;
+    const p = plan ? await planPendingNotifications() : { notifications: 0, queued: 0, skipped: 0, stale: 0 };
+    const d = deliver ? await processDeliveryQueue() : { claimed: 0, sent: 0, failed: 0, retrying: 0 };
+    for (const k of Object.keys(planned) as (keyof PlanSummary)[]) planned[k] += p[k];
+    for (const k of Object.keys(delivered) as (keyof DeliverSummary)[]) delivered[k] += d[k];
+    if (p.notifications === 0 && d.claimed === 0) break;
+  } while (rounds < maxRounds && Date.now() - started < budgetMs);
+  return { planned, delivered, rounds, ms: Date.now() - started };
+}
