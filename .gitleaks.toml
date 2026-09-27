@@ -1,0 +1,15 @@
+# Secret scanning (CAMPUSOS-008). CI runs gitleaks on every push and PR;
+# locally: `gitleaks git --redact .` (history) and `gitleaks dir --redact .`.
+# The default rules apply. The only exception is literal test-fixture
+# passwords in the test suites, which are not credentials for anything.
+title = "CampusOS gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Throwaway passwords in test fixtures"
+condition = "AND"
+paths = ['''^(tests|e2e)/''']
+regexTarget = "line"
+regexes = ['''password:\s*'[A-Za-z0-9!@#\-]{6,40}''']

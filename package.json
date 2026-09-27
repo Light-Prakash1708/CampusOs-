@@ -21,7 +21,8 @@
     "provision": "tsx --conditions=react-server scripts/provision.ts",
     "xp:backfill": "tsx --conditions=react-server scripts/backfill-xp.ts",
     "brand:assets": "tsx scripts/brand/generate-assets.ts",
-    "demo:reset": "ALLOW_DEMO_SEED=true tsx scripts/seed.ts"
+    "demo:reset": "ALLOW_DEMO_SEED=true tsx scripts/seed.ts",
+    "test:e2e": "playwright test"
   },
   "keywords": [],
   "author": "",
@@ -61,6 +62,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.56",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^26.2.0",

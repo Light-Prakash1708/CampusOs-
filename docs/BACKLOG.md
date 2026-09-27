@@ -25,8 +25,8 @@ Statuses are DONE, IN PROGRESS, BLOCKED, DEFERRED and TODO. Completion notes are
 | 005 | DONE (adult-only) | Guardian-consent flow BLOCKED on legal review |
 | 006 | DONE | Notice text needs legal review before public launch |
 | 007 | DONE | Export existed; personal-workspace erasure added |
-| 008 | TODO | |
-| 009 | TODO | |
+| 008 | DONE | History clean (44 commits); gitleaks in CI with a narrow fixture allowlist |
+| 009 | DONE | 8 flows + 2 mobile checks; ~30 s locally; separate CI job |
 | 010 | DONE | Receipts, CSV, reminders, faculty view |
 | 011 | DONE | Committee, statutory dates, Ombudsperson appeal |
 | 012 | DONE | Built with 003; warm campuses on /admin/metrics |
@@ -836,3 +836,36 @@ These can be revisited only with pilot evidence:
 - **Registration:** by `ServiceWorker` in portals when `pwa_enabled` is on. The module is now built and part of the core set for new colleges.
 - **Verified on a production build:** the worker registered; the caches contained no page other than `/offline`; offline navigation to `/student/attendance` showed the offline page, not stale personal data.
 - **BLOCKED:** web push opt-in needs Firebase web configuration (VAPID key and app config). The server side (`PUSH_PROVIDER=fcm`, `push_subscriptions`) already exists. Owner step: create a Firebase web app and provide the config; then add an opt-in toggle to Settings → Notifications.
+
+### 2026-09-27: CAMPUSOS-009 E2E smoke tests
+
+- **Files:**
+  - `playwright.config.ts`;
+  - `e2e/helpers.ts`, `e2e/core-flows.spec.ts`;
+  - the `e2e` job in `.github/workflows/ci.yml`;
+  - `npm run test:e2e`.
+- **Flows covered.** All run against a production build on the seeded database, with local providers only:
+  1. Form sign-in, and a wrong password is refused. Sign-in also runs at mobile width (Pixel 7).
+  2. Staff send a required notice; the student acknowledges it in the UI; staff see the counts, the pending CSV and the receipts page.
+  3. Student attendance view (also at mobile width).
+  4. A student files a grievance and lands on the tracked case.
+  5. An independent student signs up (an under-18 sign-up is refused) and requests to join a college.
+  6. Admin communication and reports pages; the evidence pack downloads as a valid ZIP.
+  7. Permission boundaries: a student gets 403 on evidence, reports, receipts and committee APIs and is kept out of `/admin`; the assistant does not reveal other students' contact details.
+- **Result:** 10/10 pass in about 30 s locally. Every test fails on any uncaught page error or 5xx response.
+- **Rate limit:** each role signs in once per run and its cookies are cached in the git-ignored `e2e/.auth/`. This keeps the suite inside the per-account limit of 10 sign-ins per 15 minutes.
+- **Known issues:**
+  - The join flow skips (it does not fail) when the chosen college requires an ID upload and storage isn't configured.
+  - Deeper AI permission boundaries remain covered by the unit tests in `attention-signals` and `ai`.
+
+### 2026-09-27: CAMPUSOS-008 secret scan
+
+- **History scan:** `gitleaks git` over all 44 commits found one hit, a throwaway invite password in `tests/foundation-integration.test.ts`. It is not a credential.
+- **Allowlist:** `.gitleaks.toml` extends the default rules with one narrow exception, which requires both conditions:
+  - the path is under `tests/` or `e2e/`;
+  - the line is a `password: '…'` literal.
+- **Result:** the history scan is now clean.
+- **Working tree:** a `gitleaks dir` scan found hits only in `.next/` build output. That output is git-ignored and never committed.
+- `.env` has never been committed; only `.env.example` is tracked.
+- **CI:** the existing `gitleaks/gitleaks-action@v2` step picks up `.gitleaks.toml` automatically.
+- **Owner step:** if the repository becomes private under an organisation, gitleaks-action needs a `GITLEAKS_LICENSE` secret. It is free for personal accounts.
