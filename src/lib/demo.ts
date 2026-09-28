@@ -22,3 +22,15 @@ export type DemoRole = keyof typeof DEMO_ACCOUNTS;
 export function demoSignInEnabled(): boolean {
   return process.env.DEMO_TENANT_ENABLED === 'true';
 }
+
+/**
+ * Where "View demo" goes, or null to hide it. A demo server links to its own
+ * /demo; a pilot college's server (demo off, by design) may point at the
+ * separate demo service through PUBLIC_DEMO_URL — a link only, no shared data.
+ */
+export function demoEntryHref(): string | null {
+  if (demoSignInEnabled()) return '/demo';
+  const external = process.env.PUBLIC_DEMO_URL?.trim();
+  if (!external || !/^https?:\/\//i.test(external)) return null;
+  return `${external.replace(/\/+$/, '')}/demo`;
+}

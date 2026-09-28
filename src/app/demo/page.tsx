@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { TryDemo } from '@/components/auth/TryDemo';
 import { getCurrentUser } from '@/lib/auth/context';
-import { demoSignInEnabled } from '@/lib/demo';
+import { demoEntryHref, demoSignInEnabled } from '@/lib/demo';
 
 export const metadata = { title: 'Try the demo · CampusOS' };
 export const dynamic = 'force-dynamic';
@@ -16,6 +16,9 @@ export default async function DemoPage() {
   const user = await getCurrentUser();
   if (user) redirect(`/${user.portal}`);
   const enabled = demoSignInEnabled();
+  // A pilot server's demo lives on the separate demo service.
+  const elsewhere = enabled ? null : demoEntryHref();
+  if (elsewhere) redirect(elsewhere);
 
   return (
     <AuthShell

@@ -52,6 +52,8 @@ const EnvSchema = z
     CSP_ENFORCE: z.enum(['true', 'false']).optional(),
     /** Only on a dedicated demo service — never on a pilot college's server. */
     DEMO_TENANT_ENABLED: z.enum(['true', 'false']).optional(),
+    /** On a pilot server: where "View demo" points (the separate demo service). */
+    PUBLIC_DEMO_URL: z.string().url('PUBLIC_DEMO_URL must be a full https:// URL').optional(),
     BILLING_SELLER_NAME: z.string().optional(),
     BILLING_SELLER_ADDRESS: z.string().optional(),
     BILLING_SELLER_EMAIL: z.string().optional(),

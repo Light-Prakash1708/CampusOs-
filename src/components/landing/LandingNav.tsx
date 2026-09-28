@@ -13,7 +13,7 @@ const LINKS = [
   { href: '#colleges', label: 'For colleges' },
 ];
 
-export function LandingNav({ demo = false }: { demo?: boolean }) {
+export function LandingNav({ demoHref = null }: { demoHref?: string | null }) {
   const [scrolled, setScrolled] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
@@ -59,9 +59,9 @@ export function LandingNav({ demo = false }: { demo?: boolean }) {
         </ul>
 
         <div className="ml-auto hidden items-center gap-2 lg:flex">
-          {demo ? (
+          {demoHref ? (
             <Link
-              href="/demo"
+              href={demoHref}
               className={cn(s.focusRing, 'rounded-xl border-[1.5px] border-white/30 px-3.5 py-2 text-[13.5px] font-bold text-white/90 hover:border-white hover:text-white')}
             >
               View demo
@@ -84,9 +84,9 @@ export function LandingNav({ demo = false }: { demo?: boolean }) {
           </Link>
         </div>
 
-        {demo ? (
+        {demoHref ? (
           <Link
-            href="/demo"
+            href={demoHref}
             className={cn(s.focusRing, 'ml-auto rounded-xl border-[1.5px] border-white/30 px-3 py-1.5 text-[13px] font-bold text-white lg:hidden')}
           >
             View demo
@@ -94,7 +94,7 @@ export function LandingNav({ demo = false }: { demo?: boolean }) {
         ) : null}
         <button
           type="button"
-          className={cn(s.focusRing, demo ? 'rounded-lg p-2 text-white lg:hidden' : 'ml-auto rounded-lg p-2 text-white lg:hidden')}
+          className={cn(s.focusRing, demoHref ? 'rounded-lg p-2 text-white lg:hidden' : 'ml-auto rounded-lg p-2 text-white lg:hidden')}
           aria-expanded={open}
           aria-controls="lp-mobile-menu"
           aria-label={open ? 'Close menu' : 'Open menu'}

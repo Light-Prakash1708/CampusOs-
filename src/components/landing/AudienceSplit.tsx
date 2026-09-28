@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Reveal } from './motion';
 import s from './landing.module.css';
 
-export function AudienceSplit({ demo = false }: { demo?: boolean }) {
+export function AudienceSplit({ demoHref = null }: { demoHref?: string | null }) {
   return (
     <section className="bg-[var(--lp-cream)] px-5 py-24 sm:px-8 lg:py-28" aria-label="For students and colleges">
       <div className="mx-auto grid max-w-[1240px] gap-5 lg:grid-cols-2">
@@ -56,9 +56,9 @@ export function AudienceSplit({ demo = false }: { demo?: boolean }) {
                 register your college
               </Link>
               .{' '}
-              {demo ? (
+              {demoHref ? (
                 <>
-                  <Link href="/demo" className="font-bold text-[#1d4ed8] underline-offset-2 hover:underline">
+                  <Link href={demoHref} className="font-bold text-[#1d4ed8] underline-offset-2 hover:underline">
                     Try the demo college
                   </Link>{' '}
                   first, or sign in if you’re already set up.

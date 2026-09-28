@@ -75,6 +75,8 @@ services:
         value: "true"
       - key: DEMO_TENANT_ENABLED
         value: "false"       # never true on a pilot college's server
+      - key: PUBLIC_DEMO_URL
+        sync: false          # optional: https URL of the separate demo service; shows "View demo" here
       - key: SESSION_MAX_AGE
         value: "28800"
       - key: DEMO_MODE

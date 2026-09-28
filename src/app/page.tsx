@@ -10,9 +10,9 @@ import { HowItWorks } from '@/components/landing/HowItWorks';
 import { AudienceSplit } from '@/components/landing/AudienceSplit';
 import { FinalCTA, LandingFooter } from '@/components/landing/FinalCTA';
 import s from '@/components/landing/landing.module.css';
-import { demoSignInEnabled } from '@/lib/demo';
+import { demoEntryHref } from '@/lib/demo';
 
-// Rendered per request so the "Try the demo" link follows DEMO_TENANT_ENABLED at runtime.
+// Rendered per request so the "Try the demo" link follows DEMO_TENANT_ENABLED / PUBLIC_DEMO_URL at runtime.
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
@@ -27,10 +27,10 @@ export const metadata = {
  * the database.
  */
 export default function LandingPage() {
-  const demo = demoSignInEnabled();
+  const demoHref = demoEntryHref();
   return (
     <div className={cn(s.root, 'min-h-screen')}>
-      <LandingNav demo={demo} />
+      <LandingNav demoHref={demoHref} />
       <main id="main">
         <HeroSection />
         <Fragmentation />
@@ -39,7 +39,7 @@ export default function LandingPage() {
         <EventsShowcase />
         <PersonalDashboard />
         <HowItWorks />
-        <AudienceSplit demo={demo} />
+        <AudienceSplit demoHref={demoHref} />
         <FinalCTA />
       </main>
       <LandingFooter />

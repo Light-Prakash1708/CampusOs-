@@ -57,6 +57,21 @@ nobody can pick a staff role at sign-up. "Faculty / staff" on the sign-in page e
 - [ ] The test student files a grievance; it appears under Redressal with its due date.
 - [ ] The demo (`/demo`) still opens the fictional college, and SNU does not appear in it.
 
+## Go-live (owner steps)
+
+Follow [../GO_LIVE_RUNBOOK.md](../GO_LIVE_RUNBOOK.md) and [../PRODUCTION_SMOKE_TEST.md](../PRODUCTION_SMOKE_TEST.md). Specific to this pilot:
+
+1. Render → New → Blueprint from this repo (`render.yaml`): web `campusos`, cron `campusos-jobs`,
+   Postgres `campusos-db`, all in Singapore. Deploys only after GitHub CI passes.
+2. Set `PLATFORM_OPERATOR_EMAILS` (the CampusOS team) and, for a custom domain, `APP_URL`.
+3. Optional `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, `EMAIL_FROM`.
+4. Create the first platform operator with `npm run provision` (see INSTITUTION_ONBOARDING.md), sign
+   in, enrol in two-step sign-in, then follow section 1 above.
+5. Public demo (optional, separate cost): a second web service + database from the same repo with
+   `DEMO_TENANT_ENABLED=true`, `npm run demo:reset` once and nightly (the commented cron in
+   `render.yaml`). Then set `PUBLIC_DEMO_URL` on the pilot service so its landing page shows
+   "View demo". Without it, "View demo" is simply hidden on the pilot site.
+
 ## Demo isolation
 
 The demo tenant is flagged `is_demo`; demo accounts can never be platform operators; demo data is
