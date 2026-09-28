@@ -14,7 +14,7 @@ If the answer is no, **don't scale sales; revisit the wedge** (strategy audit §
 
 ## Before the first meeting: the demo (10 minutes)
 
-Use the public demo (`/login` → "Try the demo"). It is an isolated, shared tenant, reset nightly (the nightly reset is an owner step; see DEPLOYMENT.md). Nothing done in it sends email or push, and its data never reaches analytics.
+Use the public demo ("View demo" on the landing page, or `/demo`). It is an isolated, shared tenant, reset nightly (the nightly reset is an owner step; see DEPLOYMENT.md). Nothing done in it sends email or push, and its data never reaches analytics.
 
 **The story: "Monday morning at a college".**
 

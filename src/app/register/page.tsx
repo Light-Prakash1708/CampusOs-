@@ -8,9 +8,10 @@ import { RegisterChooser } from './RegisterChooser';
 export const metadata = { title: 'Create your account · CampusOS' };
 export const dynamic = 'force-dynamic';
 
-export default async function RegisterPage() {
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ as?: string }> }) {
   const user = await getCurrentUser();
   if (user) redirect(`/${user.portal}`);
+  const { as } = await searchParams;
   const colleges = await listRegistrableInstitutions();
 
   const selfRegistration = selfRegistrationEnabled();
@@ -23,11 +24,14 @@ export default async function RegisterPage() {
         <>
           Already have an account?{' '}
           <a href="/login" className="font-medium text-brand hover:underline">Sign in</a>
+          {' · '}
+          <a href="/register-college" className="font-medium text-brand hover:underline">Register your college</a>
         </>
       }
     >
       <RegisterChooser
         selfRegistration={selfRegistration}
+        staff={as === 'staff'}
         colleges={colleges.map((c) => ({
           slug: c.slug,
           name: c.name,

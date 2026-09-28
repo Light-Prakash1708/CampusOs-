@@ -13,7 +13,7 @@ const LINKS = [
   { href: '#colleges', label: 'For colleges' },
 ];
 
-export function LandingNav() {
+export function LandingNav({ demo = false }: { demo?: boolean }) {
   const [scrolled, setScrolled] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
@@ -59,6 +59,14 @@ export function LandingNav() {
         </ul>
 
         <div className="ml-auto hidden items-center gap-2 lg:flex">
+          {demo ? (
+            <Link
+              href="/demo"
+              className={cn(s.focusRing, 'rounded-xl border-[1.5px] border-white/30 px-3.5 py-2 text-[13.5px] font-bold text-white/90 hover:border-white hover:text-white')}
+            >
+              View demo
+            </Link>
+          ) : null}
           <Link
             href="/login"
             className={cn(s.focusRing, 'rounded-xl px-3.5 py-2 text-[13.5px] font-bold text-white/90 hover:text-white')}
@@ -76,9 +84,17 @@ export function LandingNav() {
           </Link>
         </div>
 
+        {demo ? (
+          <Link
+            href="/demo"
+            className={cn(s.focusRing, 'ml-auto rounded-xl border-[1.5px] border-white/30 px-3 py-1.5 text-[13px] font-bold text-white lg:hidden')}
+          >
+            View demo
+          </Link>
+        ) : null}
         <button
           type="button"
-          className={cn(s.focusRing, 'ml-auto rounded-lg p-2 text-white lg:hidden')}
+          className={cn(s.focusRing, demo ? 'rounded-lg p-2 text-white lg:hidden' : 'ml-auto rounded-lg p-2 text-white lg:hidden')}
           aria-expanded={open}
           aria-controls="lp-mobile-menu"
           aria-label={open ? 'Close menu' : 'Open menu'}
@@ -115,6 +131,9 @@ export function LandingNav() {
             </Link>
             <Link href="/login" className={cn(s.focusRing, 'rounded-xl px-4 py-3 text-center text-[15px] font-bold text-white')}>
               Sign in
+            </Link>
+            <Link href="/register-college" className={cn(s.focusRing, 'rounded-xl px-4 py-3 text-center text-[15px] font-bold text-white/80')}>
+              Register your college
             </Link>
           </div>
         </div>

@@ -19,6 +19,8 @@ const PUBLIC_PATHS = [
   '/',
   '/login',
   '/register',
+  '/register-college',
+  '/demo',
   '/privacy',
   '/forgot-password',
   '/reset-password',

@@ -13,14 +13,23 @@ type College = React.ComponentProps<typeof RegisterForm>['colleges'][number];
  * college's own onboarding: an invitation link, or the college's registration
  * form where the college allows it).
  */
-export function RegisterChooser({ selfRegistration, colleges }: { selfRegistration: boolean; colleges: College[] }) {
-  const [path, setPath] = React.useState<'student' | 'college'>(selfRegistration ? 'student' : 'college');
+export function RegisterChooser({
+  selfRegistration,
+  colleges,
+  staff = false,
+}: {
+  selfRegistration: boolean;
+  colleges: College[];
+  /** Opened from "Faculty / staff": start on the college path. */
+  staff?: boolean;
+}) {
+  const [path, setPath] = React.useState<'student' | 'college'>(selfRegistration && !staff ? 'student' : 'college');
 
   const options = [
     ...(selfRegistration
       ? [{ id: 'student' as const, icon: GraduationCap, title: 'I’m a student', body: 'Create your own account in a minute.' }]
       : []),
-    { id: 'college' as const, icon: MailOpen, title: 'My college invited me', body: 'Join through your college.' },
+    { id: 'college' as const, icon: MailOpen, title: 'My college invited me', body: 'Faculty, staff, or students joining through their college.' },
   ];
 
   return (
@@ -69,6 +78,10 @@ function CollegePath({ colleges }: { colleges: College[] }) {
         <p className="font-semibold text-default">Got an invitation email?</p>
         <p className="mt-1">
           Open the link in the email from your college. It sets up your college account directly — no form needed.
+        </p>
+        <p className="mt-2">
+          <span className="font-semibold text-default">Faculty and staff:</span> your college office adds you from CampusOS, and
+          the invitation gives you the right access. No invitation yet? Ask your department’s CampusOS administrator.
         </p>
       </div>
       {colleges.length > 0 ? (

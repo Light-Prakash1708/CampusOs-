@@ -171,4 +171,35 @@ test('permission boundaries hold for students (reports, receipts, admin pages, A
   } else {
     expect([403, 404, 405, 422]).toContain(ai.status);
   }
+
+  // Triage of "Register your college" requests is for platform operators only.
+  expect((await api(page, `/api/admin/college-requests/${anyId}`, { method: 'PATCH', body: { status: 'SET_UP' } })).status).toBe(403);
+});
+
+test('sign-in shows every way in, and a college can ask to join without getting an account @mobile', async ({ page }) => {
+  const check = watchForErrors(page);
+  await page.goto('/login');
+  const paths = page.getByRole('navigation', { name: 'New to CampusOS?' });
+  await expect(paths.getByRole('link', { name: /I’m a student/ })).toHaveAttribute('href', '/register');
+  await expect(paths.getByRole('link', { name: /Faculty \/ staff/ })).toHaveAttribute('href', '/register?as=staff');
+  await paths.getByRole('link', { name: /Register your college/ }).click();
+
+  await expect(page).toHaveURL(/\/register-college$/);
+  await page.getByLabel('College name').fill('E2E Test College of Management');
+  await page.getByLabel('City').fill('Kolkata');
+  await page.getByLabel('Your name').fill('E2E Contact');
+  await page.getByLabel('Your role').fill('HOD, Management');
+  await page.getByLabel('Official email').fill(`hod-${Date.now()}@example.test`);
+  await page.getByRole('button', { name: 'Send request' }).click();
+  await expect(page.getByText('Thanks — we’ve got your request.')).toBeVisible();
+  await expect(page.getByText('Nothing has been created yet.', { exact: false })).toBeVisible();
+
+  // Faculty land on the college path, which explains invitations.
+  await page.goto('/register?as=staff');
+  await expect(page.getByText('Faculty and staff:', { exact: false })).toBeVisible();
+
+  // The demo page answers whether or not the demo college is switched on here.
+  await page.goto('/demo');
+  await expect(page.getByRole('heading', { name: 'Explore CampusOS' })).toBeVisible();
+  check();
 });

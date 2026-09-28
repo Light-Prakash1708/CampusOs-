@@ -286,7 +286,9 @@ describe('tenant isolation', () => {
       WHERE table_schema='public'
         -- rate_limit_buckets keys on IPs/emails BEFORE a tenant is known (login,
         -- registration); it holds hashed counters only, no tenant data.
-        AND table_name NOT IN ('institutions','sessions','job_queue','rate_limit_buckets')
+        -- college_requests ("Register your college") describe a college that is
+        -- not on CampusOS yet; only platform operators can read them.
+        AND table_name NOT IN ('institutions','sessions','job_queue','rate_limit_buckets','college_requests')
         AND table_name NOT LIKE '\\_\\_%'
     `);
 

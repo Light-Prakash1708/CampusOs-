@@ -27,9 +27,10 @@ export const metadata = {
  * the database.
  */
 export default function LandingPage() {
+  const demo = demoSignInEnabled();
   return (
     <div className={cn(s.root, 'min-h-screen')}>
-      <LandingNav />
+      <LandingNav demo={demo} />
       <main id="main">
         <HeroSection />
         <Fragmentation />
@@ -38,7 +39,7 @@ export default function LandingPage() {
         <EventsShowcase />
         <PersonalDashboard />
         <HowItWorks />
-        <AudienceSplit demo={demoSignInEnabled()} />
+        <AudienceSplit demo={demo} />
         <FinalCTA />
       </main>
       <LandingFooter />

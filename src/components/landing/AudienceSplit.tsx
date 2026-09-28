@@ -51,10 +51,14 @@ export function AudienceSplit({ demo = false }: { demo?: boolean }) {
               ))}
             </ul>
             <p className="mt-8 max-w-[440px] text-[14px] leading-relaxed text-[var(--lp-muted)]">
-              Colleges start with a one-semester pilot, set up with the CampusOS team.{' '}
+              Colleges start with a one-semester pilot, set up with the CampusOS team —{' '}
+              <Link href="/register-college" className="font-bold text-[#1d4ed8] underline-offset-2 hover:underline">
+                register your college
+              </Link>
+              .{' '}
               {demo ? (
                 <>
-                  <Link href="/login#demo-h" className="font-bold text-[#1d4ed8] underline-offset-2 hover:underline">
+                  <Link href="/demo" className="font-bold text-[#1d4ed8] underline-offset-2 hover:underline">
                     Try the demo college
                   </Link>{' '}
                   first, or sign in if you’re already set up.

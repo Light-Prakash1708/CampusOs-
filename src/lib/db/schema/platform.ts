@@ -196,3 +196,31 @@ export const pushSubscriptions = pgTable(
     index('push_subscriptions_user_idx').on(t.userId),
   ],
 );
+
+/**
+ * "Register your college" — a public request to bring a college onto
+ * CampusOS. It grants nothing: no account, role or tenant is created. A
+ * platform operator reviews it and, if it checks out, sets the college up
+ * through the existing onboarding (admin/institutions), which invites the
+ * first administrator. Platform-level, so it belongs to no tenant.
+ */
+export const collegeRequests = pgTable(
+  'college_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    collegeName: text('college_name').notNull(),
+    university: text('university'),
+    city: text('city').notNull(),
+    website: text('website'),
+    contactName: text('contact_name').notNull(),
+    contactEmail: text('contact_email').notNull(),
+    contactRole: text('contact_role').notNull(),
+    studentCount: integer('student_count'),
+    message: text('message'),
+    /** NEW → CONTACTED → SET_UP | DECLINED */
+    status: text('status').notNull().default('NEW'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('college_requests_status_idx').on(t.status, t.createdAt)],
+);

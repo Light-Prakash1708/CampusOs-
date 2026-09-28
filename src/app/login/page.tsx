@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth/context';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { LoginForm } from './LoginForm';
 import { TryDemo } from '@/components/auth/TryDemo';
+import { JoinPaths } from '@/components/auth/JoinPaths';
 import { demoSignInEnabled } from '@/lib/demo';
 
 export const metadata = { title: 'Sign in' };
@@ -22,14 +23,6 @@ export default async function LoginPage({
     <AuthShell
       title="Welcome back"
       subtitle="Sign in to your CampusOS account."
-      footer={
-        <>
-          New to CampusOS?{' '}
-          <a href="/register" className="font-bold text-brand hover:underline">
-            Create your student account
-          </a>
-        </>
-      }
     >
       <LoginForm
         nextUrl={params.next}
@@ -45,6 +38,7 @@ export default async function LoginPage({
               : null
         }
       />
+      <JoinPaths />
       {demoSignInEnabled() ? <TryDemo /> : null}
     </AuthShell>
   );
